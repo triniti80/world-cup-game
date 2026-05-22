@@ -19,12 +19,13 @@ Phase 1 has started:
 - Pre-tournament bonus picks for top scorer and, in score leagues, champion.
 - Admin final-score entry for seeded fixtures.
 - Match score-event recalculation and DB-backed leaderboard.
+- League prediction visibility with submitted/hidden/revealed states.
 - Bracket placeholder.
 - Game Instructions page.
 - Settings page for current lock/visibility rules.
 
-The next implementation step is adding league-wide prediction visibility,
-full fixture import, and official bonus/stage scoring.
+The next implementation step is full fixture import, richer league prediction
+visibility for stage picks, and official bonus/stage scoring.
 
 ## Quick start
 

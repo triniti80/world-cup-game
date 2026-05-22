@@ -75,6 +75,35 @@ export type LeaderboardRow = {
   bonuses: number;
 };
 
+export type LeaguePredictionMember = {
+  userId: number;
+  name: string;
+};
+
+export type LeagueMatchPrediction = {
+  userId: number;
+  submitted: boolean;
+  revealed: boolean;
+  homeScore?: number;
+  awayScore?: number;
+};
+
+export type LeaguePredictionMatch = Match & {
+  dbId: number;
+  revealed: boolean;
+  predictions: LeagueMatchPrediction[];
+};
+
+export type LeagueBonusPrediction = {
+  userId: number;
+  topScorerSubmitted: boolean;
+  topScorerRevealed: boolean;
+  topScorer?: string;
+  winnerSubmitted: boolean;
+  winnerRevealed: boolean;
+  winnerTeamId?: string;
+};
+
 export async function ensureSeedTournament(): Promise<TournamentRow> {
   const [existingTournament] = await db
     .select()
@@ -466,6 +495,117 @@ export async function getLeaderboardRows(
     league,
     rows: rows.sort((a, b) => b.total - a.total || a.name.localeCompare(b.name)),
   };
+}
+
+export async function getLeaguePredictionVisibility(userId: number, activeLeagueId?: number | null): Promise<{
+  league: CurrentLeague | null;
+  members: LeaguePredictionMember[];
+  matches: LeaguePredictionMatch[];
+  bonuses: LeagueBonusPrediction[];
+}> {
+  const tournamentRow = await ensureSeedTournament();
+  const league = await getCurrentLeague(userId, activeLeagueId);
+  if (!league) return { league: null, members: [], matches: [], bonuses: [] };
+
+  const members = await db
+    .select({
+      userId: leagueMembers.userId,
+      name: leagueMembers.displayName,
+    })
+    .from(leagueMembers)
+    .where(eq(leagueMembers.leagueId, league.leagueId))
+    .orderBy(leagueMembers.joinedAt);
+
+  const dbMatchRows = await db
+    .select({
+      id: dbMatches.id,
+      matchNumber: dbMatches.matchNumber,
+      kickoffAt: dbMatches.kickoffAt,
+    })
+    .from(dbMatches)
+    .where(eq(dbMatches.tournamentId, tournamentRow.id));
+  const dbMatchByNumber = new Map(dbMatchRows.map((match) => [match.matchNumber, match]));
+
+  const predictions = await db
+    .select({
+      userId: matchPredictions.userId,
+      matchId: matchPredictions.matchId,
+      homeScore: matchPredictions.homeScore,
+      awayScore: matchPredictions.awayScore,
+    })
+    .from(matchPredictions)
+    .where(eq(matchPredictions.leagueId, league.leagueId));
+  const predictionByUserAndMatch = new Map(
+    predictions.map((prediction) => [
+      `${prediction.userId}:${prediction.matchId}`,
+      prediction,
+    ]),
+  );
+
+  const now = Date.now();
+  const visibleMatches = seedMatches.flatMap<LeaguePredictionMatch>((seedMatch) => {
+    const dbMatch = dbMatchByNumber.get(seedMatch.number);
+    if (!dbMatch) return [];
+    const revealed = now >= dbMatch.kickoffAt.getTime();
+    return [
+      {
+        ...seedMatch,
+        dbId: dbMatch.id,
+        revealed,
+        predictions: members.map((member) => {
+          const prediction = predictionByUserAndMatch.get(`${member.userId}:${dbMatch.id}`);
+          return {
+            userId: member.userId,
+            submitted: Boolean(prediction),
+            revealed,
+            homeScore: revealed ? prediction?.homeScore : undefined,
+            awayScore: revealed ? prediction?.awayScore : undefined,
+          };
+        }),
+      },
+    ];
+  });
+
+  const seededTeams = await db
+    .select({ id: dbTeams.id, slug: dbTeams.slug })
+    .from(dbTeams)
+    .where(eq(dbTeams.tournamentId, tournamentRow.id));
+  const slugByTeamId = new Map(seededTeams.map((team) => [team.id, team.slug]));
+
+  const bonusRows = await db
+    .select({
+      userId: bonusPredictions.userId,
+      type: bonusPredictions.type,
+      playerName: bonusPredictions.playerName,
+      teamId: bonusPredictions.teamId,
+    })
+    .from(bonusPredictions)
+    .where(
+      and(
+        eq(bonusPredictions.leagueId, league.leagueId),
+        eq(bonusPredictions.tournamentId, tournamentRow.id),
+      ),
+    );
+  const bonusByUserAndType = new Map(
+    bonusRows.map((bonus) => [`${bonus.userId}:${bonus.type}`, bonus]),
+  );
+  const bonusRevealed = now >= tournamentRow.firstMatchAt.getTime();
+
+  const bonuses = members.map<LeagueBonusPrediction>((member) => {
+    const topScorer = bonusByUserAndType.get(`${member.userId}:top_scorer`);
+    const winner = bonusByUserAndType.get(`${member.userId}:tournament_winner`);
+    return {
+      userId: member.userId,
+      topScorerSubmitted: Boolean(topScorer),
+      topScorerRevealed: bonusRevealed,
+      topScorer: bonusRevealed ? topScorer?.playerName ?? undefined : undefined,
+      winnerSubmitted: Boolean(winner),
+      winnerRevealed: bonusRevealed,
+      winnerTeamId: bonusRevealed && winner?.teamId ? slugByTeamId.get(winner.teamId) : undefined,
+    };
+  });
+
+  return { league, members, matches: visibleMatches, bonuses };
 }
 
 export function getMatchLockAtUtc(match: Pick<MatchRow, "kickoffAt">): Date {

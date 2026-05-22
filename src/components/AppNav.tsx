@@ -8,6 +8,7 @@ const TABS = [
   { href: "/leagues", label: "Leagues", short: "League" },
   { href: "/fixtures", label: "Fixtures", short: "Games" },
   { href: "/predictions", label: "Predictions", short: "Picks" },
+  { href: "/league-predictions", label: "League Picks", short: "League Picks" },
   { href: "/bracket", label: "Bracket", short: "Bracket" },
   { href: "/leaderboard", label: "Leaderboard", short: "Table" },
   { href: "/instructions", label: "How to Play", short: "Rules" },
