@@ -1,4 +1,4 @@
-import { and, eq } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import { db } from "@/db/client";
 import {
   bonusPredictions,
@@ -6,6 +6,7 @@ import {
   leagues,
   matchPredictions,
   matches as dbMatches,
+  scoreEvents,
   stagePredictions,
   teams as dbTeams,
   tournaments,
@@ -22,6 +23,12 @@ const TOURNAMENT_YEAR = 2026;
 type TournamentRow = typeof tournaments.$inferSelect;
 type MatchRow = typeof dbMatches.$inferSelect;
 export type LeagueGameMode = "stage_predictions" | "match_scores";
+export type SeededMatchWithResult = Match & {
+  dbId: number;
+  homeScore?: number;
+  awayScore?: number;
+  status: "scheduled" | "live" | "final";
+};
 
 export type SavedPredictionMap = Record<
   string,
@@ -57,6 +64,16 @@ export type SavedBonusPredictions = {
 };
 
 export type SavedStagePredictions = Record<string, string[]>;
+
+export type LeaderboardRow = {
+  userId: number;
+  name: string;
+  total: number;
+  exactScores: number;
+  results: number;
+  stages: number;
+  bonuses: number;
+};
 
 export async function ensureSeedTournament(): Promise<TournamentRow> {
   const [existingTournament] = await db
@@ -200,6 +217,29 @@ export async function getDbMatchForSeedMatch(seedMatch: Match): Promise<MatchRow
   return matchRow ?? null;
 }
 
+export async function getSeededMatchesWithResults(): Promise<SeededMatchWithResult[]> {
+  const tournamentRow = await ensureSeedTournament();
+  const rows = await db
+    .select()
+    .from(dbMatches)
+    .where(eq(dbMatches.tournamentId, tournamentRow.id));
+  const dbMatchByNumber = new Map(rows.map((match) => [match.matchNumber, match]));
+
+  return seedMatches.flatMap((seedMatch) => {
+    const dbMatch = dbMatchByNumber.get(seedMatch.number);
+    if (!dbMatch) return [];
+    return [
+      {
+        ...seedMatch,
+        dbId: dbMatch.id,
+        status: dbMatch.status,
+        homeScore: dbMatch.homeScore ?? undefined,
+        awayScore: dbMatch.awayScore ?? undefined,
+      },
+    ];
+  });
+}
+
 export async function getSavedMatchPredictions(userId: number): Promise<SavedPredictionMap> {
   const tournamentRow = await ensureSeedTournament();
   const league = await getCurrentLeague(userId);
@@ -335,6 +375,63 @@ export async function getDbTeamIdForSeedTeamSlug(
     .limit(1);
 
   return team?.id ?? null;
+}
+
+export async function getLeaderboardRows(userId: number): Promise<{
+  league: CurrentLeague | null;
+  rows: LeaderboardRow[];
+}> {
+  const league = await getCurrentLeague(userId);
+  if (!league) return { league: null, rows: [] };
+
+  const members = await db
+    .select({
+      userId: leagueMembers.userId,
+      name: leagueMembers.displayName,
+    })
+    .from(leagueMembers)
+    .where(eq(leagueMembers.leagueId, league.leagueId));
+
+  const events = await db
+    .select({
+      userId: scoreEvents.userId,
+      sourceType: scoreEvents.sourceType,
+      reason: scoreEvents.reason,
+      points: sql<number>`${scoreEvents.points}::int`,
+    })
+    .from(scoreEvents)
+    .where(eq(scoreEvents.leagueId, league.leagueId));
+
+  const rows = members.map<LeaderboardRow>((member) => {
+    const userEvents = events.filter((event) => event.userId === member.userId);
+    const exactScores = userEvents
+      .filter((event) => event.sourceType === "match_prediction" && event.reason === "Exact score")
+      .reduce((sum, event) => sum + event.points, 0);
+    const results = userEvents
+      .filter((event) => event.sourceType === "match_prediction" && event.reason === "Correct outcome")
+      .reduce((sum, event) => sum + event.points, 0);
+    const stages = userEvents
+      .filter((event) => event.sourceType === "stage_prediction")
+      .reduce((sum, event) => sum + event.points, 0);
+    const bonuses = userEvents
+      .filter((event) => event.sourceType === "bonus_prediction")
+      .reduce((sum, event) => sum + event.points, 0);
+
+    return {
+      userId: member.userId,
+      name: member.name,
+      exactScores,
+      results,
+      stages,
+      bonuses,
+      total: exactScores + results + stages + bonuses,
+    };
+  });
+
+  return {
+    league,
+    rows: rows.sort((a, b) => b.total - a.total || a.name.localeCompare(b.name)),
+  };
 }
 
 export function getMatchLockAtUtc(match: Pick<MatchRow, "kickoffAt">): Date {

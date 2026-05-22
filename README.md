@@ -16,13 +16,14 @@ Phase 1 has started:
 - Persisted match prediction inputs backed by Postgres.
 - Server-side 5-minute match prediction locks.
 - Pre-tournament bonus picks for top scorer and, in score leagues, champion.
+- Admin final-score entry for seeded fixtures.
+- Match score-event recalculation and DB-backed leaderboard.
 - Bracket placeholder.
-- Leaderboard placeholder.
 - Game Instructions page.
 - Settings page for current lock/visibility rules.
 
 The next implementation step is adding league switching, league-wide prediction
-visibility, official result entry, and scoring tables.
+visibility, full fixture import, and official bonus/stage scoring.
 
 ## Quick start
 

@@ -1,6 +1,12 @@
+import { AdminResultsForm } from "@/components/AdminResultsForm";
+import { readSession } from "@/lib/session";
 import { formatKickoff, tournament } from "@/lib/world-cup/data";
+import { getSeededMatchesWithResults } from "@/lib/world-cup/repository";
 
-export default function SettingsPage() {
+export default async function SettingsPage() {
+  const session = await readSession();
+  const matches = session?.role === "admin" ? await getSeededMatchesWithResults() : [];
+
   return (
     <div className="space-y-8">
       <div>
@@ -25,6 +31,8 @@ export default function SettingsPage() {
           <SettingRow label="Score visibility" value="After each match starts" />
         </div>
       </section>
+
+      {session?.role === "admin" ? <AdminResultsForm matches={matches} /> : null}
 
       <section className="rounded-xl border border-dashed border-[var(--color-gold)]/50 bg-[var(--color-panel-low)] p-5">
         <h2 className="font-display text-lg font-bold">Coming next</h2>
