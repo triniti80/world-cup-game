@@ -159,7 +159,29 @@ export async function getPrimaryLeagueMembership(userId: number) {
   return membership ?? null;
 }
 
-export async function getCurrentLeague(userId: number): Promise<CurrentLeague | null> {
+export async function getCurrentLeague(
+  userId: number,
+  activeLeagueId?: number | null,
+): Promise<CurrentLeague | null> {
+  const baseSelect = db
+    .select({
+      membershipId: leagueMembers.id,
+      leagueId: leagues.id,
+      leagueName: leagues.name,
+      inviteCode: leagues.inviteCode,
+      gameMode: leagues.gameMode,
+      displayName: leagueMembers.displayName,
+    })
+    .from(leagueMembers)
+    .innerJoin(leagues, eq(leagueMembers.leagueId, leagues.id));
+
+  if (activeLeagueId) {
+    const [activeRow] = await baseSelect
+      .where(and(eq(leagueMembers.userId, userId), eq(leagueMembers.leagueId, activeLeagueId)))
+      .limit(1);
+    if (activeRow) return activeRow;
+  }
+
   const [row] = await db
     .select({
       membershipId: leagueMembers.id,
@@ -240,9 +262,12 @@ export async function getSeededMatchesWithResults(): Promise<SeededMatchWithResu
   });
 }
 
-export async function getSavedMatchPredictions(userId: number): Promise<SavedPredictionMap> {
+export async function getSavedMatchPredictions(
+  userId: number,
+  activeLeagueId?: number | null,
+): Promise<SavedPredictionMap> {
   const tournamentRow = await ensureSeedTournament();
-  const league = await getCurrentLeague(userId);
+  const league = await getCurrentLeague(userId, activeLeagueId);
   if (!league) return {};
 
   const seededDbMatches = await db
@@ -289,9 +314,12 @@ export async function getSavedMatchPredictions(userId: number): Promise<SavedPre
   );
 }
 
-export async function getSavedBonusPredictions(userId: number): Promise<SavedBonusPredictions> {
+export async function getSavedBonusPredictions(
+  userId: number,
+  activeLeagueId?: number | null,
+): Promise<SavedBonusPredictions> {
   const tournamentRow = await ensureSeedTournament();
-  const league = await getCurrentLeague(userId);
+  const league = await getCurrentLeague(userId, activeLeagueId);
   if (!league) return {};
 
   const seededTeams = await db
@@ -331,9 +359,12 @@ export async function getSavedBonusPredictions(userId: number): Promise<SavedBon
   };
 }
 
-export async function getSavedStagePredictions(userId: number): Promise<SavedStagePredictions> {
+export async function getSavedStagePredictions(
+  userId: number,
+  activeLeagueId?: number | null,
+): Promise<SavedStagePredictions> {
   const tournamentRow = await ensureSeedTournament();
-  const league = await getCurrentLeague(userId);
+  const league = await getCurrentLeague(userId, activeLeagueId);
   if (!league) return {};
 
   const seededTeams = await db
@@ -377,11 +408,14 @@ export async function getDbTeamIdForSeedTeamSlug(
   return team?.id ?? null;
 }
 
-export async function getLeaderboardRows(userId: number): Promise<{
+export async function getLeaderboardRows(
+  userId: number,
+  activeLeagueId?: number | null,
+): Promise<{
   league: CurrentLeague | null;
   rows: LeaderboardRow[];
 }> {
-  const league = await getCurrentLeague(userId);
+  const league = await getCurrentLeague(userId, activeLeagueId);
   if (!league) return { league: null, rows: [] };
 
   const members = await db

@@ -4,7 +4,7 @@ import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/db/client";
 import { leagueMembers, leagues } from "@/db/schema";
-import { readSession } from "@/lib/session";
+import { readSession, setActiveLeagueId } from "@/lib/session";
 
 const createSchema = z.object({
   action: z.literal("create"),
@@ -17,7 +17,12 @@ const joinSchema = z.object({
   inviteCode: z.string().min(1).max(32),
 });
 
-const bodySchema = z.discriminatedUnion("action", [createSchema, joinSchema]);
+const activateSchema = z.object({
+  action: z.literal("activate"),
+  leagueId: z.number().int().positive(),
+});
+
+const bodySchema = z.discriminatedUnion("action", [createSchema, joinSchema, activateSchema]);
 
 function makeInviteCode(): string {
   return randomBytes(4).toString("hex").toUpperCase();
@@ -63,6 +68,7 @@ export async function POST(req: Request) {
         displayName: session.name,
       })
       .onConflictDoNothing({ target: [leagueMembers.userId, leagueMembers.leagueId] });
+    await setActiveLeagueId(league.id);
 
     return NextResponse.json({
       ok: true,
@@ -73,6 +79,26 @@ export async function POST(req: Request) {
         gameMode: league.gameMode,
       },
     });
+  }
+
+  if (parsed.data.action === "activate") {
+    const [membership] = await db
+      .select({ id: leagueMembers.id })
+      .from(leagueMembers)
+      .where(
+        and(
+          eq(leagueMembers.userId, session.userId),
+          eq(leagueMembers.leagueId, parsed.data.leagueId),
+        ),
+      )
+      .limit(1);
+
+    if (!membership) {
+      return NextResponse.json({ error: "You are not a member of that league." }, { status: 403 });
+    }
+
+    await setActiveLeagueId(parsed.data.leagueId);
+    return NextResponse.json({ ok: true, leagueId: parsed.data.leagueId });
   }
 
   const inviteCode = parsed.data.inviteCode.trim().toUpperCase();
@@ -94,6 +120,7 @@ export async function POST(req: Request) {
       displayName: session.name,
     });
   }
+  await setActiveLeagueId(league.id);
 
   return NextResponse.json({
     ok: true,

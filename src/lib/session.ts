@@ -2,6 +2,7 @@ import { SignJWT, jwtVerify } from "jose";
 import { cookies } from "next/headers";
 
 const COOKIE_NAME = "wc_session";
+const ACTIVE_LEAGUE_COOKIE_NAME = "wc_active_league";
 const SESSION_TTL_SECONDS = 60 * 60 * 24 * 30; // 30 days
 
 function getSecret(): Uint8Array {
@@ -56,6 +57,7 @@ export async function createSession(user: {
 export async function clearSession(): Promise<void> {
   const cookieStore = await cookies();
   cookieStore.delete(COOKIE_NAME);
+  cookieStore.delete(ACTIVE_LEAGUE_COOKIE_NAME);
 }
 
 export async function readSession(): Promise<SessionPayload | null> {
@@ -69,6 +71,25 @@ export async function readSession(): Promise<SessionPayload | null> {
   } catch {
     return null;
   }
+}
+
+export async function readActiveLeagueId(): Promise<number | null> {
+  const cookieStore = await cookies();
+  const raw = cookieStore.get(ACTIVE_LEAGUE_COOKIE_NAME)?.value;
+  if (!raw) return null;
+  const parsed = Number(raw);
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
+}
+
+export async function setActiveLeagueId(leagueId: number): Promise<void> {
+  const cookieStore = await cookies();
+  cookieStore.set(ACTIVE_LEAGUE_COOKIE_NAME, String(leagueId), {
+    httpOnly: true,
+    sameSite: "lax",
+    secure: process.env.NODE_ENV === "production",
+    path: "/",
+    maxAge: SESSION_TTL_SECONDS,
+  });
 }
 
 export { COOKIE_NAME as SESSION_COOKIE };

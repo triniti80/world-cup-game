@@ -12,6 +12,7 @@ Phase 1 has started:
 - Dashboard.
 - Fixture list using seed data.
 - League creation and invite-code joining.
+- Active league switching.
 - League game options for match score guessing or pre-tournament stage predictions.
 - Persisted match prediction inputs backed by Postgres.
 - Server-side 5-minute match prediction locks.
@@ -22,8 +23,8 @@ Phase 1 has started:
 - Game Instructions page.
 - Settings page for current lock/visibility rules.
 
-The next implementation step is adding league switching, league-wide prediction
-visibility, full fixture import, and official bonus/stage scoring.
+The next implementation step is adding league-wide prediction visibility,
+full fixture import, and official bonus/stage scoring.
 
 ## Quick start
 

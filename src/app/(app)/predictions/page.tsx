@@ -3,7 +3,7 @@ import { BonusPredictionForm } from "@/components/BonusPredictionForm";
 import { PredictionsTabs } from "@/components/PredictionsTabs";
 import { StagePredictionForm } from "@/components/StagePredictionForm";
 import { matches } from "@/lib/world-cup/data";
-import { readSession } from "@/lib/session";
+import { readActiveLeagueId, readSession } from "@/lib/session";
 import {
   getCurrentLeague,
   getSavedBonusPredictions,
@@ -13,10 +13,17 @@ import {
 
 export default async function PredictionsPage() {
   const session = await readSession();
-  const currentLeague = session ? await getCurrentLeague(session.userId) : null;
-  const savedPredictions = session ? await getSavedMatchPredictions(session.userId) : {};
-  const savedBonusPredictions = session ? await getSavedBonusPredictions(session.userId) : {};
-  const savedStagePredictions = session ? await getSavedStagePredictions(session.userId) : {};
+  const activeLeagueId = await readActiveLeagueId();
+  const currentLeague = session ? await getCurrentLeague(session.userId, activeLeagueId) : null;
+  const savedPredictions = session
+    ? await getSavedMatchPredictions(session.userId, activeLeagueId)
+    : {};
+  const savedBonusPredictions = session
+    ? await getSavedBonusPredictions(session.userId, activeLeagueId)
+    : {};
+  const savedStagePredictions = session
+    ? await getSavedStagePredictions(session.userId, activeLeagueId)
+    : {};
 
   return (
     <div className="space-y-6">

@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { db } from "@/db/client";
 import { matchPredictions } from "@/db/schema";
-import { readSession } from "@/lib/session";
+import { readActiveLeagueId, readSession } from "@/lib/session";
 import {
   getDbMatchForSeedMatch,
   getMatchLockAtUtc,
@@ -42,7 +42,8 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Unknown match." }, { status: 404 });
   }
 
-  const league = await getCurrentLeague(session.userId);
+  const activeLeagueId = await readActiveLeagueId();
+  const league = await getCurrentLeague(session.userId, activeLeagueId);
   if (!league) {
     return NextResponse.json({ error: "Join a league before saving predictions." }, { status: 409 });
   }

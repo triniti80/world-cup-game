@@ -2,7 +2,15 @@ import type { ReactNode } from "react";
 import { AppNav } from "./AppNav";
 import { LogoutButton } from "./LogoutButton";
 
-export function AppShell({ children }: { children: ReactNode }) {
+export function AppShell({
+  children,
+  activeLeagueName,
+  activeLeagueMode,
+}: {
+  children: ReactNode;
+  activeLeagueName?: string;
+  activeLeagueMode?: "stage_predictions" | "match_scores";
+}) {
   return (
     <div className="min-h-screen bg-[var(--color-bg)] pb-24 md:pb-0">
       <header className="sticky top-0 z-50 border-b border-white/10 bg-[var(--color-panel)]/80 backdrop-blur-md">
@@ -16,8 +24,13 @@ export function AppShell({ children }: { children: ReactNode }) {
                 WC2026
               </div>
               <div className="text-xs font-semibold uppercase text-[var(--color-fg-muted)]">
-                Friends Pool
+                {activeLeagueName ?? "No active league"}
               </div>
+              {activeLeagueMode ? (
+                <div className="hidden text-[10px] font-semibold uppercase text-[var(--color-gold)] md:block">
+                  {activeLeagueMode === "match_scores" ? "Score game" : "Stage game"}
+                </div>
+              ) : null}
             </div>
           </div>
           <div className="flex items-center gap-2">

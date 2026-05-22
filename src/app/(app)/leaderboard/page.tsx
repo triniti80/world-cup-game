@@ -1,11 +1,12 @@
 import Link from "next/link";
-import { readSession } from "@/lib/session";
+import { readActiveLeagueId, readSession } from "@/lib/session";
 import { getLeaderboardRows } from "@/lib/world-cup/repository";
 
 export default async function LeaderboardPage() {
   const session = await readSession();
+  const activeLeagueId = await readActiveLeagueId();
   const { league, rows } = session
-    ? await getLeaderboardRows(session.userId)
+    ? await getLeaderboardRows(session.userId, activeLeagueId)
     : { league: null, rows: [] };
 
   return (
