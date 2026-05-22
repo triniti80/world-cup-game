@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0, viewport-fit=cover" name="viewport"/>
+<title>WC2026 Friends Prediction Game</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;800&amp;family=Inter:wght@400;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .glass-card {
+            background: rgba(30, 41, 59, 0.7);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .glow-lime {
+            box-shadow: 0 0 15px -3px rgba(132, 204, 22, 0.4);
+        }
+        .glow-gold {
+            box-shadow: 0 0 15px -3px rgba(238, 152, 0, 0.4);
+        }
+        body {
+            background-color: #081425;
+            color: #d8e3fb;
+        }
+        /* Custom scrollbar for horizontal lists */
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+    </style>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "surface-variant": "#2a3548",
+                        "on-surface": "#d8e3fb",
+                        "surface-tint": "#bec6e0",
+                        "inverse-on-surface": "#263143",
+                        "error": "#ffb4ab",
+                        "surface-container": "#152031",
+                        "secondary": "#ffb95f",
+                        "on-secondary": "#472a00",
+                        "surface-dim": "#081425",
+                        "surface-container-low": "#111c2d",
+                        "primary-container": "#0f172a",
+                        "on-surface-variant": "#c6c6cd",
+                        "primary-fixed-dim": "#bec6e0",
+                        "surface-container-lowest": "#040e1f",
+                        "tertiary-fixed-dim": "#91db2a",
+                        "on-primary-fixed": "#131b2e",
+                        "error-container": "#93000a",
+                        "inverse-surface": "#d8e3fb",
+                        "on-error": "#690005",
+                        "inverse-primary": "#565e74",
+                        "on-tertiary-fixed-variant": "#304f00",
+                        "primary": "#bec6e0",
+                        "surface-container-high": "#1f2a3c",
+                        "on-secondary-container": "#5b3800",
+                        "outline": "#909097",
+                        "on-tertiary": "#1f3700",
+                        "on-primary": "#283044",
+                        "surface-bright": "#2f3a4c",
+                        "on-primary-fixed-variant": "#3f465c",
+                        "secondary-container": "#ee9800",
+                        "secondary-fixed-dim": "#ffb95f",
+                        "on-error-container": "#ffdad6",
+                        "surface-container-highest": "#2a3548",
+                        "tertiary-container": "#0d1b00",
+                        "on-primary-container": "#798098",
+                        "secondary-fixed": "#ffddb8",
+                        "on-secondary-fixed-variant": "#653e00",
+                        "on-background": "#d8e3fb",
+                        "tertiary-fixed": "#acf847",
+                        "background": "#081425",
+                        "surface": "#081425",
+                        "on-tertiary-container": "#598f00",
+                        "tertiary": "#91db2a",
+                        "on-tertiary-fixed": "#102000",
+                        "primary-fixed": "#dae2fd",
+                        "on-secondary-fixed": "#2a1700",
+                        "outline-variant": "#45464d"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "gutter-md": "16px",
+                        "margin-lg": "32px",
+                        "max-width": "1280px",
+                        "base": "4px",
+                        "gutter-xs": "8px",
+                        "margin-sm": "16px"
+                    },
+                    "fontFamily": {
+                        "stats-number": ["Montserrat"],
+                        "headline-lg": ["Montserrat"],
+                        "label-md": ["Inter"],
+                        "headline-md": ["Montserrat"],
+                        "display-lg": ["Montserrat"],
+                        "body-md": ["Inter"],
+                        "headline-lg-mobile": ["Montserrat"],
+                        "body-lg": ["Inter"]
+                    },
+                    "fontSize": {
+                        "stats-number": ["24px", {"lineHeight": "24px", "fontWeight": "800"}],
+                        "headline-lg": ["32px", {"lineHeight": "40px", "fontWeight": "700"}],
+                        "label-md": ["14px", {"lineHeight": "20px", "letterSpacing": "0.05em", "fontWeight": "600"}],
+                        "headline-md": ["20px", {"lineHeight": "28px", "fontWeight": "600"}],
+                        "display-lg": ["48px", {"lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "800"}],
+                        "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                        "headline-lg-mobile": ["24px", {"lineHeight": "32px", "fontWeight": "700"}],
+                        "body-lg": ["18px", {"lineHeight": "28px", "fontWeight": "400"}]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background text-on-surface min-h-screen pb-24">
+<!-- TopAppBar -->
+<header class="fixed top-0 w-full z-50 bg-surface-container/80 backdrop-blur-md border-b border-outline-variant/20 shadow-sm flex justify-between items-center px-margin-sm h-16">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-full border-2 border-secondary overflow-hidden active:scale-95 duration-150 cursor-pointer">
+<img alt="User profile photo" class="w-full h-full object-cover" data-alt="A professional close-up portrait of a young man with a confident expression, set against a dark moody architectural background. The lighting is dramatic and cinematic, with high-contrast shadows and cold blue rim lights that align with a premium sports dashboard aesthetic. The overall mood is serious and competitive, reflecting the high-stakes environment of a global football tournament." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAXqGXbB7iOTAW8W810sIf4ppAHZF5rJwEqW49aURdjJBZF4J_SSkDvwvj0CyAKfHtJS-KiL73-fdLANzMCD3OLgda8HaSmEajH8zK8yEU40btE2s32M7YsVwcFBlZ_GPqSntqawmdK3rarMoT_aAiyJ7Za7GJlZOLP5dw-KQgqxpKXmRW_MlfvygGB8UnmFDlCIEg2HQC1ysbGaONiK78JpjWNYSKnRHgGGXt0SCRr-AKsyUNIBPvKAo27Y38A61li_d99QLmXMC9D"/>
+</div>
+<span class="font-display-lg text-[20px] text-primary tracking-tighter uppercase font-extrabold">WC2026</span>
+</div>
+<button class="material-symbols-outlined text-primary p-2 hover:bg-surface-bright rounded-full transition-colors active:scale-95 duration-150">
+            notifications
+        </button>
+</header>
+<main class="mt-20 px-margin-sm max-w-max-width mx-auto space-y-6">
+<!-- Personal Stats Widget -->
+<section class="glass-card rounded-xl p-6 glow-gold relative overflow-hidden">
+<div class="absolute top-0 right-0 p-4 opacity-10">
+<span class="material-symbols-outlined text-[80px]">military_tech</span>
+</div>
+<div class="flex flex-col gap-1">
+<span class="font-label-md text-label-md text-secondary uppercase tracking-widest">Global Ranking</span>
+<h1 class="font-display-lg text-display-lg-mobile text-on-surface">#14</h1>
+</div>
+<div class="mt-4 flex items-end justify-between">
+<div>
+<span class="font-label-md text-label-md text-on-surface-variant">Total Points</span>
+<p class="font-stats-number text-stats-number text-tertiary">1,240</p>
+</div>
+<a class="font-label-md text-label-md text-secondary flex items-center gap-1 hover:underline active:scale-95 duration-150" href="#">
+                    Points Breakdown
+                    <span class="material-symbols-outlined text-sm">arrow_forward_ios</span>
+</a>
+</div>
+</section>
+<!-- Next Up Section -->
+<section>
+<div class="flex justify-between items-center mb-4">
+<h2 class="font-headline-md text-headline-md text-on-surface">Next Up</h2>
+<span class="font-label-md text-label-md text-on-surface-variant">2 matches pending</span>
+</div>
+<div class="flex gap-4 overflow-x-auto no-scrollbar pb-2 -mx-margin-sm px-margin-sm">
+<!-- Match Card 1 -->
+<div class="min-w-[300px] glass-card rounded-xl p-4 flex flex-col gap-4">
+<div class="flex justify-between items-center">
+<span class="bg-surface-container-high px-2 py-1 rounded text-[10px] font-bold text-on-surface-variant uppercase">Group B • Today 20:00</span>
+<span class="flex items-center gap-1 text-error animate-pulse">
+<span class="w-2 h-2 rounded-full bg-error"></span>
+<span class="font-label-md text-[10px] font-bold">LOCKING SOON</span>
+</span>
+</div>
+<div class="flex items-center justify-between px-2">
+<div class="flex flex-col items-center gap-2 w-20">
+<img class="w-12 h-12 rounded-full border-2 border-outline-variant" data-alt="A circular emblem representig the flag of England with bold red and white colors, designed in a high-gloss 3D style. The lighting is vibrant and studio-quality, emphasizing the texture and prestige of the national symbol. The background is a deep slate color with subtle glowing edges." src="https://lh3.googleusercontent.com/aida-public/AB6AXuB879VrMd8Ux-lrRZ9Gy5Q-s_Oh9DypOGx-wlACfnEkRUQPtCfoqwHUNZ3P9ytK-neSPKI5ul5sQVBOVPm3x2_BrfCmeZLb0pVo_JOEBl-R7_qRchJ4egLIOUlNg8lNLmScTq3nQlnXlGc-9FWrQfzINtoKyJHxPquXJTHUdXW1Wn-e6B2gejE_q2lwzYMprEw16iuhgWkxpc2Akx24Ts_HuiryL41R3cnfVjvrRHTyWv5Baf7RtadppnuFEF3A1RP9KKP3tCNOb8bO"/>
+<span class="font-label-md text-[12px] text-center">ENG</span>
+</div>
+<div class="flex flex-col items-center gap-1">
+<div class="flex items-center gap-2">
+<input class="w-10 h-12 bg-surface-container-highest border-none rounded-lg text-center font-stats-number text-on-surface focus:ring-2 focus:ring-tertiary" placeholder="-" type="number"/>
+<span class="font-stats-number text-on-surface-variant">:</span>
+<input class="w-10 h-12 bg-surface-container-highest border-none rounded-lg text-center font-stats-number text-on-surface focus:ring-2 focus:ring-tertiary" placeholder="-" type="number"/>
+</div>
+</div>
+<div class="flex flex-col items-center gap-2 w-20">
+<img class="w-12 h-12 rounded-full border-2 border-outline-variant" data-alt="A circular emblem representing the flag of USA with stars and stripes, rendered with a metallic sheen and vivid colors. The design is modern and clean, fitting into a premium sports dashboard interface. It sits against a dark navy background with professional atmospheric lighting." src="https://lh3.googleusercontent.com/aida-public/AB6AXuA77YrDVWMpd904AZCfNe_PvKvrxyYQ6YfB39iLzqfe5EN7QmzOYoUt8lMKIgrb3KCLJ88P-SGS9wM4vcMu1aIQ21HFMffypE5PwcxAVI_qSrfLYNYWyZXIIdy_nyhXwbvVNMHbiD42hXOeOa-X0YKkkedXDpA53A-pMwUlvxfFmi0BmirPRhmp9Hcw5xUzHsCmYU0AR2txBabdvsQ8U6prkWanqvq_F0bq7v_aVsz1DRFdkGr7iXhNHOXImrrP_xrNoUMi9IGKdWcF"/>
+<span class="font-label-md text-[12px] text-center">USA</span>
+</div>
+</div>
+<button class="w-full bg-tertiary text-on-tertiary font-label-md py-3 rounded-lg flex items-center justify-center gap-2 active:scale-95 transition-all glow-lime">
+<span class="material-symbols-outlined text-[20px]">save</span>
+                        Save Prediction
+                    </button>
+</div>
+<!-- Match Card 2 -->
+<div class="min-w-[300px] glass-card rounded-xl p-4 flex flex-col gap-4">
+<div class="flex justify-between items-center">
+<span class="bg-surface-container-high px-2 py-1 rounded text-[10px] font-bold text-on-surface-variant uppercase">Group C • Tomorrow 14:00</span>
+</div>
+<div class="flex items-center justify-between px-2">
+<div class="flex flex-col items-center gap-2 w-20">
+<img class="w-12 h-12 rounded-full border-2 border-outline-variant" data-alt="A circular emblem for the Brazil national football team flag, featuring vibrant green and yellow colors with a detailed central globe. The icon has a premium glass effect and is brightly lit from above, creating a high-end sports feel. The surrounding environment is dark and professional." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCAgLALpB-0HXBJHpTL5JrzIBjyi-VOz3hgqPBpKwtxDF5JNVtTydNWfwjbQ5xYJk3e5CSyHcD6r2ju89gzxwyvoEx_6Wbl3TiAd6uWZ4JrROii6T-RF44jicjUmBoHnJ-83_fQnbsmJo0lS_vWvDlT4xZNL1tmCxc0JR2iefHWNLygcgkiz8632XwLHIK7IxUcwXLU1dMynI2T0jtENpuYFBXalL58b97T2WMKGV-5qoEXzAauadmoj_d59LvUfbJXbFpWykqdj8-w"/>
+<span class="font-label-md text-[12px] text-center">BRA</span>
+</div>
+<div class="flex flex-col items-center gap-1">
+<div class="flex items-center gap-2">
+<input class="w-10 h-12 bg-surface-container-highest border-none rounded-lg text-center font-stats-number text-on-surface focus:ring-2 focus:ring-tertiary" placeholder="-" type="number"/>
+<span class="font-stats-number text-on-surface-variant">:</span>
+<input class="w-10 h-12 bg-surface-container-highest border-none rounded-lg text-center font-stats-number text-on-surface focus:ring-2 focus:ring-tertiary" placeholder="-" type="number"/>
+</div>
+</div>
+<div class="flex flex-col items-center gap-2 w-20">
+<img class="w-12 h-12 rounded-full border-2 border-outline-variant" data-alt="A circular emblem for France national flag, rendered with a sophisticated fabric texture and vivid blue, white, and red colors. The icon is framed with a subtle gold glow and set against a dark background, evoking a sense of prestige and history in a modern digital UI." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDKYr8mhoQzVTI1K9cfRHA25MIfD2ZOs8bBhnpybxoz_bMX4oLimnpgO3YJ24xVg4dou4J6PIOl_O_rGtHvDHQfQZcn93FkZFbMGvfs3UBdN15rkUO38NCETjo8YtwMvm14meGHv3SsQNjs1EKn_b-UC53FK7ICZYubTYlThzCt2QvPvWlLZNWN9faE9IrP4W3WnOERgaXPb-oI80feeyCTct6GLT1lTSNysYB81w4nvAwDEMFEVbLaKCP1cImmP_WR3E5AkfPMKFa6"/>
+<span class="font-label-md text-[12px] text-center">FRA</span>
+</div>
+</div>
+<button class="w-full bg-surface-variant text-on-surface-variant font-label-md py-3 rounded-lg flex items-center justify-center gap-2 active:scale-95 transition-all">
+<span class="material-symbols-outlined text-[20px]">save</span>
+                        Save Prediction
+                    </button>
+</div>
+</div>
+</section>
+<!-- Tournament Pulse Card -->
+<section class="glass-card rounded-xl p-5 border-l-4 border-tertiary">
+<h3 class="font-headline-md text-headline-md text-on-surface mb-4">Tournament Pulse</h3>
+<div class="grid grid-cols-2 gap-4">
+<div class="bg-surface-container-low p-3 rounded-lg border border-outline-variant/10">
+<span class="font-label-md text-[12px] text-on-surface-variant block mb-1">Group Stage</span>
+<p class="font-stats-number text-[18px]">Day 4 <span class="text-on-surface-variant font-normal text-sm">of 14</span></p>
+<div class="mt-3 w-full bg-surface-variant h-1 rounded-full overflow-hidden">
+<div class="bg-tertiary h-full w-[28.5%]"></div>
+</div>
+</div>
+<div class="bg-surface-container-low p-3 rounded-lg border border-outline-variant/10">
+<span class="font-label-md text-[12px] text-on-surface-variant block mb-1">Matches Today</span>
+<p class="font-stats-number text-[18px]">4 <span class="text-on-surface-variant font-normal text-sm">Scheduled</span></p>
+<div class="mt-3 flex gap-1">
+<div class="flex-1 h-1 bg-tertiary rounded-full"></div>
+<div class="flex-1 h-1 bg-tertiary rounded-full"></div>
+<div class="flex-1 h-1 bg-surface-variant rounded-full"></div>
+<div class="flex-1 h-1 bg-surface-variant rounded-full"></div>
+</div>
+</div>
+</div>
+</section>
+<!-- Quick Links Grid -->
+<section>
+<h3 class="font-headline-md text-headline-md text-on-surface mb-4">Explore</h3>
+<div class="grid grid-cols-2 gap-3">
+<button class="glass-card p-4 rounded-xl flex items-center gap-3 active:scale-95 transition-transform text-left">
+<div class="w-10 h-10 rounded-lg bg-primary-container flex items-center justify-center text-primary">
+<span class="material-symbols-outlined">calendar_month</span>
+</div>
+<span class="font-label-md text-[14px]">Full Fixtures</span>
+</button>
+<button class="glass-card p-4 rounded-xl flex items-center gap-3 active:scale-95 transition-transform text-left">
+<div class="w-10 h-10 rounded-lg bg-secondary/10 flex items-center justify-center text-secondary">
+<span class="material-symbols-outlined">account_tree</span>
+</div>
+<span class="font-label-md text-[14px]">Knockout Bracket</span>
+</button>
+<button class="glass-card p-4 rounded-xl flex items-center gap-3 active:scale-95 transition-transform text-left">
+<div class="w-10 h-10 rounded-lg bg-tertiary/10 flex items-center justify-center text-tertiary">
+<span class="material-symbols-outlined">format_list_numbered</span>
+</div>
+<span class="font-label-md text-[14px]">Global Standings</span>
+</button>
+<button class="glass-card p-4 rounded-xl flex items-center gap-3 active:scale-95 transition-transform text-left">
+<div class="w-10 h-10 rounded-lg bg-error/10 flex items-center justify-center text-error">
+<span class="material-symbols-outlined">description</span>
+</div>
+<span class="font-label-md text-[14px]">Rules</span>
+</button>
+</div>
+</section>
+</main>
+<!-- BottomNavBar -->
+<nav class="fixed bottom-0 w-full z-50 rounded-t-xl bg-surface-container-highest/90 backdrop-blur-lg border-t border-outline-variant/10 shadow-lg flex justify-around items-center h-20 pb-safe px-gutter-xs">
+<!-- Home / Dashboard (Active) -->
+<a class="flex flex-col items-center justify-center bg-tertiary-container text-on-tertiary-container rounded-full px-4 py-1 transition-all" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">dashboard</span>
+<span class="font-label-md text-[10px]">Home</span>
+</a>
+<!-- Fixtures -->
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:text-on-surface transition-all active:scale-90 duration-200" href="#">
+<span class="material-symbols-outlined">sports_soccer</span>
+<span class="font-label-md text-[10px]">Fixtures</span>
+</a>
+<!-- Bracket -->
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:text-on-surface transition-all active:scale-90 duration-200" href="#">
+<span class="material-symbols-outlined">account_tree</span>
+<span class="font-label-md text-[10px]">Bracket</span>
+</a>
+<!-- Leaderboard (Rank) -->
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:text-on-surface transition-all active:scale-90 duration-200" href="#">
+<span class="material-symbols-outlined">leaderboard</span>
+<span class="font-label-md text-[10px]">Rank</span>
+</a>
+<!-- More -->
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:text-on-surface transition-all active:scale-90 duration-200" href="#">
+<span class="material-symbols-outlined">menu</span>
+<span class="font-label-md text-[10px]">More</span>
+</a>
+</nav>
+<script>
+        // Micro-interaction: Save button feedback
+        document.querySelectorAll('button').forEach(button => {
+            if (button.innerText.includes('Save')) {
+                button.addEventListener('click', function() {
+                    const originalContent = this.innerHTML;
+                    this.innerHTML = '<span class="material-symbols-outlined animate-spin">sync</span> Saving...';
+                    this.disabled = true;
+                    this.classList.remove('glow-lime');
+                    
+                    setTimeout(() => {
+                        this.innerHTML = '<span class="material-symbols-outlined">check_circle</span> Saved!';
+                        this.classList.add('bg-green-600');
+                        setTimeout(() => {
+                            this.innerHTML = originalContent;
+                            this.disabled = false;
+                            this.classList.remove('bg-green-600');
+                            this.classList.add('glow-lime');
+                        }, 2000);
+                    }, 800);
+                });
+            }
+        });
+
+        // Simple parallax effect on scroll for glass cards
+        window.addEventListener('scroll', () => {
+            const cards = document.querySelectorAll('.glass-card');
+            cards.forEach(card => {
+                const speed = 0.05;
+                const rect = card.getBoundingClientRect();
+                if (rect.top < window.innerHeight && rect.bottom > 0) {
+                    const shift = (rect.top - window.innerHeight / 2) * speed;
+                    card.style.transform = `translateY(${shift}px)`;
+                }
+            });
+        });
+    </script>
+</body></html>

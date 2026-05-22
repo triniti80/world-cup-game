@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>WC2026 Fixtures - Elite Tournament Pulse</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;800&amp;family=Inter:wght@400;600&amp;family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .glass-card {
+            background: rgba(30, 41, 59, 0.7);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .glow-lime {
+            box-shadow: 0 0 12px rgba(132, 204, 22, 0.4);
+        }
+        .glow-red {
+            box-shadow: 0 0 12px rgba(239, 68, 68, 0.4);
+        }
+        .hide-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .hide-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+        @keyframes pulse-red {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.6; }
+        }
+        .animate-pulse-red {
+            animation: pulse-red 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+    </style>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-secondary-container": "#5b3800",
+                        "surface-bright": "#2f3a4c",
+                        "secondary": "#ffb95f",
+                        "outline-variant": "#45464d",
+                        "error-container": "#93000a",
+                        "on-tertiary-fixed": "#102000",
+                        "surface-tint": "#bec6e0",
+                        "on-tertiary": "#1f3700",
+                        "on-error": "#690005",
+                        "inverse-primary": "#565e74",
+                        "tertiary-fixed": "#acf847",
+                        "on-primary": "#283044",
+                        "on-secondary-fixed-variant": "#653e00",
+                        "tertiary-fixed-dim": "#91db2a",
+                        "on-background": "#d8e3fb",
+                        "on-error-container": "#ffdad6",
+                        "surface-container-high": "#1f2a3c",
+                        "inverse-on-surface": "#263143",
+                        "on-primary-fixed-variant": "#3f465c",
+                        "inverse-surface": "#d8e3fb",
+                        "secondary-fixed": "#ffddb8",
+                        "on-surface": "#d8e3fb",
+                        "secondary-container": "#ee9800",
+                        "primary-fixed": "#dae2fd",
+                        "on-tertiary-container": "#598f00",
+                        "primary-fixed-dim": "#bec6e0",
+                        "on-primary-container": "#798098",
+                        "surface-dim": "#081425",
+                        "primary-container": "#0f172a",
+                        "outline": "#909097",
+                        "tertiary-container": "#0d1b00",
+                        "on-surface-variant": "#c6c6cd",
+                        "on-primary-fixed": "#131b2e",
+                        "error": "#ffb4ab",
+                        "secondary-fixed-dim": "#ffb95f",
+                        "surface": "#081425",
+                        "surface-container": "#152031",
+                        "surface-variant": "#2a3548",
+                        "surface-container-lowest": "#040e1f",
+                        "surface-container-low": "#111c2d",
+                        "background": "#081425",
+                        "surface-container-highest": "#2a3548",
+                        "on-tertiary-fixed-variant": "#304f00",
+                        "on-secondary-fixed": "#2a1700",
+                        "on-secondary": "#472a00",
+                        "tertiary": "#91db2a",
+                        "primary": "#bec6e0"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "gutter-xs": "8px",
+                        "max-width": "1280px",
+                        "base": "4px",
+                        "margin-sm": "16px",
+                        "margin-lg": "32px",
+                        "gutter-md": "16px"
+                    },
+                    "fontFamily": {
+                        "headline-lg": ["Montserrat"],
+                        "display-lg": ["Montserrat"],
+                        "headline-lg-mobile": ["Montserrat"],
+                        "body-md": ["Inter"],
+                        "label-md": ["Inter"],
+                        "headline-md": ["Montserrat"],
+                        "body-lg": ["Inter"],
+                        "stats-number": ["Montserrat"]
+                    },
+                    "fontSize": {
+                        "headline-lg": ["32px", {"lineHeight": "40px", "fontWeight": "700"}],
+                        "display-lg": ["48px", {"lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "800"}],
+                        "headline-lg-mobile": ["24px", {"lineHeight": "32px", "fontWeight": "700"}],
+                        "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                        "label-md": ["14px", {"lineHeight": "20px", "letterSpacing": "0.05em", "fontWeight": "600"}],
+                        "headline-md": ["20px", {"lineHeight": "28px", "fontWeight": "600"}],
+                        "body-lg": ["18px", {"lineHeight": "28px", "fontWeight": "400"}],
+                        "stats-number": ["24px", {"lineHeight": "24px", "fontWeight": "800"}]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background text-on-surface font-body-md selection:bg-tertiary selection:text-on-tertiary">
+<!-- TopAppBar -->
+<header class="fixed top-0 w-full z-50 bg-surface-container/80 backdrop-blur-md border-b border-outline-variant/20 shadow-sm flex justify-between items-center px-margin-sm h-16">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-full overflow-hidden border-2 border-primary/20">
+<img alt="User" data-alt="A professional close-up profile portrait of a modern football fan in a high-tech sports environment. The lighting is cinematic with deep navy and lime green accents, reflecting the Elite Tournament Pulse brand identity. The background features blurred digital stadium displays and data visualizations in a dark, prestigious atmosphere." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDx3B-QY3MPwbRsEHpWmMKmACJXbWWX89Qx8tV_i626WfNhUvLZ0_retwLjk0VM6v1A8xJjjwehbxSW01fneGeDqKQiXfFB_ldkiSN88JoK0vJf8XusjqEoHJQrRIrwNLfxDstG3AiU8Xa4LA49H--HI4R99v20Jtq4Maaj7M8SOAgfhG8fzJkpvQLl2xhkTziQLeL_V6ZiD7CnMj_b-_pDFzA7UCUllqUL3pP3rAIJbb4_lZOG4g4ETubcD5B7McTmdvhyQWh4bPPa"/>
+</div>
+<h1 class="font-headline-md text-headline-md text-primary">Fixtures</h1>
+</div>
+<button class="w-10 h-10 flex items-center justify-center rounded-full hover:bg-surface-bright transition-colors active:scale-95 duration-150">
+<span class="material-symbols-outlined text-primary">notifications</span>
+</button>
+</header>
+<main class="pt-16 pb-24 min-h-screen">
+<!-- Sticky Sub-Header with Date Picker & Filters -->
+<section class="sticky top-16 z-40 bg-background/95 backdrop-blur-md pb-4">
+<!-- Calendar Strip -->
+<div class="flex overflow-x-auto gap-3 px-margin-sm py-4 hide-scrollbar">
+<button class="flex flex-col items-center justify-center min-w-[60px] h-20 rounded-xl bg-surface-container-highest text-on-surface-variant transition-all hover:bg-surface-variant active:scale-95">
+<span class="font-label-md text-label-md">JUN</span>
+<span class="font-stats-number text-stats-number">10</span>
+</button>
+<button class="flex flex-col items-center justify-center min-w-[60px] h-20 rounded-xl bg-tertiary text-on-tertiary glow-lime transition-all active:scale-95">
+<span class="font-label-md text-label-md">JUN</span>
+<span class="font-stats-number text-stats-number">11</span>
+</button>
+<button class="flex flex-col items-center justify-center min-w-[60px] h-20 rounded-xl bg-surface-container-highest text-on-surface-variant transition-all hover:bg-surface-variant active:scale-95">
+<span class="font-label-md text-label-md">JUN</span>
+<span class="font-stats-number text-stats-number">12</span>
+</button>
+<button class="flex flex-col items-center justify-center min-w-[60px] h-20 rounded-xl bg-surface-container-highest text-on-surface-variant transition-all hover:bg-surface-variant active:scale-95">
+<span class="font-label-md text-label-md">JUN</span>
+<span class="font-stats-number text-stats-number">13</span>
+</button>
+<button class="flex flex-col items-center justify-center min-w-[60px] h-20 rounded-xl bg-surface-container-highest text-on-surface-variant transition-all hover:bg-surface-variant active:scale-95">
+<span class="font-label-md text-label-md">JUN</span>
+<span class="font-stats-number text-stats-number">14</span>
+</button>
+<button class="flex flex-col items-center justify-center min-w-[60px] h-20 rounded-xl bg-surface-container-highest text-on-surface-variant transition-all hover:bg-surface-variant active:scale-95">
+<span class="font-label-md text-label-md">JUN</span>
+<span class="font-stats-number text-stats-number">15</span>
+</button>
+</div>
+<!-- Filter Chips -->
+<div class="flex gap-2 px-margin-sm">
+<button class="px-5 py-2 rounded-full bg-surface-container-highest text-tertiary font-label-md text-label-md border border-tertiary/30">All</button>
+<button class="px-5 py-2 rounded-full bg-surface-container-low text-on-surface-variant font-label-md text-label-md hover:bg-surface-variant">My Picks</button>
+<button class="px-5 py-2 rounded-full bg-surface-container-low text-on-surface-variant font-label-md text-label-md hover:bg-surface-variant flex items-center gap-1">
+<span class="w-2 h-2 rounded-full bg-red-500"></span>
+                    Live
+                </button>
+</div>
+</section>
+<!-- Match Groups -->
+<div class="px-margin-sm mt-4 space-y-8">
+<!-- Group A -->
+<div class="space-y-4">
+<div class="flex items-center justify-between">
+<h2 class="font-headline-md text-headline-md text-primary flex items-center gap-2">
+<span class="w-1 h-6 bg-tertiary rounded-full"></span>
+                        Group A
+                    </h2>
+<span class="text-on-surface-variant font-label-md text-label-md uppercase tracking-widest">Matchday 1</span>
+</div>
+<!-- Live Match Card -->
+<div class="glass-card rounded-xl p-4 overflow-hidden relative border-l-4 border-red-500">
+<div class="flex justify-between items-start mb-4">
+<div class="flex flex-col">
+<span class="text-on-surface-variant text-[12px] font-semibold uppercase">Azteca Stadium, Mexico City</span>
+</div>
+<div class="flex items-center gap-2 bg-red-500/20 px-3 py-1 rounded-full border border-red-500/40">
+<span class="w-2 h-2 rounded-full bg-red-500 animate-pulse-red"></span>
+<span class="text-red-500 font-bold text-[12px] uppercase tracking-tighter">Live • 64'</span>
+</div>
+</div>
+<div class="grid grid-cols-3 items-center gap-4">
+<div class="flex flex-col items-center gap-2">
+<div class="w-14 h-14 rounded-full border-2 border-white/10 p-1 bg-surface-dim">
+<img alt="MEX" data-alt="A highly detailed circular flag of Mexico with a premium textured fabric finish. The lighting is dramatic, highlighting the intricate seal in the center. The surrounding environment is a deep slate and navy blue with a subtle glow, fitting the high-stakes World Cup 2026 aesthetic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAoheqYZKi_7rfipO8VnHcARQI_vKaAJGBKvYrrrF1rjq1WYY81KFkapsS8Bqvt6KSFHRjiSUbwR6jU6tN1eNWekavlD37VT_5wEH7UYdeR0caKIAjxGjKk_LJQXaenHlZM2tZYiIIdjtUbPMWZNNqATngkNNon7P8lOvGPbu8qFDgYiwBc9cLeRw868D3cJNPH9952mxZ2uVrqwdQz7GTEPIQ1QAw-iI2HpHj77MznGRcVnFn-PRIumcpBC3p8nufggpgXpkVYP5yK"/>
+</div>
+<span class="font-headline-md text-headline-md">MEX</span>
+</div>
+<div class="flex flex-col items-center">
+<div class="font-stats-number text-[32px] text-tertiary flex items-baseline gap-2">
+                                2<span class="text-on-surface-variant text-headline-md opacity-30">:</span>1
+                            </div>
+<span class="text-on-surface-variant text-[12px] font-bold mt-1">HT 1-0</span>
+</div>
+<div class="flex flex-col items-center gap-2">
+<div class="w-14 h-14 rounded-full border-2 border-white/10 p-1 bg-surface-dim">
+<img alt="NGA" data-alt="A highly detailed circular flag of Nigeria with a premium textured fabric finish. The lighting is dramatic, highlighting the bold green and white stripes. The surrounding environment is a deep slate and navy blue with a subtle glow, fitting the high-stakes World Cup 2026 aesthetic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAoqJz9PehZoesdf61v9mXX6TRsXLFlschYhC6l-aGVOGmKK6y-qQxCh9gK0K8p5mj1devKJiVssNXGD4zyXl_j8oL0y6Sh1XXel-wRPx7vmcp2ZVqUJKMcAOgFPBllKqPiaWXD6Zphgt524Vp8306L-TcD_fGNwes8tIe0F3e588xvJbZ-9k_r2mGUYyCwqg7Y7oeblF_taUGyn6pReZRUn-O9qF-TfWV2795aCjKEmQuEDCnZydLu05Tl4QpWewUPT-JVVCPsEU_j"/>
+</div>
+<span class="font-headline-md text-headline-md">NGA</span>
+</div>
+</div>
+<!-- User Prediction Summary (Mock) -->
+<div class="mt-4 pt-4 border-t border-outline-variant/30 flex justify-between items-center">
+<div class="flex items-center gap-2 text-[12px] text-on-surface-variant">
+<span class="material-symbols-outlined text-[16px] text-tertiary">analytics</span>
+                            Your Pick: <span class="text-tertiary font-bold">MEX 2-0</span>
+</div>
+<span class="text-[12px] font-bold text-error">+0 PTS (Current)</span>
+</div>
+</div>
+<!-- Upcoming Match Card -->
+<div class="glass-card rounded-xl p-4 overflow-hidden hover:border-tertiary/40 transition-all group">
+<div class="flex justify-between items-start mb-4">
+<div class="flex flex-col">
+<span class="text-on-surface-variant text-[12px] font-semibold uppercase">MetLife Stadium, NY/NJ</span>
+<span class="text-primary font-bold text-[14px]">Tonight • 20:00</span>
+</div>
+<div class="bg-surface-container-highest px-3 py-1 rounded-full border border-outline-variant/50">
+<span class="text-on-surface-variant font-bold text-[12px] uppercase">Starts in 3h</span>
+</div>
+</div>
+<div class="grid grid-cols-3 items-center gap-4">
+<div class="flex flex-col items-center gap-2">
+<div class="w-14 h-14 rounded-full border-2 border-white/10 p-1 bg-surface-dim group-hover:scale-105 transition-transform">
+<img alt="USA" data-alt="A highly detailed circular flag of the United States of America with a premium textured fabric finish. The lighting is dramatic, highlighting the stars and stripes. The surrounding environment is a deep slate and navy blue with a subtle glow, fitting the high-stakes World Cup 2026 aesthetic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBYseRmTDDP8DS7_FIwF89ViaN33lFuq5wP_CawbDDVrJYBgrm4xferuHUz86hvu3vXoXHSyPHem94WJ5WBvOPn47M-1ioR35vY49c4nZZXGgMnp_30xSBemevWJkiNg9ewh9C3wvXvMEfucMMxgC5XFRq1307jPpOGtiZWt7zzQsDmY0F6gGEMXvJ1fPgr0abPJPI_8-jYAsfIhvbcZvLkJjja58-ebKBpxGj_sAOBJ3Xnah8v4yI2IuZUnLg2SboWXGv1R1rKRNCT"/>
+</div>
+<span class="font-headline-md text-headline-md">USA</span>
+</div>
+<div class="flex flex-col items-center">
+<span class="text-on-surface-variant font-display-lg text-[24px] opacity-40">VS</span>
+</div>
+<div class="flex flex-col items-center gap-2">
+<div class="w-14 h-14 rounded-full border-2 border-white/10 p-1 bg-surface-dim group-hover:scale-105 transition-transform">
+<img alt="AUS" data-alt="A highly detailed circular flag of Australia with a premium textured fabric finish. The lighting is dramatic, highlighting the Southern Cross and Union Jack. The surrounding environment is a deep slate and navy blue with a subtle glow, fitting the high-stakes World Cup 2026 aesthetic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuD9_GaHUQ-MOIaLS1M6iiAQzwuMTJCJKyvmDgvIV7volCR-jNBBFrRG9AdZ3Q8OZi5BuBpU9Ho3ICwCQctmpcGZL9Rz7WP8yPGaSMNRBceUDMTuEuz0IhtW4csEAnMhmvwEmFnNaNDfBgzALKzxo_ypH1fhbjZf5oH9BMCg0Rxdl5EZCRFzcb7oXR-pMZfK095LoNpLAZgf0vzU4GFXZfcsWwN66zfjLe33lMCKyRYPs34R2qwRlMWDHBEinSqTbVVhF6dwMxRMcaWW"/>
+</div>
+<span class="font-headline-md text-headline-md">AUS</span>
+</div>
+</div>
+<button class="mt-6 w-full py-3 bg-tertiary text-on-tertiary font-bold rounded-lg flex items-center justify-center gap-2 active:scale-95 transition-all shadow-lg hover:shadow-tertiary/20">
+<span class="material-symbols-outlined">edit_square</span>
+                        Predict Now
+                    </button>
+</div>
+</div>
+<!-- Group B -->
+<div class="space-y-4">
+<div class="flex items-center justify-between">
+<h2 class="font-headline-md text-headline-md text-primary flex items-center gap-2">
+<span class="w-1 h-6 bg-tertiary rounded-full"></span>
+                        Group B
+                    </h2>
+<span class="text-on-surface-variant font-label-md text-label-md uppercase tracking-widest">Matchday 1</span>
+</div>
+<!-- Completed Match Card -->
+<div class="glass-card rounded-xl p-4 overflow-hidden opacity-80 grayscale-[0.2]">
+<div class="flex justify-between items-start mb-4">
+<div class="flex flex-col">
+<span class="text-on-surface-variant text-[12px] font-semibold uppercase">BC Place, Vancouver</span>
+</div>
+<div class="bg-surface-container-high px-3 py-1 rounded-full">
+<span class="text-on-surface-variant font-bold text-[12px] uppercase">Final</span>
+</div>
+</div>
+<div class="grid grid-cols-3 items-center gap-4">
+<div class="flex flex-col items-center gap-2">
+<div class="w-14 h-14 rounded-full border-2 border-white/10 p-1 bg-surface-dim">
+<img alt="CAN" data-alt="A highly detailed circular flag of Canada with a premium textured fabric finish. The lighting is dramatic, highlighting the red maple leaf. The surrounding environment is a deep slate and navy blue with a subtle glow, fitting the high-stakes World Cup 2026 aesthetic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDYRsatgIqqSXhJpY0j-ZO5AsqFKetxm4naLOPMWC6PvO2tqm2BBI2R2fJzu1yR0vkPvkE_B1EgpMTr_UpFEBNEYsouwGZMmnEyKhe0Lg8kS8UKlh6g5Xnc8ax5A9saXiwOKPSHUO1P1w-v-4Seypeb7-FzOwQthYyN6jVmL6DrjlBMY5XmNUsPxryXH4nQ4tuyVWXxw6JUnJNRU0L3v7a6Gqyi7o2camG8Bw1F__qvFs3CZ_XX_qBS01b3Lg3R7ZIyPztHvIPesQjB"/>
+</div>
+<span class="font-headline-md text-headline-md">CAN</span>
+</div>
+<div class="flex flex-col items-center">
+<div class="font-stats-number text-[32px] text-white flex items-baseline gap-2">
+                                0<span class="text-on-surface-variant text-headline-md opacity-30">:</span>3
+                            </div>
+</div>
+<div class="flex flex-col items-center gap-2">
+<div class="w-14 h-14 rounded-full border-2 border-white/10 p-1 bg-surface-dim">
+<img alt="BRA" data-alt="A highly detailed circular flag of Brazil with a premium textured fabric finish. The lighting is dramatic, highlighting the celestial globe and order and progress motto. The surrounding environment is a deep slate and navy blue with a subtle glow, fitting the high-stakes World Cup 2026 aesthetic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuD2plyKiRQu_PHpjltJPUrOuNqyj6jT5mAUfWxm-UphCQNXDEwTfBikToJRXYpTprkrv_Is91ylOFUn_AcutwHVp8fIhWvZZ3bk8B54L_rEUX5J4IxGt0mmKP4l5HeO4kUX6GTl_WxBEzk5YvJQ9d57dw9Ur8yFOQ5IR2RGT59vGj1BKZIGGTPq-EaOTnnHTTNLV4YRQYmhtaEDKwtXjM8NWzsSRTm3NW5AoZhFsU_m_icJ6ZjwLwF2BbDZHitxdcSwlYx6D0TNhQHK"/>
+</div>
+<span class="font-headline-md text-headline-md">BRA</span>
+</div>
+</div>
+<div class="mt-4 pt-4 border-t border-outline-variant/30 flex justify-between items-center">
+<div class="flex items-center gap-2 text-[12px] text-on-surface-variant">
+<span class="material-symbols-outlined text-[16px] text-tertiary" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+                            You Predicted: <span class="text-white font-bold">CAN 0-3 BRA</span>
+</div>
+<span class="text-[12px] font-bold text-tertiary">+15 PTS</span>
+</div>
+</div>
+<!-- Another Match -->
+<div class="glass-card rounded-xl p-4 overflow-hidden">
+<div class="flex justify-between items-start mb-4">
+<div class="flex flex-col">
+<span class="text-on-surface-variant text-[12px] font-semibold uppercase">SoFi Stadium, Inglewood</span>
+<span class="text-primary font-bold text-[14px]">Tomorrow • 15:00</span>
+</div>
+</div>
+<div class="grid grid-cols-3 items-center gap-4">
+<div class="flex flex-col items-center gap-2">
+<div class="w-14 h-14 rounded-full border-2 border-white/10 p-1 bg-surface-dim">
+<img alt="ARG" data-alt="A highly detailed circular flag of Argentina with a premium textured fabric finish. The lighting is dramatic, highlighting the Sun of May. The surrounding environment is a deep slate and navy blue with a subtle glow, fitting the high-stakes World Cup 2026 aesthetic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBh86oVD5_8R2epgNVjD80uvTtY_RAHm8vL1Rayp1pozK3K61dMsXg7xHk6vYmxkG7oQdXxItMOzXdAPnwiwjZ-SIi-qgruXxbUJ1ZfoT6IPWUf_QZE6GbZ3bsOLVldyISEfj4a1wkcZbzBRGrMrJwECRyjjQ88HaYf14DuL9rQ1YeSsMxnvhUHjvHWswTd2ydWH5-goJjXjaYclTa64Wa3JKJx3ZRmYzVM76jbVP9tLgjYFwrqpC5M3IvxbfwkIQxkRkgAa9ACBl83"/>
+</div>
+<span class="font-headline-md text-headline-md">ARG</span>
+</div>
+<div class="flex flex-col items-center">
+<span class="text-on-surface-variant font-display-lg text-[24px] opacity-40">VS</span>
+</div>
+<div class="flex flex-col items-center gap-2">
+<div class="w-14 h-14 rounded-full border-2 border-white/10 p-1 bg-surface-dim">
+<img alt="FRA" data-alt="A highly detailed circular flag of France with a premium textured fabric finish. The lighting is dramatic, highlighting the blue, white, and red tricolor. The surrounding environment is a deep slate and navy blue with a subtle glow, fitting the high-stakes World Cup 2026 aesthetic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCoahRKbiC49dUqGZPPrKotRTGZ-gEauKvYSf0WBEUAoXuUWhhUzD0zUXvCONCirdZJFDIMnT_3shZP6ZOLVxC0CQ2kpPYEurWgUq09-ma4qfwNGQmdd47KoOVWtb5ibAet_2cHJwKE9EzFsGuorSrKfCXzKLnoh40bM8RCG6WxpKAnR_kAojD56sprnuVccOSTpNbxlLE4fvgGTKaHH_LWQnJWcMwBC1iPQqyytyf0Etp__l5nbSr21ZKI_hweXG7BpV6f3SMi761K"/>
+</div>
+<span class="font-headline-md text-headline-md">FRA</span>
+</div>
+</div>
+<button class="mt-6 w-full py-3 bg-transparent border border-secondary text-secondary font-bold rounded-lg flex items-center justify-center gap-2 active:scale-95 transition-all">
+<span class="material-symbols-outlined">edit_square</span>
+                        Predict Now
+                    </button>
+</div>
+</div>
+</div>
+</main>
+<!-- BottomNavBar -->
+<nav class="fixed bottom-0 w-full z-50 rounded-t-xl bg-surface-container-highest/90 backdrop-blur-lg border-t border-outline-variant/10 shadow-lg flex justify-around items-center h-20 pb-safe px-gutter-xs">
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:text-on-surface transition-all active:scale-90 duration-200" href="#">
+<span class="material-symbols-outlined">dashboard</span>
+<span class="font-label-md text-label-md">Home</span>
+</a>
+<a class="flex flex-col items-center justify-center bg-tertiary-container text-on-tertiary-container rounded-full px-4 py-1 active:scale-90 duration-200" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">sports_soccer</span>
+<span class="font-label-md text-label-md">Fixtures</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:text-on-surface transition-all active:scale-90 duration-200" href="#">
+<span class="material-symbols-outlined">account_tree</span>
+<span class="font-label-md text-label-md">Bracket</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:text-on-surface transition-all active:scale-90 duration-200" href="#">
+<span class="material-symbols-outlined">leaderboard</span>
+<span class="font-label-md text-label-md">Rank</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:text-on-surface transition-all active:scale-90 duration-200" href="#">
+<span class="material-symbols-outlined">menu</span>
+<span class="font-label-md text-label-md">More</span>
+</a>
+</nav>
+<script>
+        // Simple micro-interaction for date buttons
+        document.querySelectorAll('button').forEach(btn => {
+            btn.addEventListener('touchstart', function() {
+                this.classList.add('scale-95');
+            });
+            btn.addEventListener('touchend', function() {
+                this.classList.remove('scale-95');
+            });
+        });
+
+        // Horizontal scroll momentum helper (simulated)
+        const scrollContainer = document.querySelector('.hide-scrollbar');
+        if (scrollContainer) {
+            let isDown = false;
+            let startX;
+            let scrollLeft;
+
+            scrollContainer.addEventListener('mousedown', (e) => {
+                isDown = true;
+                startX = e.pageX - scrollContainer.offsetLeft;
+                scrollLeft = scrollContainer.scrollLeft;
+            });
+            scrollContainer.addEventListener('mouseleave', () => { isDown = false; });
+            scrollContainer.addEventListener('mouseup', () => { isDown = false; });
+            scrollContainer.addEventListener('mousemove', (e) => {
+                if (!isDown) return;
+                e.preventDefault();
+                const x = e.pageX - scrollContainer.offsetLeft;
+                const walk = (x - startX) * 2;
+                scrollContainer.scrollLeft = scrollLeft - walk;
+            });
+        }
+    </script>
+</body></html>

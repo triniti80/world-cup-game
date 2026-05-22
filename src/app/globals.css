@@ -1,0 +1,68 @@
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Montserrat:wght@600;700;800&display=swap");
+@import "tailwindcss";
+
+@theme {
+  --color-bg: #081425;
+  --color-panel: #152031;
+  --color-panel-low: #111c2d;
+  --color-panel-high: #1f2a3c;
+  --color-panel-highest: #2a3548;
+  --color-border: #45464d;
+  --color-fg: #d8e3fb;
+  --color-fg-muted: #c6c6cd;
+  --color-primary: #bec6e0;
+  --color-accent: #91db2a;
+  --color-gold: #ffb95f;
+  --color-danger: #ff6b5f;
+  --color-success: #91db2a;
+}
+
+html,
+body {
+  background: var(--color-bg);
+  color: var(--color-fg);
+  font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+a {
+  color: var(--color-gold);
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+.font-display {
+  font-family: Montserrat, Inter, system-ui, sans-serif;
+}
+
+.glass-card {
+  background: rgba(30, 41, 59, 0.72);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(12px);
+}
+
+.glow-lime {
+  box-shadow: 0 0 16px rgba(145, 219, 42, 0.24);
+}
+
+.glow-gold {
+  box-shadow: 0 0 16px rgba(255, 185, 95, 0.22);
+}
+
+.hide-scrollbar {
+  scrollbar-width: none;
+}
+
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+::selection {
+  background: var(--color-accent);
+  color: #102000;
+}

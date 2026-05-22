@@ -1,0 +1,44 @@
+name: world-cup-game
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      - worldcup-db-data:/var/lib/postgresql/data
+    # DB port published to localhost so host-side tools (drizzle-kit, psql,
+    # the migrate script) can reach it. Bound to 127.0.0.1 so it's not
+    # accessible from the network.
+    ports:
+      - "127.0.0.1:${POSTGRES_PORT:-5433}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+      MASTER_KEY: ${MASTER_KEY}
+      SESSION_SECRET: ${SESSION_SECRET}
+      PORT: 3000
+      NODE_ENV: production
+    # Bind only to localhost by default. Front this with a reverse proxy /
+    # tunnel if you want remote access.
+    ports:
+      - "127.0.0.1:${APP_PORT:-3001}:3000"
+
+volumes:
+  worldcup-db-data:

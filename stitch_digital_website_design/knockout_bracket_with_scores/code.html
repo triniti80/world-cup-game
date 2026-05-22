@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>WC2026 Bracket Predictor</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;800&amp;family=Inter:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "surface-container": "#152031",
+                      "on-surface-variant": "#c6c6cd",
+                      "primary": "#bec6e0",
+                      "on-tertiary-fixed-variant": "#304f00",
+                      "on-tertiary-fixed": "#102000",
+                      "surface-dim": "#081425",
+                      "tertiary": "#91db2a",
+                      "on-primary": "#283044",
+                      "inverse-surface": "#d8e3fb",
+                      "surface-container-highest": "#2a3548",
+                      "surface": "#081425",
+                      "secondary-fixed-dim": "#ffb95f",
+                      "secondary": "#ffb95f",
+                      "on-secondary-fixed": "#2a1700",
+                      "on-error-container": "#ffdad6",
+                      "on-background": "#d8e3fb",
+                      "on-secondary-container": "#5b3800",
+                      "surface-tint": "#bec6e0",
+                      "outline-variant": "#45464d",
+                      "on-surface": "#d8e3fb",
+                      "background": "#081425",
+                      "on-secondary-fixed-variant": "#653e00",
+                      "tertiary-container": "#0d1b00",
+                      "on-secondary": "#472a00",
+                      "surface-variant": "#2a3548",
+                      "surface-container-high": "#1f2a3c",
+                      "on-primary-fixed-variant": "#3f465c",
+                      "outline": "#909097",
+                      "surface-container-low": "#111c2d",
+                      "surface-bright": "#2f3a4c",
+                      "primary-fixed": "#dae2fd",
+                      "error-container": "#93000a",
+                      "surface-container-lowest": "#040e1f",
+                      "secondary-container": "#ee9800",
+                      "on-primary-container": "#798098",
+                      "primary-fixed-dim": "#bec6e0",
+                      "on-tertiary-container": "#598f00",
+                      "on-error": "#690005",
+                      "on-primary-fixed": "#131b2e",
+                      "tertiary-fixed-dim": "#91db2a",
+                      "inverse-primary": "#565e74",
+                      "error": "#ffb4ab",
+                      "primary-container": "#0f172a",
+                      "on-tertiary": "#1f3700",
+                      "tertiary-fixed": "#acf847",
+                      "secondary-fixed": "#ffddb8",
+                      "inverse-on-surface": "#263143"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.25rem",
+                      "lg": "0.5rem",
+                      "xl": "0.75rem",
+                      "full": "9999px"
+              },
+              "spacing": {
+                      "max-width": "1280px",
+                      "gutter-md": "16px",
+                      "margin-lg": "32px",
+                      "gutter-xs": "8px",
+                      "base": "4px",
+                      "margin-sm": "16px"
+              },
+              "fontFamily": {
+                      "display-lg": ["Montserrat"],
+                      "headline-lg-mobile": ["Montserrat"],
+                      "headline-lg": ["Montserrat"],
+                      "body-md": ["Inter"],
+                      "headline-md": ["Montserrat"],
+                      "body-lg": ["Inter"],
+                      "stats-number": ["Montserrat"],
+                      "label-md": ["Inter"]
+              },
+              "fontSize": {
+                      "display-lg": ["48px", {"lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "800"}],
+                      "headline-lg-mobile": ["24px", {"lineHeight": "32px", "fontWeight": "700"}],
+                      "headline-lg": ["32px", {"lineHeight": "40px", "fontWeight": "700"}],
+                      "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                      "headline-md": ["20px", {"lineHeight": "28px", "fontWeight": "600"}],
+                      "body-lg": ["18px", {"lineHeight": "28px", "fontWeight": "400"}],
+                      "stats-number": ["24px", {"lineHeight": "24px", "fontWeight": "800"}],
+                      "label-md": ["14px", {"lineHeight": "20px", "letterSpacing": "0.05em", "fontWeight": "600"}]
+              }
+            },
+          },
+        }
+    </script>
+<style>
+        body { background-color: #081425; }
+        .glass-card {
+            background: rgba(30, 41, 59, 0.7);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .glow-lime {
+            box-shadow: 0 0 15px -3px rgba(145, 219, 42, 0.4);
+            border-color: #91db2a !important;
+        }
+        .glow-gold {
+            box-shadow: 0 0 15px -3px rgba(255, 185, 95, 0.4);
+            border-color: #ffb95f !important;
+        }
+        .custom-scrollbar::-webkit-scrollbar { display: none; }
+        .custom-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        
+        /* Specific input styling for scores */
+        .score-input {
+            width: 44px;
+            height: 44px;
+            background: rgba(15, 23, 42, 0.5);
+            border: 1px solid rgba(144, 144, 151, 0.3);
+            text-align: center;
+            border-radius: 8px;
+            font-family: 'Montserrat', sans-serif;
+            font-weight: 700;
+            font-size: 18px;
+            color: #d8e3fb;
+            transition: all 0.2s;
+        }
+        .score-input:focus {
+            outline: none;
+            border-color: #91db2a;
+            background: rgba(15, 23, 42, 0.8);
+            box-shadow: 0 0 8px rgba(145, 219, 42, 0.3);
+        }
+        input[type=number]::-webkit-inner-spin-button, 
+        input[type=number]::-webkit-outer-spin-button { 
+            -webkit-appearance: none; 
+            margin: 0; 
+        }
+    </style>
+<style>
+        body {
+            min-height: max(884px, 100dvh);
+        }
+    </style>
+</head>
+<body class="font-body-md text-on-surface">
+<!-- TopAppBar -->
+<header class="fixed top-0 w-full z-50 bg-surface-container/80 backdrop-blur-md border-b border-outline-variant/20 shadow-sm flex justify-between items-center px-margin-sm h-16">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-full overflow-hidden border-2 border-primary">
+<img alt="User" data-alt="A professional studio portrait of a young male sports fan with a confident expression, set against a dark, technologically sophisticated background with subtle glowing neon blue and lime accents. The lighting is cinematic and high-contrast, emphasizing the elite, competitive atmosphere of a premium sports data dashboard." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCmunn3V2t16QnV-SamkKnvxeSXPlxtleVYm2OxnyvxttfGR9f9o0LEKZnywxujYu7JDzg2BicfaByp0wWh5FPzU7bPUdyNe4u6dQFfO5ikuOzTPyljLNUJtp7up6Bu6uFzwot6cTV4cIHUACh9hflrnnkv-42k-svQe4FupZKw8f9hncGLsqQ6w5KCSH5XZ5QJHXzeyFzArxFzTfiI508S0_svhxJBGggJBE7OMyKKihxOMLfgzPIlnEkp4F_eNpjoWCRT6GckAj7K"/>
+</div>
+<span class="font-display-lg text-[20px] text-primary tracking-tighter">WC2026</span>
+</div>
+<button class="w-10 h-10 flex items-center justify-center rounded-full hover:bg-surface-bright transition-colors active:scale-95 duration-150">
+<span class="material-symbols-outlined text-primary" data-icon="notifications">notifications</span>
+</button>
+</header>
+<main class="pt-20 pb-28 px-margin-sm max-w-max-width mx-auto">
+<!-- Progress Header -->
+<div class="mb-6">
+<div class="flex justify-between items-end mb-2">
+<div>
+<h1 class="font-headline-lg-mobile text-headline-lg-mobile text-on-surface">Knockout Stage</h1>
+<p class="font-body-md text-on-surface-variant">Predicted 8 of 16 Winners</p>
+</div>
+<div class="text-right">
+<span class="font-stats-number text-tertiary">50%</span>
+</div>
+</div>
+<div class="h-1.5 w-full bg-surface-container-highest rounded-full overflow-hidden">
+<div class="h-full bg-tertiary w-1/2 shadow-[0_0_8px_rgba(145,219,42,0.6)]"></div>
+</div>
+</div>
+<!-- Stage Selector -->
+<div class="flex gap-3 overflow-x-auto custom-scrollbar mb-8 pb-2">
+<button class="flex-shrink-0 px-6 py-2 rounded-full bg-tertiary-container text-tertiary border border-tertiary/30 font-label-md text-label-md">R32</button>
+<button class="flex-shrink-0 px-6 py-2 rounded-full bg-surface-container text-on-surface-variant hover:bg-surface-bright transition-colors font-label-md text-label-md">R16</button>
+<button class="flex-shrink-0 px-6 py-2 rounded-full bg-surface-container text-on-surface-variant hover:bg-surface-bright transition-colors font-label-md text-label-md">QF</button>
+<button class="flex-shrink-0 px-6 py-2 rounded-full bg-surface-container text-on-surface-variant hover:bg-surface-bright transition-colors font-label-md text-label-md">SF</button>
+<button class="flex-shrink-0 px-6 py-2 rounded-full bg-surface-container text-on-surface-variant hover:bg-surface-bright transition-colors font-label-md text-label-md">Final</button>
+</div>
+<!-- Bracket View -->
+<div class="space-y-6">
+<!-- Match Card 1 (Editable) -->
+<div class="relative match-card-container" id="match-49">
+<div class="absolute -left-3 top-1/2 -translate-y-1/2 w-1 h-12 bg-tertiary rounded-full shadow-[0_0_10px_#91db2a]"></div>
+<div class="glass-card rounded-xl p-4 transition-all duration-300">
+<div class="flex justify-between items-center mb-4">
+<span class="font-label-md text-label-md text-on-surface-variant uppercase tracking-widest">Match 49 • Munich</span>
+<span class="px-2 py-0.5 rounded bg-tertiary/10 text-tertiary text-[10px] font-bold uppercase">Editable</span>
+</div>
+<div class="space-y-4">
+<!-- Team A -->
+<div class="flex items-center justify-between gap-4 p-2.5 rounded-lg border border-outline-variant/30 bg-surface-container-low transition-all team-row" data-team="germany" onclick="handleTeamSelection(this)">
+<div class="flex items-center gap-3 flex-1">
+<div class="w-10 h-10 rounded-full overflow-hidden bg-white/5 border border-outline-variant/20">
+<img alt="Germany" data-alt="A vibrant, high-resolution circular icon of the German national flag with a glossy, glass-like finish." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCmM4ZIwY13auUxUIMp6u8jw8Dx2zfdd0ysV-P2mu7TeswuUeVB6rWUaOXg6XYQ1zWidkAiLqf_HLcwkSBoLrVVqLY_CVt9ywBVGxqpuwA2Nrppr_928ht4klsq5H2jXmcGh425q2DIMORLmkwCbqRyTKpT39zD4dUZJuLE8oFPlQ4NLc7DwPGSFGuZROyHFHBm6vjkBE4rnhHkk9ArZsm4Yfw4ZIM5mKbJXW1WwNmGDIaqM6xTdRAJy0ljixRAYlw4SZR3K6k28-84"/>
+</div>
+<span class="font-headline-md text-headline-md">Germany</span>
+</div>
+<div class="flex items-center gap-3">
+<div class="winner-indicator hidden">
+<span class="material-symbols-outlined text-tertiary text-[24px]" data-icon="check_circle" data-weight="fill">check_circle</span>
+</div>
+<input class="score-input" min="0" onclick="event.stopPropagation()" oninput="handleScoreChange('match-49')" placeholder="0" type="number"/>
+</div>
+</div>
+<!-- VS Divider -->
+<div class="flex items-center justify-center gap-4 py-0">
+<div class="h-px flex-1 bg-outline-variant/20"></div>
+<span class="font-stats-number text-on-surface-variant text-xs italic opacity-40 uppercase tracking-tighter">vs</span>
+<div class="h-px flex-1 bg-outline-variant/20"></div>
+</div>
+<!-- Team B -->
+<div class="flex items-center justify-between gap-4 p-2.5 rounded-lg border border-outline-variant/30 bg-surface-container-low transition-all team-row" data-team="spain" onclick="handleTeamSelection(this)">
+<div class="flex items-center gap-3 flex-1">
+<div class="w-10 h-10 rounded-full overflow-hidden bg-white/5 border border-outline-variant/20">
+<img alt="Spain" data-alt="A vibrant, high-resolution circular icon of the Spanish national flag with a glossy, glass-like finish." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBil-nBqv-QjLGgz1MrKwPIli4G_C3IflTUqCFBr8RX3UX1AG--Vly4IJ_GSrdMSnZNiJhhBBTDCZsMgj7ianOvfVFeNL9x-n7N5HEMSSFjKAUER2jL78JoJGzw5wBVTRS7hDJvAVgO4NQl5OpWwYpo3RWgoNzQ8ymywEwIAoZUVqVCmlsUreOOePD3McptupkkhYk9qnh4Yrh-8MODcTs0CZvZqke3Bx0okmJLuYbwmAdPPP0EwKe8WoxM8BLrFBa4plWiDUIgwC3D"/>
+</div>
+<span class="font-headline-md text-headline-md">Spain</span>
+</div>
+<div class="flex items-center gap-3">
+<div class="winner-indicator hidden">
+<span class="material-symbols-outlined text-tertiary text-[24px]" data-icon="check_circle" data-weight="fill">check_circle</span>
+</div>
+<input class="score-input" min="0" onclick="event.stopPropagation()" oninput="handleScoreChange('match-49')" placeholder="0" type="number"/>
+</div>
+</div>
+<!-- Draw/Advance Prompt -->
+<div class="draw-prompt hidden bg-primary-container/30 border border-primary/20 rounded-lg p-3 text-center transition-all animate-in fade-in duration-300">
+<p class="text-[12px] font-label-md text-primary mb-2">Scores are level. Tap a team to advance.</p>
+</div>
+</div>
+<div class="mt-4 pt-4 border-t border-outline-variant/10 flex items-center justify-between">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-sm text-on-surface-variant" data-icon="event">event</span>
+<span class="font-label-md text-label-md text-on-surface-variant">July 4, 2026</span>
+</div>
+<button class="text-tertiary font-label-md text-label-md flex items-center gap-1 hover:brightness-110">
+                            Stats <span class="material-symbols-outlined text-sm" data-icon="leaderboard">leaderboard</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Match Card 2 (Locked) -->
+<div class="relative opacity-80" id="match-50">
+<div class="glass-card rounded-xl p-4 bg-surface-container-lowest/50 border-outline-variant/10">
+<div class="flex justify-between items-center mb-4">
+<span class="font-label-md text-label-md text-on-surface-variant uppercase tracking-widest">Match 50 • Madrid</span>
+<span class="px-2 py-0.5 rounded bg-error-container/20 text-error text-[10px] font-bold uppercase flex items-center gap-1">
+<span class="material-symbols-outlined text-[12px]" data-icon="lock">lock</span> Locked
+                        </span>
+</div>
+<div class="space-y-4">
+<!-- Brazil (Locked Winner) -->
+<div class="flex items-center justify-between gap-4 p-2.5 rounded-lg border border-tertiary/30 bg-tertiary-container/5">
+<div class="flex items-center gap-3 flex-1">
+<div class="w-10 h-10 rounded-full overflow-hidden bg-white/5 border border-tertiary/20">
+<img alt="Brazil" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAT8br-4XKKEvrHALHpUKODN8B4-2iF5XnLPKeE4ySLBidY6TuFqBoP2oQ0NjD8Fd_iI3xixfDlmjonx5JT4rLrqOyJSguuLTy5dh66ScDi9-Lv1BR5cItgxTmR-2DgSu7V0bV5gLGTNtQytkxubXeII7KaVID_YhhUjmfeLhz83a3Syc293-kfoiYUZy1-cd2vn6QdYExKceDWJJ_TNLNFL37pkDIXPARdIePfoPClK7lG4NUIMClc2aJCtwkjL63vSfqWysjNMXwt"/>
+</div>
+<span class="font-headline-md text-headline-md">Brazil</span>
+</div>
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-tertiary text-[24px]" data-icon="check_circle" data-weight="fill">check_circle</span>
+<div class="w-11 h-11 flex items-center justify-center font-stats-number text-lg text-tertiary">2</div>
+</div>
+</div>
+<div class="flex items-center justify-center gap-4 py-0">
+<div class="h-px flex-1 bg-outline-variant/10"></div>
+<span class="font-stats-number text-on-surface-variant text-xs italic opacity-20 uppercase tracking-tighter">vs</span>
+<div class="h-px flex-1 bg-outline-variant/10"></div>
+</div>
+<!-- France (Locked Loser) -->
+<div class="flex items-center justify-between gap-4 p-2.5 rounded-lg border border-outline-variant/10 bg-surface-container-lowest/30 opacity-60">
+<div class="flex items-center gap-3 flex-1">
+<div class="w-10 h-10 rounded-full overflow-hidden bg-white/5 border border-outline-variant/10">
+<img alt="France" src="https://lh3.googleusercontent.com/aida-public/AB6AXuA76sODIlZgNKyRgYng06Vg5QRLea8CbX_ElUIokXswwbE3pxPOe5pvrnDnuW0A08aARW-cH8Jm5_UY8xskmdgWvohu5mhO08L01IRAJ3us6vRmtFiJXxkNDBp8du7rJ_IaHYVLx5x7BbYHpzvNh1jTMkLOJxf6jwFSkzdCl3qzUJJ7QIsRSuR8gVxmsY2MwcdY2JZuYWf0HHiDdR1HP_EjO0gMZQvZaKsKi2E3u5B8utJePfbHPp1ZOydnuD6B0RCO5grHCf0kVyLp"/>
+</div>
+<span class="font-headline-md text-headline-md">France</span>
+</div>
+<div class="w-11 h-11 flex items-center justify-center font-stats-number text-lg text-on-surface-variant opacity-50">1</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Match Card 3 (Editable) -->
+<div class="relative match-card-container" id="match-51">
+<div class="glass-card rounded-xl p-4 transition-all duration-300">
+<div class="flex justify-between items-center mb-4">
+<span class="font-label-md text-label-md text-on-surface-variant uppercase tracking-widest">Match 51 • London</span>
+<span class="px-2 py-0.5 rounded bg-tertiary/10 text-tertiary text-[10px] font-bold uppercase">Editable</span>
+</div>
+<div class="space-y-4">
+<div class="flex items-center justify-between gap-4 p-2.5 rounded-lg border border-outline-variant/30 bg-surface-container-low transition-all team-row" onclick="handleTeamSelection(this)">
+<div class="flex items-center gap-3 flex-1">
+<div class="w-10 h-10 rounded-full overflow-hidden bg-white/5 border border-outline-variant/20">
+<img alt="Argentina" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCrWwiSPynTVtQ64KmHAcjqLj8oZs1clYUtXvOjSdQcIpWCaNJMXWAs-kGEYzp5gzENpC3hHdBgc80IX50N0Zm4ecWi_2OsvK3USoAoDHDV8YZeusQvtPGeQ4jeiL3Wd0ER932WD6fxh1CTJei9CslWG3S35Te6qnuriWd4H8J3wVeAhHVfPy18jQLRPpETddkyQ5-7BsVMsnhneHxgpNn9KWRWXqrLtV7EShRLKpTq8x2N7Bx-VPTikX3yb8oCuCMo11BUWv5q8mFH"/>
+</div>
+<span class="font-headline-md text-headline-md">Argentina</span>
+</div>
+<div class="flex items-center gap-3">
+<div class="winner-indicator hidden">
+<span class="material-symbols-outlined text-tertiary text-[24px]" data-icon="check_circle" data-weight="fill">check_circle</span>
+</div>
+<input class="score-input" min="0" onclick="event.stopPropagation()" oninput="handleScoreChange('match-51')" placeholder="0" type="number"/>
+</div>
+</div>
+<div class="flex items-center justify-center gap-4 py-0">
+<div class="h-px flex-1 bg-outline-variant/20"></div>
+<span class="font-stats-number text-on-surface-variant text-xs italic opacity-40 uppercase tracking-tighter">vs</span>
+<div class="h-px flex-1 bg-outline-variant/20"></div>
+</div>
+<div class="flex items-center justify-between gap-4 p-2.5 rounded-lg border border-outline-variant/30 bg-surface-container-low transition-all team-row" onclick="handleTeamSelection(this)">
+<div class="flex items-center gap-3 flex-1">
+<div class="w-10 h-10 rounded-full overflow-hidden bg-white/5 border border-outline-variant/20">
+<img alt="Portugal" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCk19lkMfOYqNoNm592C2z2ulffNmjV3yGdb5fGCSPsN_1PogGygR_XlUJwZbd-cx856VpBCU9xIL24DDEKwvZzg7uTVgDdWGPlDYgKGvijJaXklt27ONYwMu4Nc1WXe1PV5tXe0LP1c56BcU2p-XDKhcDgfPSYhKcD3wcHt45DiC-biIIWtrHV99V7LOdwwo3lCO2HLsCvdFtmnc-_b0iD5bEtAij0rIhzZBMK7utTPWZrbBmZLhfeqUv3zoqC-4xqpuvKCVBuOzXz"/>
+</div>
+<span class="font-headline-md text-headline-md">Portugal</span>
+</div>
+<div class="flex items-center gap-3">
+<div class="winner-indicator hidden">
+<span class="material-symbols-outlined text-tertiary text-[24px]" data-icon="check_circle" data-weight="fill">check_circle</span>
+</div>
+<input class="score-input" min="0" onclick="event.stopPropagation()" oninput="handleScoreChange('match-51')" placeholder="0" type="number"/>
+</div>
+</div>
+<div class="draw-prompt hidden bg-primary-container/30 border border-primary/20 rounded-lg p-3 text-center transition-all animate-in fade-in duration-300">
+<p class="text-[12px] font-label-md text-primary mb-2">Scores are level. Tap a team to advance.</p>
+</div>
+</div>
+<div class="mt-4 pt-4 border-t border-outline-variant/10 flex items-center justify-between">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-sm text-on-surface-variant" data-icon="event">event</span>
+<span class="font-label-md text-label-md text-on-surface-variant">July 5, 2026</span>
+</div>
+<button class="text-tertiary font-label-md text-label-md flex items-center gap-1 hover:brightness-110">
+                            Stats <span class="material-symbols-outlined text-sm" data-icon="leaderboard">leaderboard</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+</main>
+<!-- BottomNavBar -->
+<nav class="fixed bottom-0 w-full z-50 rounded-t-xl bg-surface-container-highest/90 backdrop-blur-lg border-t border-outline-variant/10 shadow-lg flex justify-around items-center h-20 pb-safe px-gutter-xs">
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:text-on-surface transition-all active:scale-90 duration-200" href="#">
+<span class="material-symbols-outlined" data-icon="dashboard">dashboard</span>
+<span class="font-label-md text-label-md">Home</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:text-on-surface transition-all active:scale-90 duration-200" href="#">
+<span class="material-symbols-outlined" data-icon="sports_soccer">sports_soccer</span>
+<span class="font-label-md text-label-md">Fixtures</span>
+</a>
+<a class="flex flex-col items-center justify-center bg-tertiary-container text-on-tertiary-container rounded-full px-4 py-1 active:scale-90 duration-200" href="#">
+<span class="material-symbols-outlined" data-icon="account_tree">account_tree</span>
+<span class="font-label-md text-label-md">Bracket</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:text-on-surface transition-all active:scale-90 duration-200" href="#">
+<span class="material-symbols-outlined" data-icon="leaderboard">leaderboard</span>
+<span class="font-label-md text-label-md">Rank</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:text-on-surface transition-all active:scale-90 duration-200" href="#">
+<span class="material-symbols-outlined" data-icon="menu">menu</span>
+<span class="font-label-md text-label-md">More</span>
+</a>
+</nav>
+<script>
+        function handleScoreChange(matchId) {
+            const matchCard = document.getElementById(matchId);
+            const inputs = matchCard.querySelectorAll('.score-input');
+            const teamRows = matchCard.querySelectorAll('.team-row');
+            const drawPrompt = matchCard.querySelector('.draw-prompt');
+            
+            const scoreA = parseInt(inputs[0].value) || 0;
+            const scoreB = parseInt(inputs[1].value) || 0;
+
+            // Reset UI states
+            teamRows.forEach(row => {
+                row.classList.remove('glow-lime', 'bg-tertiary-container/20', 'border-tertiary/50');
+                row.querySelector('.winner-indicator').classList.add('hidden');
+            });
+            drawPrompt.classList.add('hidden');
+
+            if (scoreA > scoreB) {
+                // Team A wins
+                applyWinnerStyles(teamRows[0]);
+            } else if (scoreB > scoreA) {
+                // Team B wins
+                applyWinnerStyles(teamRows[1]);
+            } else {
+                // Draw - Show prompt to select who advances
+                drawPrompt.classList.remove('hidden');
+            }
+        }
+
+        function handleTeamSelection(element) {
+            const parent = element.closest('.match-card-container');
+            const inputs = parent.querySelectorAll('.score-input');
+            const teamRows = parent.querySelectorAll('.team-row');
+            
+            const scoreA = parseInt(inputs[0].value) || 0;
+            const scoreB = parseInt(inputs[1].value) || 0;
+
+            // If it's a draw, we allow manual selection to advance
+            if (scoreA === scoreB) {
+                teamRows.forEach(row => {
+                    row.classList.remove('glow-lime', 'bg-tertiary-container/20', 'border-tertiary/50');
+                    row.querySelector('.winner-indicator').classList.add('hidden');
+                });
+                applyWinnerStyles(element);
+                
+                // Add "Haptic" feedback
+                element.style.transform = 'scale(0.98)';
+                setTimeout(() => element.style.transform = 'scale(1)', 100);
+            }
+        }
+
+        function applyWinnerStyles(element) {
+            element.classList.add('glow-lime', 'bg-tertiary-container/20', 'border-tertiary/50');
+            element.querySelector('.winner-indicator').classList.remove('hidden');
+        }
+
+        // Initialize state for pre-filled values if any
+        document.addEventListener('DOMContentLoaded', () => {
+            // Logic to sync UI if needed on load
+        });
+    </script>
+</body></html>

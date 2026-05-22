@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0, viewport-fit=cover" name="viewport"/>
+<title>My Predictions - WC2026</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;800&amp;family=Inter:wght@400;500;600&amp;family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "inverse-on-surface": "#263143",
+                        "secondary-fixed": "#ffddb8",
+                        "surface-container": "#152031",
+                        "on-tertiary": "#1f3700",
+                        "on-secondary": "#472a00",
+                        "primary-fixed-dim": "#bec6e0",
+                        "primary-fixed": "#dae2fd",
+                        "on-tertiary-fixed": "#102000",
+                        "on-error": "#690005",
+                        "surface-tint": "#bec6e0",
+                        "secondary-fixed-dim": "#ffb95f",
+                        "on-error-container": "#ffdad6",
+                        "secondary-container": "#ee9800",
+                        "primary": "#bec6e0",
+                        "on-primary-fixed-variant": "#3f465c",
+                        "on-tertiary-fixed-variant": "#304f00",
+                        "on-surface-variant": "#c6c6cd",
+                        "on-secondary-fixed-variant": "#653e00",
+                        "surface-container-lowest": "#040e1f",
+                        "on-secondary-container": "#5b3800",
+                        "on-tertiary-container": "#598f00",
+                        "on-background": "#d8e3fb",
+                        "background": "#081425",
+                        "surface-bright": "#2f3a4c",
+                        "tertiary": "#91db2a",
+                        "tertiary-fixed": "#acf847",
+                        "error-container": "#93000a",
+                        "on-surface": "#d8e3fb",
+                        "inverse-surface": "#d8e3fb",
+                        "surface-container-low": "#111c2d",
+                        "surface": "#081425",
+                        "tertiary-fixed-dim": "#91db2a",
+                        "surface-variant": "#2a3548",
+                        "surface-dim": "#081425",
+                        "primary-container": "#0f172a",
+                        "tertiary-container": "#0d1b00",
+                        "on-secondary-fixed": "#2a1700",
+                        "secondary": "#ffb95f",
+                        "outline": "#909097",
+                        "inverse-primary": "#565e74",
+                        "error": "#ffb4ab",
+                        "outline-variant": "#45464d",
+                        "on-primary-container": "#798098",
+                        "on-primary": "#283044",
+                        "on-primary-fixed": "#131b2e",
+                        "surface-container-highest": "#2a3548",
+                        "surface-container-high": "#1f2a3c"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "gutter-md": "16px",
+                        "base": "4px",
+                        "max-width": "1280px",
+                        "margin-lg": "32px",
+                        "gutter-xs": "8px",
+                        "margin-sm": "16px"
+                    },
+                    "fontFamily": {
+                        "headline-md": ["Montserrat"],
+                        "stats-number": ["Montserrat"],
+                        "display-lg": ["Montserrat"],
+                        "body-md": ["Inter"],
+                        "headline-lg-mobile": ["Montserrat"],
+                        "label-md": ["Inter"],
+                        "body-lg": ["Inter"],
+                        "headline-lg": ["Montserrat"]
+                    },
+                    "fontSize": {
+                        "headline-md": ["20px", {"lineHeight": "28px", "fontWeight": "600"}],
+                        "stats-number": ["24px", {"lineHeight": "24px", "fontWeight": "800"}],
+                        "display-lg": ["48px", {"lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "800"}],
+                        "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                        "headline-lg-mobile": ["24px", {"lineHeight": "32px", "fontWeight": "700"}],
+                        "label-md": ["14px", {"lineHeight": "20px", "letterSpacing": "0.05em", "fontWeight": "600"}],
+                        "body-lg": ["18px", {"lineHeight": "28px", "fontWeight": "400"}],
+                        "headline-lg": ["32px", {"lineHeight": "40px", "fontWeight": "700"}]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        .glass-card {
+            background: rgba(30, 41, 59, 0.7);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .glow-border-lime {
+            border: 1px solid #84CC16;
+            box-shadow: 0 0 8px rgba(132, 204, 22, 0.3);
+        }
+        .glow-border-gold {
+            border: 1px solid #ffb95f;
+            box-shadow: 0 0 8px rgba(255, 185, 95, 0.3);
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        ::-webkit-scrollbar { display: none; }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background text-on-background font-body-md selection:bg-tertiary selection:text-on-tertiary overflow-x-hidden">
+<!-- TopAppBar -->
+<header class="fixed top-0 w-full z-50 bg-surface-container/80 backdrop-blur-md border-b border-outline-variant/20 shadow-sm flex justify-between items-center px-margin-sm h-16">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-full bg-surface-bright flex items-center justify-center overflow-hidden border border-outline-variant/30">
+<img alt="User Profile" class="w-full h-full object-cover" data-alt="A close-up professional headshot of a young adult sports enthusiast with a friendly expression, set against a blurred stadium background with dramatic sunset lighting. The image captures a clean, modern aesthetic with high contrast and sharp focus, reflecting an elite tournament atmosphere. Deep blues and vibrant secondary accents dominate the frame." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBNVWNMn60ppVfB8Z4TIwcJsHyRWM77Ul9tRQ-q61UCQ8TP7CtF7jk-x7vZFHDWSEhY_YgeIl9tpNooKgSdc1r6CH8V3LtvgZIojHwVCDEnZ_PaEJuwm4Lq44E1zC_ygvfLCp6GYiuVBv4IOC7ucZA-ZNM4J57Ja_PY9Ulss9JHj8g2LXrGIsVw1DPldL-xUS5zA0pDNj56-g0t0ceYGWTgO9Uxqfsfn_uM3130QUlfQk4WUY1rBgBQh0-9V--Q-btni8dX3F2ELqKD"/>
+</div>
+<h1 class="font-display-lg text-headline-lg-mobile text-primary tracking-tighter">WC2026</h1>
+</div>
+<button class="w-10 h-10 flex items-center justify-center rounded-full hover:bg-surface-bright transition-colors active:scale-95 duration-150">
+<span class="material-symbols-outlined text-primary" data-icon="notifications">notifications</span>
+</button>
+</header>
+<main class="pt-20 pb-32 px-margin-sm space-y-6">
+<!-- Group Filter Tabs -->
+<section class="overflow-x-auto -mx-margin-sm px-margin-sm py-2">
+<div class="flex gap-2 min-w-max">
+<button class="px-6 py-2 rounded-full bg-tertiary text-on-tertiary font-label-md text-label-md border-2 border-tertiary transition-all active:scale-95">Group A</button>
+<button class="px-6 py-2 rounded-full bg-surface-container-high text-on-surface-variant font-label-md text-label-md border border-outline-variant/30 hover:bg-surface-bright transition-all active:scale-95">Group B</button>
+<button class="px-6 py-2 rounded-full bg-surface-container-high text-on-surface-variant font-label-md text-label-md border border-outline-variant/30 hover:bg-surface-bright transition-all active:scale-95">Group C</button>
+<button class="px-6 py-2 rounded-full bg-surface-container-high text-on-surface-variant font-label-md text-label-md border border-outline-variant/30 hover:bg-surface-bright transition-all active:scale-95">Group D</button>
+<button class="px-6 py-2 rounded-full bg-surface-container-high text-on-surface-variant font-label-md text-label-md border border-outline-variant/30 hover:bg-surface-bright transition-all active:scale-95">Group E</button>
+</div>
+</section>
+<!-- Fixture List -->
+<section class="space-y-4">
+<div class="flex justify-between items-center">
+<h2 class="font-headline-md text-headline-md text-on-surface">Matches</h2>
+<span class="text-label-md font-label-md text-on-surface-variant px-3 py-1 bg-surface-container-highest rounded-full">3 of 6 Predicted</span>
+</div>
+<!-- Match Card 1: Saved -->
+<div class="glass-card glow-border-lime rounded-xl p-4 space-y-4">
+<div class="flex justify-between items-center text-xs text-on-surface-variant uppercase tracking-widest font-bold">
+<span>Jun 11, 18:00</span>
+<span class="flex items-center gap-1 text-tertiary">
+<span class="material-symbols-outlined text-[14px]" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+                        Saved
+                    </span>
+</div>
+<div class="flex items-center justify-between">
+<div class="flex flex-col items-center gap-2 w-1/3">
+<img alt="USA Flag" class="w-12 h-12 rounded-full shadow-lg" data-alt="A vibrant, stylized high-resolution circular graphic representation of the United States flag, rendered with 3D depth and glossy finish. The lighting is cinematic with sharp highlights, fitting into a dark sports interface with high contrast Slate and Deep Navy surrounding elements. Professional sports broadcast quality." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDIPMWfLLJ-yK8gzamuRUkOMiUsU8C1WXDCMa1Vfs0-Li_SxgYtW1UmUTmYM8YL6pFAHM0KJmdtVZlh6vZNknxi734Kx4phwHCTIOKJmfEJGP42dxCJyk5-sjNQSM_hLnwTHMZtX2exkvDR33fMYEEaVayz-ucpA2htAKFO3JlsyMnpWOMYS11p_91oWonEreyjjRpNIo0-OnT3uSWQRFOTDl5FMQN56Olwm2KdofQMC7a6URb6PmNmgtg_jdyYpC3jPjlW7pX5FvYw"/>
+<span class="font-label-md text-label-md text-center">USA</span>
+</div>
+<div class="flex items-center gap-3 w-1/3 justify-center">
+<input class="w-10 h-12 bg-surface-container-lowest border-none rounded-lg text-center font-stats-number text-stats-number text-tertiary focus:ring-1 focus:ring-tertiary" type="number" value="2"/>
+<span class="text-on-surface-variant font-stats-number">-</span>
+<input class="w-10 h-12 bg-surface-container-lowest border-none rounded-lg text-center font-stats-number text-stats-number text-tertiary focus:ring-1 focus:ring-tertiary" type="number" value="1"/>
+</div>
+<div class="flex flex-col items-center gap-2 w-1/3">
+<img alt="Colombia Flag" class="w-12 h-12 rounded-full shadow-lg" data-alt="A vivid, circular 3D graphic of the Colombian flag, featuring bright yellow, blue, and red segments with a metallic sheen. The lighting is designed for a premium dark-themed UI, using soft glows and deep shadows to create depth. The style is modern, energetic, and clean, suitable for a global football competition app." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDkVIeNsdRgY3g2glFtbzgchNNCldbkLmOfFOPIlMeNWAZRN2OXvYg_oiHLRii6v2ec1KPyPZoYyOeG7fuBaePT_9YWSc-EzhhuIHApzy6ovICFFG93gCQyWNn8iBo3NuGyEQoJxa3KZOksF_8DWooCIWsB343g9Bt1HE6kvHZqXygcKoDzyex29POWioRe0L30eHGIT-3fYotQLulDw1DckRS8OkeWTjAJTvyKbjc0_WECpqjgc648MfrILhHTcIL4kCMSAtAuZ9ve"/>
+<span class="font-label-md text-label-md text-center">Colombia</span>
+</div>
+</div>
+</div>
+<!-- Match Card 2: Missing -->
+<div class="glass-card rounded-xl p-4 space-y-4">
+<div class="flex justify-between items-center text-xs text-on-surface-variant uppercase tracking-widest font-bold">
+<span>Jun 12, 15:00</span>
+<span class="flex items-center gap-1 text-secondary">
+<span class="material-symbols-outlined text-[14px]">error</span>
+                        Missing
+                    </span>
+</div>
+<div class="flex items-center justify-between">
+<div class="flex flex-col items-center gap-2 w-1/3">
+<img alt="Germany Flag" class="w-12 h-12 rounded-full shadow-lg" data-alt="A premium 3D rendered circular icon of the German flag with black, red, and gold stripes. The icon features a glass-like finish with subtle light reflections. It is positioned against a dark slate background, maintaining a high-contrast and professional sports data visualization aesthetic. Lighting is sharp and focused." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAnsL1X0S7vJwKWD8jxNGc2APKVRLHA4xvg41IUsvlkqq8Tspum8Cg5E_AsHjhCi4bwZCwHQWC-sI48kT0i-M7FoODbHk03Yfm6ebRDr76zMJiJBujPlYdBG1DwkqK8gWa_NXBZ19ubz_zkwrYURW9PJ4Zg1jQgRtlgd9EG_vg4kw5Tl-GJLhBzPicTMtCjclfF3pkPWfvQCWRkYd3LBLLqqGYa-DRoHyujv9LQ2Y1gb2nxuKdNt666AOoV88khY0PX8vWp_zY9fC1s"/>
+<span class="font-label-md text-label-md text-center">Germany</span>
+</div>
+<div class="flex items-center gap-3 w-1/3 justify-center">
+<input class="w-10 h-12 bg-surface-container-lowest border border-outline-variant/30 rounded-lg text-center font-stats-number text-stats-number text-on-surface-variant focus:ring-1 focus:ring-secondary" placeholder="0" type="number"/>
+<span class="text-on-surface-variant font-stats-number">-</span>
+<input class="w-10 h-12 bg-surface-container-lowest border border-outline-variant/30 rounded-lg text-center font-stats-number text-stats-number text-on-surface-variant focus:ring-1 focus:ring-secondary" placeholder="0" type="number"/>
+</div>
+<div class="flex flex-col items-center gap-2 w-1/3">
+<img alt="Australia Flag" class="w-12 h-12 rounded-full shadow-lg" data-alt="A circular Australian flag icon rendered in high-fidelity 3D with a subtle metallic texture. The deep blue, stars, and Union Jack are clear and vibrant. The object is lit by a high-tech studio light setup, creating a prestigious and competitive atmosphere. It sits perfectly within a dark-mode UI environment." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDV4OoNPfhCb-NZzlnEJmN0LeJHg5uBSkqbkRJ3qNryVbee0NEEmpx769pUherxSNjchGhzlOKBPCYHablkM9zesGwnjF_cUU-N4NbppPR5zC69kD9dO4z0wn2rOfaQg1okjBc2dPH67Wqr59XZCGvDUUwkaIrK6ZbHDJefHUetoEz1drjk3wHXlpCH4TegE52OBr74JAW5GeARXUOLRrDjK6pqFKNhZmDylQDSmTpbrWhQ4qWlNja59rGsZcTJllet3OLXu8EtQCsa"/>
+<span class="font-label-md text-label-md text-center">Australia</span>
+</div>
+</div>
+</div>
+<!-- Match Card 3: Locked -->
+<div class="bg-surface-container-low opacity-60 grayscale rounded-xl p-4 space-y-4 relative overflow-hidden">
+<div class="absolute inset-0 flex items-center justify-center z-10 pointer-events-none">
+<span class="material-symbols-outlined text-4xl text-on-surface-variant/20">lock</span>
+</div>
+<div class="flex justify-between items-center text-xs text-error uppercase tracking-widest font-bold">
+<span class="flex items-center gap-1">
+<span class="w-2 h-2 rounded-full bg-error animate-pulse"></span>
+                        Starts in 4m
+                    </span>
+<span>Locked</span>
+</div>
+<div class="flex items-center justify-between">
+<div class="flex flex-col items-center gap-2 w-1/3">
+<img alt="South Africa Flag" class="w-12 h-12 rounded-full shadow-lg" data-alt="A circular South African flag rendered with high-energy colors and a professional 3D finish. The lighting is dramatic and moody, reflecting an elite sport war-room aesthetic. The icon has a premium feel with light glints and sharp edges, contrasting against the dark navy and slate background of the app." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBpvhRTJhQ0FDPFFbZgXJgPyspuUCcxwzx984BWHR101LhMjVmBSSbMF-nzehvKUTey8rK490IctowcHTUJpbyPXmTJ2eIksGSU9UygrQLJrI-kvV56EqvLnlbzG2Whg7TGUPYiWcKNjNu7utMqH181caUKJC6nKhEpW7KBE7lz61iIw8QmCJDDLon0ns0JeKzCcAm8mgabTNlPrWmFgLGIXW33hu3pUlKSruIORmAwB0kI-vQUu2LcM766girlzdEuvN4ES5_zROnk"/>
+<span class="font-label-md text-label-md text-center">South Africa</span>
+</div>
+<div class="flex items-center gap-3 w-1/3 justify-center">
+<div class="w-10 h-12 bg-surface-container-highest rounded-lg flex items-center justify-center font-stats-number text-stats-number text-on-surface-variant">1</div>
+<span class="text-on-surface-variant font-stats-number">-</span>
+<div class="w-10 h-12 bg-surface-container-highest rounded-lg flex items-center justify-center font-stats-number text-stats-number text-on-surface-variant">1</div>
+</div>
+<div class="flex flex-col items-center gap-2 w-1/3">
+<img alt="Japan Flag" class="w-12 h-12 rounded-full shadow-lg" data-alt="A clean, minimalist 3D circular icon of the Japanese flag. The central red sun has a subtle velvet texture while the white field has a soft satin finish. The lighting is balanced and professional, creating a sense of prestige and quality. Perfectly integrated for a high-density sports data visualization screen." src="https://lh3.googleusercontent.com/aida-public/AB6AXuABafcFTUJSJpTHTkGZeU6SzApJ7-Fqv8Ns4UeYIGdzT-rxkzsMRu06_4wQ2MoP66IW0QtpYJtdvt24yInNHT5zAEcSUIBBZv3eLHb2QVwqDyosRTOlzN98_eSVmtFg07MxJUqqHgC2jNIMlxP1PPp7x3DdD6YgnsEDE8tqR93UP0u2yHf7t3Rdr4GKocvv3yHFInM7COKgqpzMhrJENbKNveEPHKjoZocxrQMCm-ctR70S8pDMT7fVsrUTrE7lkK2jyFAV_WyD6nRX"/>
+<span class="font-label-md text-label-md text-center">Japan</span>
+</div>
+</div>
+</div>
+</section>
+<!-- Predicted Standings -->
+<section class="space-y-4">
+<h2 class="font-headline-md text-headline-md text-on-surface">Predicted Standings</h2>
+<div class="glass-card rounded-xl overflow-hidden">
+<table class="w-full text-left border-collapse">
+<thead>
+<tr class="bg-surface-container-highest/50 text-[10px] text-on-surface-variant uppercase tracking-widest font-bold">
+<th class="py-3 px-4">#</th>
+<th class="py-3 px-2">Team</th>
+<th class="py-3 px-2 text-center">PTS</th>
+<th class="py-3 px-2 text-center">GD</th>
+<th class="py-3 px-4 text-right">Qual</th>
+</tr>
+</thead>
+<tbody class="text-sm font-body-md">
+<!-- Rank 1 -->
+<tr class="border-b border-outline-variant/10 bg-surface-container/20">
+<td class="py-4 px-4 font-stats-number text-on-surface">1</td>
+<td class="py-4 px-2">
+<div class="flex items-center gap-2">
+<div class="w-6 h-6 rounded-full bg-tertiary/20 flex items-center justify-center">
+<img alt="USA Small" class="w-full h-full rounded-full" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCuQ3atTmoE79HX3otZKZDXdOAcn-BThnsDXciG4o1il0u6N6AVbToZOI8JJ_yXjcexhgIMXW4Pa42MT2eUE-sKDhXVH23rVhlDf9RVVvyQ0mqvCO_8HyYoEUByNGyboxiHBlYweJesEwAxFLQXZbPImBD1Vtqf5GaH6TSXj6jWK3yYn2VP15fhiwsnCm2E7sSRnRjfJReFivQf9mTPPeH5Nao9DEBnJFCg_N1kD-h4CGfXNbYDbp7zRbddWwnuJ8iKJKGcDQekaJw-"/>
+</div>
+<span class="font-semibold">USA</span>
+</div>
+</td>
+<td class="py-4 px-2 text-center font-stats-number text-tertiary">7</td>
+<td class="py-4 px-2 text-center font-stats-number">+4</td>
+<td class="py-4 px-4 text-right">
+<span class="material-symbols-outlined text-tertiary" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+</td>
+</tr>
+<!-- Rank 2 -->
+<tr class="border-b border-outline-variant/10">
+<td class="py-4 px-4 font-stats-number text-on-surface">2</td>
+<td class="py-4 px-2">
+<div class="flex items-center gap-2">
+<div class="w-6 h-6 rounded-full bg-surface-container-highest flex items-center justify-center">
+<img alt="Germany Small" class="w-full h-full rounded-full" src="https://lh3.googleusercontent.com/aida-public/AB6AXuD1fMvi_PJmsk4DTN5fHE2QhsXem6Sw9_r1fB-jRUMEfaoEy5Xs9_fAzQTxiJ0p3ljeaDrh6pCC91USoG2Ong51m9HhgKaCF-eA5ZVa2qjqvoz7iGU0YcIoTZtJgTGCQb7kP3bBi5LBdszhb0rkJFLqUry9CMIuWeZ3rJwwk-gio3jTbQtzi0uheZtqD9lSYjgPWH_PRyVbFrrTuICSjzahOyxf0hlfP6Tfn5t01l4MQyGh9IhrFj0O5-NLJ3s8ZeSyENAv3c9zH6G-"/>
+</div>
+<span class="font-semibold">Germany</span>
+</div>
+</td>
+<td class="py-4 px-2 text-center font-stats-number text-on-surface">5</td>
+<td class="py-4 px-2 text-center font-stats-number">+2</td>
+<td class="py-4 px-4 text-right">
+<span class="material-symbols-outlined text-tertiary" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+</td>
+</tr>
+<!-- Rank 3 -->
+<tr class="border-b border-outline-variant/10">
+<td class="py-4 px-4 font-stats-number text-on-surface">3</td>
+<td class="py-4 px-2">
+<div class="flex items-center gap-2">
+<div class="w-6 h-6 rounded-full bg-surface-container-highest flex items-center justify-center">
+<img alt="Colombia Small" class="w-full h-full rounded-full" src="https://lh3.googleusercontent.com/aida-public/AB6AXuA-clKvEbxkz1wil9G88rnEAYkz6zei_mLXAJXe99lwkUhewdYbCAEveDJhjzaXvfjc6xJhk4lSKg-ZApgKmIaUXBWNZjMTRZhyvLbDA_8zL2FpPekAPUq0L9bUSzlGRN99vzg0r8NkjqC4CznqrRSC_WPATbP6j-TrTHECYmarqZnV9dtfUO7iMNVzSKwpM9qg7UB5IHAlg9k33_yXVMmWaXasyn94j33aVdPKQ_GL3BH7jTW6JFBOZYNbJqkrra2g8jtKIUry0vef"/>
+</div>
+<span class="font-semibold">Colombia</span>
+</div>
+</td>
+<td class="py-4 px-2 text-center font-stats-number text-on-surface">2</td>
+<td class="py-4 px-2 text-center font-stats-number">-1</td>
+<td class="py-4 px-4 text-right">
+<span class="material-symbols-outlined text-on-surface-variant">radio_button_unchecked</span>
+</td>
+</tr>
+<!-- Rank 4 -->
+<tr class="border-b border-outline-variant/10">
+<td class="py-4 px-4 font-stats-number text-on-surface">4</td>
+<td class="py-4 px-2">
+<div class="flex items-center gap-2">
+<div class="w-6 h-6 rounded-full bg-surface-container-highest flex items-center justify-center">
+<img alt="Australia Small" class="w-full h-full rounded-full" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBjmIGfiYXcFaRbVyXIGlD1jIIm4X_QRO1Yy5qLA0aJoCm6Rx55nJ_TamFVFlfUXmtHiwJ0wweD_77wJdbFFsn8h-tTQzBGDyfqkjLwZmOT6sPzWEVtQ7EvQH7I8tGWwWMQsOwT7KB9AdcU2ee9NhW3R2hnlLFp7KW67KyIuLwOIx8xgeO30UJQNNaTtEkZY3BI2u4otYT5Qdgc37Elxs1-EvMMe1sL5xjN1MoS2be2jZGUVXepHwyrfLnaJQKcunKWRAXsVFGG9dgL"/>
+</div>
+<span class="font-semibold">Australia</span>
+</div>
+</td>
+<td class="py-4 px-2 text-center font-stats-number text-on-surface">1</td>
+<td class="py-4 px-2 text-center font-stats-number">-5</td>
+<td class="py-4 px-4 text-right">
+<span class="material-symbols-outlined text-on-surface-variant">radio_button_unchecked</span>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
+<!-- CTA Section -->
+<section class="pb-8">
+<button class="w-full bg-tertiary text-on-tertiary py-4 rounded-xl font-headline-md text-headline-md flex items-center justify-center gap-2 shadow-lg shadow-tertiary/20 active:scale-95 transition-transform duration-150">
+                Confirm Qualifiers
+                <span class="material-symbols-outlined">arrow_forward</span>
+</button>
+<p class="text-center mt-3 text-on-surface-variant text-label-md font-label-md">Proceed to Round of 32 Bracket</p>
+</section>
+</main>
+<!-- BottomNavBar -->
+<nav class="fixed bottom-0 w-full z-50 bg-surface-container-highest/90 backdrop-blur-lg border-t border-outline-variant/10 rounded-t-xl h-20 flex justify-around items-center px-gutter-xs pb-safe">
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:text-on-surface transition-all active:scale-90 duration-200" href="#">
+<span class="material-symbols-outlined" data-icon="dashboard">dashboard</span>
+<span class="font-label-md text-label-md">Home</span>
+</a>
+<a class="flex flex-col items-center justify-center bg-tertiary-container text-on-tertiary-container rounded-full px-4 py-1 active:scale-90 duration-200" href="#">
+<span class="material-symbols-outlined" data-icon="sports_soccer">sports_soccer</span>
+<span class="font-label-md text-label-md">Fixtures</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:text-on-surface transition-all active:scale-90 duration-200" href="#">
+<span class="material-symbols-outlined" data-icon="account_tree">account_tree</span>
+<span class="font-label-md text-label-md">Bracket</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:text-on-surface transition-all active:scale-90 duration-200" href="#">
+<span class="material-symbols-outlined" data-icon="leaderboard">leaderboard</span>
+<span class="font-label-md text-label-md">Rank</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:text-on-surface transition-all active:scale-90 duration-200" href="#">
+<span class="material-symbols-outlined" data-icon="menu">menu</span>
+<span class="font-label-md text-label-md">More</span>
+</a>
+</nav>
+<!-- Floating Action Button (Suppressed per instructions for Details/Transactional screens, but showing logic if needed) -->
+<!-- Not rendered as this is a specific focused 'My Predictions' journey -->
+<script>
+        // Simple Interaction logic
+        document.querySelectorAll('input[type="number"]').forEach(input => {
+            input.addEventListener('change', function() {
+                const card = this.closest('.glass-card');
+                if (card) {
+                    card.classList.add('glow-border-lime');
+                    const statusText = card.querySelector('.text-secondary, .text-tertiary');
+                    if (statusText) {
+                        statusText.innerHTML = '<span class="material-symbols-outlined text-[14px]" style="font-variation-settings: \'FILL\' 1;">check_circle</span> Saved';
+                        statusText.classList.remove('text-secondary');
+                        statusText.classList.add('text-tertiary');
+                    }
+                }
+            });
+        });
+    </script>
+</body></html>

@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>WC2026 - Round Predictions</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;800&amp;family=Inter:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "primary-container": "#0f172a",
+                        "on-surface-variant": "#c6c6cd",
+                        "surface-container-lowest": "#040e1f",
+                        "primary-fixed-dim": "#bec6e0",
+                        "tertiary-fixed-dim": "#91db2a",
+                        "on-primary-fixed": "#131b2e",
+                        "surface-variant": "#2a3548",
+                        "on-surface": "#d8e3fb",
+                        "surface-tint": "#bec6e0",
+                        "inverse-on-surface": "#263143",
+                        "surface-container": "#152031",
+                        "error": "#ffb4ab",
+                        "secondary": "#ffb95f",
+                        "surface-dim": "#081425",
+                        "on-secondary": "#472a00",
+                        "surface-container-low": "#111c2d",
+                        "inverse-primary": "#565e74",
+                        "primary": "#bec6e0",
+                        "on-tertiary-fixed-variant": "#304f00",
+                        "inverse-surface": "#d8e3fb",
+                        "error-container": "#93000a",
+                        "on-error": "#690005",
+                        "surface-bright": "#2f3a4c",
+                        "on-primary-fixed-variant": "#3f465c",
+                        "secondary-container": "#ee9800",
+                        "secondary-fixed-dim": "#ffb95f",
+                        "surface-container-high": "#1f2a3c",
+                        "outline": "#909097",
+                        "on-tertiary": "#1f3700",
+                        "on-secondary-container": "#5b3800",
+                        "on-primary": "#283044",
+                        "surface": "#081425",
+                        "on-tertiary-container": "#598f00",
+                        "tertiary": "#91db2a",
+                        "on-tertiary-fixed": "#102000",
+                        "primary-fixed": "#dae2fd",
+                        "on-secondary-fixed": "#2a1700",
+                        "outline-variant": "#45464d",
+                        "on-error-container": "#ffdad6",
+                        "tertiary-container": "#0d1b00",
+                        "surface-container-highest": "#2a3548",
+                        "on-primary-container": "#798098",
+                        "secondary-fixed": "#ffddb8",
+                        "on-secondary-fixed-variant": "#653e00",
+                        "on-background": "#d8e3fb",
+                        "tertiary-fixed": "#acf847",
+                        "background": "#081425"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "base": "4px",
+                        "gutter-xs": "8px",
+                        "margin-sm": "16px",
+                        "gutter-md": "16px",
+                        "margin-lg": "32px",
+                        "max-width": "1280px"
+                    },
+                    "fontFamily": {
+                        "headline-md": ["Montserrat"],
+                        "display-lg": ["Montserrat"],
+                        "body-md": ["Inter"],
+                        "headline-lg-mobile": ["Montserrat"],
+                        "body-lg": ["Inter"],
+                        "stats-number": ["Montserrat"],
+                        "headline-lg": ["Montserrat"],
+                        "label-md": ["Inter"]
+                    },
+                    "fontSize": {
+                        "headline-md": ["20px", {"lineHeight": "28px", "fontWeight": "600"}],
+                        "display-lg": ["48px", {"lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "800"}],
+                        "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                        "headline-lg-mobile": ["24px", {"lineHeight": "32px", "fontWeight": "700"}],
+                        "body-lg": ["18px", {"lineHeight": "28px", "fontWeight": "400"}],
+                        "stats-number": ["24px", {"lineHeight": "24px", "fontWeight": "800"}],
+                        "headline-lg": ["32px", {"lineHeight": "40px", "fontWeight": "700"}],
+                        "label-md": ["14px", {"lineHeight": "20px", "letterSpacing": "0.05em", "fontWeight": "600"}]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        .glass-card {
+            background: rgba(30, 41, 59, 0.7);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .glow-lime {
+            box-shadow: 0 0 15px rgba(132, 204, 22, 0.3);
+            border-color: #84CC16;
+        }
+        .glow-gold {
+            box-shadow: 0 0 15px rgba(255, 185, 95, 0.2);
+            border-color: #ffb95f;
+        }
+        .pulse-red {
+            animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: .5; }
+        }
+        .hide-scrollbar::-webkit-scrollbar { display: none; }
+        .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background text-on-surface font-body-md selection:bg-tertiary selection:text-on-tertiary">
+<!-- TopAppBar -->
+<header class="fixed top-0 w-full z-50 bg-surface-container/80 border-b border-outline-variant/20 backdrop-blur-md shadow-sm h-16 flex justify-between items-center px-margin-sm">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-full overflow-hidden border-2 border-primary/20">
+<img alt="User Profile" class="w-full h-full object-cover" data-alt="A professional close-up studio portrait of a young sports fan with subtle dramatic lighting. The background is a dark, high-tech digital environment with glowing blue and lime accents, matching the elite tournament pulse aesthetic of the World Cup app." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDpTvBpzZz7GLoXb0wWeiYv1C2Efw--XPJ0XfapBu7exzIj3AjSn_DJviTq8ZccXz5Et4LbOYY2Z96848r6rHrw8Wycx2lCmIpaWS3XskxiJG5qgltswkwe6Qr9aykJk9H8TEwZ2wAh_tWwewGR7FZZEY5xWY_Lug8g3NK5p0XN9l_nN8RuWdbYrKrwt2c5kdfNwtYfHNvJjb6WSmnpAquAXijQXogJS0hM2xjKEFRCjdAgH5bkrijVNnBAq1-eb4564teL7wtY-kfR"/>
+</div>
+<h1 class="font-headline-md text-headline-md text-primary tracking-tight">Round Predictions</h1>
+</div>
+<button class="material-symbols-outlined text-on-surface-variant hover:bg-surface-bright transition-colors p-2 rounded-full active:scale-95 duration-150">notifications</button>
+</header>
+<main class="pt-20 pb-24 px-margin-sm space-y-6">
+<!-- Stage Selector -->
+<section class="overflow-x-auto hide-scrollbar -mx-margin-sm px-margin-sm">
+<div class="flex gap-3 min-w-max">
+<button class="px-6 py-2 rounded-full bg-tertiary text-on-tertiary font-label-md text-label-md glow-lime">R32</button>
+<button class="px-6 py-2 rounded-full bg-surface-container-high text-on-surface-variant font-label-md text-label-md hover:bg-surface-bright border border-outline-variant/30">R16</button>
+<button class="px-6 py-2 rounded-full bg-surface-container-high text-on-surface-variant font-label-md text-label-md hover:bg-surface-bright border border-outline-variant/30">QF</button>
+<button class="px-6 py-2 rounded-full bg-surface-container-high text-on-surface-variant font-label-md text-label-md hover:bg-surface-bright border border-outline-variant/30">SF</button>
+<button class="px-6 py-2 rounded-full bg-surface-container-high text-on-surface-variant font-label-md text-label-md hover:bg-surface-bright border border-outline-variant/30">Final</button>
+</div>
+</section>
+<!-- Global Consensus Bento -->
+<section class="space-y-3">
+<div class="flex items-center justify-between">
+<h2 class="font-headline-lg-mobile text-headline-lg-mobile text-primary">Global Consensus</h2>
+<span class="text-xs font-label-md text-secondary uppercase tracking-widest">Knockout Insights</span>
+</div>
+<div class="grid grid-cols-2 gap-3">
+<div class="glass-card p-4 rounded-xl flex flex-col items-center justify-center space-y-2 border-l-4 border-tertiary">
+<img alt="Brazil" class="w-12 h-12 rounded-full shadow-lg" data-alt="A high-resolution, stylized circular 3D icon of the Brazilian national flag, featuring a vibrant green and yellow color palette with a glossy finish. The icon is set against a dark navy background with subtle light streaks, conveying a premium and competitive sports atmosphere." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBWSX8wQ6Ix-ckhHT3hu888TSA50dNEcLYLSjK4rS7_iTtWG_mpXuqH0MpQpJJlOfFJ83KJWarV2bKw8fIT661Hy7AHpEFfDm-FulBU2DASBtn9p_DMihcNWAJdZpM_1oelvTg1dDyoy2aBPa1ymqcPsv5DqhPVzyK3wJNOcQCJNhiwWIrAR25Apg0GwzEtie97ojZknBXw1sGB2Q5Rj1fHo4xiL8mNP6dt2Cd3wb0tZfmTC34GAoaiIaMafGfiQKRanBc0ph2K_EsW"/>
+<span class="font-bold text-lg">Brazil</span>
+<span class="font-stats-number text-stats-number text-tertiary">95%</span>
+</div>
+<div class="glass-card p-4 rounded-xl flex flex-col items-center justify-center space-y-2 border-l-4 border-primary">
+<img alt="France" class="w-12 h-12 rounded-full shadow-lg" data-alt="A high-resolution, stylized circular 3D icon of the French national flag, featuring a deep blue, white, and red color palette with a metallic sheen. The icon is presented in a high-tech sports interface style with dark backgrounds and glowing ambient lighting." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAni_ykPA-a7REVGJVoQ5u_wUlnEo0AOtco90b-UOUdD3C3dP4YTRTrCWgrakwcv4alqh3rs15-4XvSeBK9_HmjW4YbXQDPXhKLj_TXuP5J4XWHNK7i2TYIzWawuIY0cE_SFuuL6ffjLfqIfF1Vtesp_QzMSwdOpe1XXDryAtzaa_bKo1ItOvTChpxyXDihEc3luy2ynkOrZJGAwaiuK6i3FIQQARTdYdtqdzplEOqWux29PoUuSrxYMiMy9Ips7YujOvgo_XLs2I1N"/>
+<span class="font-bold text-lg">France</span>
+<span class="font-stats-number text-stats-number text-primary">88%</span>
+</div>
+</div>
+</section>
+<!-- Visibility Lock Note -->
+<div class="bg-primary-container/40 border border-primary/20 p-4 rounded-xl flex gap-3 items-start">
+<span class="material-symbols-outlined text-secondary" style="font-variation-settings: 'FILL' 1;">lock</span>
+<p class="text-sm text-on-surface-variant leading-relaxed">
+                Strategic elements of some picks are hidden until <span class="text-secondary font-bold">1 hour</span> before Match 1 to maintain competition integrity.
+            </p>
+</div>
+<!-- Players List -->
+<section class="space-y-4">
+<h2 class="font-headline-lg-mobile text-headline-lg-mobile text-primary">Live Players</h2>
+<div class="space-y-3">
+<!-- Player Row (Expanded Simulation) -->
+<div class="glass-card rounded-xl overflow-hidden border-2 border-tertiary/40">
+<div class="p-4 flex items-center justify-between bg-surface-container-high/50">
+<div class="flex items-center gap-3">
+<div class="w-12 h-12 rounded-full border-2 border-tertiary overflow-hidden">
+<img alt="Alex Smith" class="w-full h-full object-cover" data-alt="A detailed digital avatar portrait of a competitive gamer, Alex Smith, wearing professional esports apparel. The lighting is high-contrast with lime green rim light and deep slate shadows, set against a blurred background of a modern sports stadium at night." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCuZLgA3WhX7BaRsYcqHKSnp1oleqL-l8HVSqEdiwuvOoBnLC8zi5gO2KePipuskkH_9XH6-cPEH4h20q7rDWR5CNfXEte0MrZJ8husmE2jGSYtvMKeEn5Y1qvvuatREGuDxmJ7FdoFdtfkKwjKrO-zsl1heoI0qrf1ifb8hx5zMDMpF4b876i23vYn2kMkEnu6VDxwaHr5yAvbiywJqE1Sn730YzqDrqXa5n_LaXdylK-PS_NZlOWomrtPJxfWPCkXGM5coVWplf3x"/>
+</div>
+<div>
+<h3 class="font-bold text-on-surface">Alex Smith</h3>
+<span class="text-xs text-tertiary font-label-md">Rank: #14 • 1,240 pts</span>
+</div>
+</div>
+<div class="text-right">
+<span class="text-[10px] uppercase font-bold text-on-surface-variant block">Status</span>
+<span class="text-sm font-bold text-on-surface">14/16 Revealable</span>
+</div>
+</div>
+<!-- Expanded Content (Simulated) -->
+<div class="p-4 bg-surface-container-lowest/50">
+<div class="grid grid-cols-4 gap-2">
+<div class="flex flex-col items-center p-2 rounded bg-surface-variant/30 border border-outline-variant/20">
+<img alt="Argentina" class="w-8 h-8 rounded-full mb-1" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBFo1toPBx5nNALjdb8BYDGCJ-OPUW4-3xyey61Dfw3cjiKudEfUQD-zKjFGi5lL1XJZsOtmEqcGESwysXp9qGd-2cx_2Q0unqE9iqNz0u5OS7jxKELu7sA3LuJC6BXlv1Qt4ldSaccc9EQzebXfrXOJvsn7cPDlwPf510xj8hySUpo47CVr0-Dpii_NjvcmORBWU3owid4jcckyCbZOL3lYHtzLE3tDlvuuyMXC7x3JJ-lBXqWx1ZDNKvgat6cjdgyiyxNtx5IE5Ac"/>
+<span class="text-[8px] font-bold uppercase">ARG</span>
+</div>
+<div class="flex flex-col items-center p-2 rounded bg-surface-variant/30 border border-outline-variant/20">
+<img alt="England" class="w-8 h-8 rounded-full mb-1" src="https://lh3.googleusercontent.com/aida-public/AB6AXuB4bdGiQs4rXqPKvoWuU29F48JmW8iva1LF0wgBkLIzwC3sr6XTU7MKSky0L7oO9WEq71nDXDnsmCZMbqDucA1lhpjRYqy_QoorSH3ehVHBIAWY6NI0RsilkD0M52THWwT5F3GJA23FutOS2NqMdueAoLMiR-3Szgh1VT3NGVsyG7P9g1NJwedpHA4TV-dXyJolWGA5cd4hk-1NhnXhSsJVC5TQizQBATCDunX_-1CRTPeiTt4VFjBxfWeR0cBWaJJiAT8Ycr9lesOY"/>
+<span class="text-[8px] font-bold uppercase">ENG</span>
+</div>
+<div class="flex flex-col items-center p-2 rounded bg-surface-variant/30 border border-outline-variant/20">
+<img alt="Spain" class="w-8 h-8 rounded-full mb-1" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAbpG0rXDhHkiIlDCsOUsGVEAizJic5Y6gLnknOi5SUpeU5q-kOBt09t9lkGZDnHJTARfiRLd05t4oV3DTnPUwm60f94YeSxkvpjAgPkQsqAMYXPHEGUBrOmd2e378SJh-tI2qZsWY24Za0LagtQM-92z-Ys_Be314dxA2KWVsZ19NO7F1IGd_r5rTO58MA4iF-pAHRURjxI-ArPU6q-4F2CpDG8t4YL-mPwcPoIIcX8snWFadCztEtUp1rYjysJe6zGH0EVoO1for6"/>
+<span class="text-[8px] font-bold uppercase">ESP</span>
+</div>
+<div class="flex flex-col items-center p-2 rounded bg-surface-container-high relative overflow-hidden group">
+<span class="material-symbols-outlined text-secondary/40 text-lg">lock</span>
+<span class="text-[8px] font-bold uppercase opacity-40">HIDDEN</span>
+</div>
+<!-- More placeholder items -->
+<div class="flex flex-col items-center p-2 rounded bg-surface-variant/30 border border-outline-variant/20">
+<img alt="Portugal" class="w-8 h-8 rounded-full mb-1" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDb4A4kYGguqZlGmq7imCOtlpkakf9pec43689ZddSpsSMawyS6PSFSBnyVmmuuZLOfRyu7hPC7BPZ9d3sLD8pfwwEW7udPSZCD9a6xSQwujZaiOgis0R9_P7yQPxeqfEUKyulxcQReADY4funJPfAvVV2F8GlsG0o1D1LhtQItJbwKPYaNZ56hk2Mqe8Hr7heB7E0wZBDeeRlb8A2g7H6zZkaNyQ27-4tVfj7q0JBpYg6eBX_U8c2Tb4fHlaaD4Zcl9bWHTPiOXFYW"/>
+<span class="text-[8px] font-bold uppercase">POR</span>
+</div>
+<div class="flex flex-col items-center p-2 rounded bg-surface-variant/30 border border-outline-variant/20">
+<img alt="Netherlands" class="w-8 h-8 rounded-full mb-1" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDwEqVl2YWgPAhymAdwyGowgo0RUYGBzEKhq-N1_-TdCQTZtHZLMGuOs42o7mr5R1HXMfp2PF1yA2rFYHZWC0Q6EPgnLAG5nOwNrreZz88X2rWLnAJPtPyyoQRQ36fb7iIeB_55Fu2TN9ZmKO-ha_fQTBRaBOJnJ3uz_8GtGE89FRokF43x9jr806I9Lr7Y0DiuYZHAs9X5LQC2v6JvRUF9kM_AZ28yr2-RRXsxK1saouiM6Wu-ewTDRPNcZ2GEPSwZCpppFGuCGIs6"/>
+<span class="text-[8px] font-bold uppercase">NED</span>
+</div>
+<div class="flex flex-col items-center p-2 rounded bg-surface-variant/30 border border-outline-variant/20">
+<img alt="Germany" class="w-8 h-8 rounded-full mb-1" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAb33RrO78bDwTLhcX9ZRDLotXJP8e7urEeOzfxfz4X8dPvcaJPgwFcU1dcexQ_3w-1VN1nB6yIViwQmSUUmDyhQ09OQCgw5RkW3FucFowslkCoP08m11awZVc9X-gNVpaksKge5Q4Dxnqn8xfp4_1nwG-C15CemRnjHt-cJMxg7yUSrIZgLVZaLunFua8iy94rK7fBIvmkYe1djCfoMIx9NsmutaVDBgy5V7N3NOCl5qk27I0p0qYZBW4VNYNgZsZMR2EKibBey3N9"/>
+<span class="text-[8px] font-bold uppercase">GER</span>
+</div>
+<div class="flex flex-col items-center p-2 rounded bg-surface-variant/30 border border-outline-variant/20">
+<img alt="Belgium" class="w-8 h-8 rounded-full mb-1" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAN2I9vrco_uhv05Z9zA3ZSZS9K64Vz5jO_DuwrPjVLyNNDkA_TGSlVaYZ3GBJmfPqU__Mpe8qqpWDlDHp5cxgioc7Nidxtt5h1_N614S1jlCfqRGQyHEKv3ZoEFNJGaJQ0G_gJhOQ4c35CplwMDPhl9eNrbYMn1Dz23kmYSoAWFBmxbFYcSuGLpEYOJdHdQ-nRUer2kpSeV-7lELFz3pc95z68s2bJZeAWYdE9zrrEJ12sM0cmh560FQZUxUShallaupeXSXHhUuoi"/>
+<span class="text-[8px] font-bold uppercase">BEL</span>
+</div>
+</div>
+<button class="w-full mt-4 py-2 bg-tertiary text-on-tertiary font-bold rounded-lg text-sm active:scale-95 transition-transform">Compare with My Picks</button>
+</div>
+</div>
+<!-- Player Row 2 (Collapsed) -->
+<div class="glass-card p-4 rounded-xl flex items-center justify-between border-l-4 border-transparent hover:border-secondary transition-all">
+<div class="flex items-center gap-3">
+<div class="w-12 h-12 rounded-full border border-outline-variant/30 overflow-hidden">
+<img alt="Marcus Lowe" class="w-full h-full object-cover" data-alt="A portrait of a male football enthusiast with an intense gaze, wearing a dark hoodie. The lighting is cold with blue and gold accents reflecting off his features, set against a background of glowing digital data charts and World Cup branding in a sleek, high-contrast dark theme." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAivqoV3QbAxd8x8rJhgvZp_9TM77zSjYxj1R4mUlk0Z9sMXVeMu1aHv15FlvxqQ9E6slYI4MGGhoeicmKHjecFvzzNy1gebSay15qvcq83SkgwgxXYYjMJI_I3ucABbk-8hx7B5LZRQlDWf7kAkbIs0ohxIHX0jV4TcC4MeJNDLwCjFQcsFfmK1J89MEcezXCYY8JYYnOWdxef1ECD9TCay32birSnglo3TkWDmniPp6tm0_1FicsyaSiEj7UE06Iel29q4QC0ylAp"/>
+</div>
+<div>
+<h3 class="font-bold text-on-surface">Marcus Lowe</h3>
+<span class="text-xs text-on-surface-variant font-label-md">Rank: #82 • 980 pts</span>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<span class="text-sm font-bold text-on-surface">12/16 Revealable</span>
+<span class="material-symbols-outlined text-on-surface-variant">chevron_right</span>
+</div>
+</div>
+<!-- Player Row 3 (Collapsed) -->
+<div class="glass-card p-4 rounded-xl flex items-center justify-between border-l-4 border-transparent hover:border-secondary transition-all">
+<div class="flex items-center gap-3">
+<div class="w-12 h-12 rounded-full border border-outline-variant/30 overflow-hidden">
+<img alt="Sarah Dane" class="w-full h-full object-cover" data-alt="A portrait of a professional-looking woman with a confident smile, wearing a modern tech-integrated sports jacket. The lighting is warm with gold highlights against a deep navy background, conveying a sense of prestige and peak performance in a sports analytics context." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBuMfsKrQpg9khfXEtTtwDBQC9LfvW7eG8TK4znFX8ngLbVDDyc0WUGf7kda31ybLXpqBkHmGa_FCgeD8kI6QMThgx3McSVPuvDp9hUhXNO_5o1g8ICQfG7zbKdpFC7tMDV_JlRMIYu_nhF5Qf0IpFS9-W7IUxiIYfHJqGRT6T9Wt0AO4CoG6bUMsPnAg0EyxR8lUa2z6sfvfB6B3T5rlQkO5YF7CrWDDvKMW6-JqYSqeeBPAN_J1ge2p6YvnlkWAzDaYUmuDCBKGye"/>
+</div>
+<div>
+<h3 class="font-bold text-on-surface">Sarah Dane</h3>
+<span class="text-xs text-on-surface-variant font-label-md">Rank: #205 • 845 pts</span>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<span class="text-sm font-bold text-on-surface">16/16 Revealable</span>
+<span class="material-symbols-outlined text-on-surface-variant">chevron_right</span>
+</div>
+</div>
+</div>
+</section>
+</main>
+<!-- BottomNavBar -->
+<nav class="fixed bottom-0 w-full z-50 bg-surface-container-highest/90 rounded-t-xl border-t border-outline-variant/10 backdrop-blur-lg shadow-lg h-20 pb-safe px-gutter-xs flex justify-around items-center">
+<button class="flex flex-col items-center justify-center text-on-surface-variant hover:text-on-surface transition-all active:scale-90 duration-200">
+<span class="material-symbols-outlined">dashboard</span>
+<span class="font-label-md text-label-md">Home</span>
+</button>
+<button class="flex flex-col items-center justify-center text-on-surface-variant hover:text-on-surface transition-all active:scale-90 duration-200">
+<span class="material-symbols-outlined">sports_soccer</span>
+<span class="font-label-md text-label-md">Fixtures</span>
+</button>
+<button class="flex flex-col items-center justify-center bg-tertiary-container text-on-tertiary-container rounded-full px-4 py-1 active:scale-90 duration-200">
+<span class="material-symbols-outlined">account_tree</span>
+<span class="font-label-md text-label-md">Bracket</span>
+</button>
+<button class="flex flex-col items-center justify-center text-on-surface-variant hover:text-on-surface transition-all active:scale-90 duration-200">
+<span class="material-symbols-outlined">leaderboard</span>
+<span class="font-label-md text-label-md">Rank</span>
+</button>
+<button class="flex flex-col items-center justify-center text-on-surface-variant hover:text-on-surface transition-all active:scale-90 duration-200">
+<span class="material-symbols-outlined">menu</span>
+<span class="font-label-md text-label-md">More</span>
+</button>
+</nav>
+<!-- Floating Action Button (Contextual: Prediction Edit) -->
+<button class="fixed bottom-24 right-6 w-14 h-14 bg-secondary rounded-full flex items-center justify-center shadow-2xl active:scale-90 transition-all z-40">
+<span class="material-symbols-outlined text-on-secondary font-bold">edit</span>
+</button>
+<script>
+        // Simple micro-interaction for stage selector
+        const chips = document.querySelectorAll('section div button');
+        chips.forEach(chip => {
+            chip.addEventListener('click', () => {
+                chips.forEach(c => {
+                    c.classList.remove('bg-tertiary', 'text-on-tertiary', 'glow-lime');
+                    c.classList.add('bg-surface-container-high', 'text-on-surface-variant');
+                });
+                chip.classList.remove('bg-surface-container-high', 'text-on-surface-variant');
+                chip.classList.add('bg-tertiary', 'text-on-tertiary', 'glow-lime');
+            });
+        });
+
+        // Add a subtle parallax movement to glass cards on tilt (simulated)
+        document.addEventListener('mousemove', (e) => {
+            const cards = document.querySelectorAll('.glass-card');
+            const x = (window.innerWidth / 2 - e.pageX) / 50;
+            const y = (window.innerHeight / 2 - e.pageY) / 50;
+            
+            cards.forEach(card => {
+                card.style.transform = `rotateY(${x}deg) rotateX(${y}deg)`;
+            });
+        });
+    </script>
+</body></html>

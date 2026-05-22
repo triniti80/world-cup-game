@@ -1,0 +1,20 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1779321457986,
+      "tag": "0000_happy_brother_voodoo",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1779409100000,
+      "tag": "0001_league_modes_bonus_picks",
+      "breakpoints": true
+    }
+  ]
+}

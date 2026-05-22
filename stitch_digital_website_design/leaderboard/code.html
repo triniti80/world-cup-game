@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0, viewport-fit=cover" name="viewport"/>
+<title>WC2026 Leaderboard | Elite Tournament Pulse</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&amp;family=Montserrat:wght@600;700;800&amp;family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .glass-card {
+            background: rgba(30, 41, 59, 0.7);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .glow-lime {
+            box-shadow: 0 0 15px rgba(132, 204, 22, 0.3);
+        }
+        .glow-gold {
+            box-shadow: 0 0 15px rgba(255, 185, 95, 0.3);
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #45464d;
+            border-radius: 10px;
+        }
+        @keyframes pulse-red {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        .animate-pulse-red {
+            animation: pulse-red 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+    </style>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "surface-tint": "#bec6e0",
+                        "on-secondary-fixed-variant": "#653e00",
+                        "outline-variant": "#45464d",
+                        "primary": "#bec6e0",
+                        "error": "#ffb4ab",
+                        "on-tertiary-fixed": "#102000",
+                        "on-error-container": "#ffdad6",
+                        "surface": "#081425",
+                        "inverse-on-surface": "#263143",
+                        "surface-container-high": "#1f2a3c",
+                        "on-primary": "#283044",
+                        "on-secondary": "#472a00",
+                        "on-primary-fixed-variant": "#3f465c",
+                        "surface-container-highest": "#2a3548",
+                        "surface-variant": "#2a3548",
+                        "tertiary-fixed": "#acf847",
+                        "surface-container-lowest": "#040e1f",
+                        "surface-container": "#152031",
+                        "secondary-container": "#ee9800",
+                        "primary-fixed": "#dae2fd",
+                        "tertiary": "#91db2a",
+                        "on-surface": "#d8e3fb",
+                        "on-error": "#690005",
+                        "inverse-surface": "#d8e3fb",
+                        "error-container": "#93000a",
+                        "background": "#081425",
+                        "on-surface-variant": "#c6c6cd",
+                        "on-tertiary-fixed-variant": "#304f00",
+                        "surface-bright": "#2f3a4c",
+                        "on-secondary-fixed": "#2a1700",
+                        "surface-dim": "#081425",
+                        "secondary": "#ffb95f",
+                        "on-secondary-container": "#5b3800",
+                        "primary-container": "#0f172a",
+                        "secondary-fixed-dim": "#ffb95f",
+                        "outline": "#909097",
+                        "on-primary-fixed": "#131b2e",
+                        "on-background": "#d8e3fb",
+                        "inverse-primary": "#565e74",
+                        "secondary-fixed": "#ffddb8",
+                        "tertiary-fixed-dim": "#91db2a",
+                        "on-tertiary": "#1f3700",
+                        "tertiary-container": "#0d1b00",
+                        "on-primary-container": "#798098",
+                        "surface-container-low": "#111c2d",
+                        "on-tertiary-container": "#598f00",
+                        "primary-fixed-dim": "#bec6e0"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "gutter-md": "16px",
+                        "base": "4px",
+                        "gutter-xs": "8px",
+                        "max-width": "1280px",
+                        "margin-sm": "16px",
+                        "margin-lg": "32px"
+                    },
+                    "fontFamily": {
+                        "headline-lg": ["Montserrat"],
+                        "stats-number": ["Montserrat"],
+                        "body-lg": ["Inter"],
+                        "body-md": ["Inter"],
+                        "headline-md": ["Montserrat"],
+                        "headline-lg-mobile": ["Montserrat"],
+                        "display-lg": ["Montserrat"],
+                        "label-md": ["Inter"]
+                    },
+                    "fontSize": {
+                        "headline-lg": ["32px", {"lineHeight": "40px", "fontWeight": "700"}],
+                        "stats-number": ["24px", {"lineHeight": "24px", "fontWeight": "800"}],
+                        "body-lg": ["18px", {"lineHeight": "28px", "fontWeight": "400"}],
+                        "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                        "headline-md": ["20px", {"lineHeight": "28px", "fontWeight": "600"}],
+                        "headline-lg-mobile": ["24px", {"lineHeight": "32px", "fontWeight": "700"}],
+                        "display-lg": ["48px", {"lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "800"}],
+                        "label-md": ["14px", {"lineHeight": "20px", "letterSpacing": "0.05em", "fontWeight": "600"}]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background text-on-surface min-h-screen font-body-md flex flex-col">
+<!-- TopAppBar -->
+<header class="fixed top-0 w-full z-50 bg-surface-container/80 backdrop-blur-md border-b border-outline-variant/20 shadow-sm flex justify-between items-center px-margin-sm h-16">
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 rounded-full overflow-hidden border border-primary/30">
+<img alt="User" class="w-full h-full object-cover" data-alt="A close-up high-resolution profile portrait of a confident sports fan with dramatic studio lighting against a dark navy background. The image is crisp and modern, featuring vibrant lime green and gold subtle bokeh highlights in the background to match the Elite Tournament Pulse aesthetic. Professional photography style with shallow depth of field." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDj7zZRQ3cgbJXY7kcNAPz6zCrwG9D6UVBWGzVRasRTow9MxQM_JEOJ1B01TOt17L_Qm4Q6HiwdLmupTObQeiiOhw6KeG50ppyk9ukGpT_XmKRWUVA3Imuf5iIS4E69tJ2JNGTRR5NJnh6tVYdx2vQ87JEK4QU_vwfENT0w65jQGaZFCoYjjt8Dtseb_T1rSQFOJWMVm5Qt6s1pNG-n-9Jh46_xLKnHbrCCbNTeENCuv0A6wQhKJ9kJ06EmRiajF1VPEevVw74PQI9k"/>
+</div>
+<span class="font-display-lg text-[20px] text-primary tracking-tighter leading-none">WC2026</span>
+</div>
+<button class="material-symbols-outlined text-primary hover:bg-surface-bright transition-colors p-2 rounded-full active:scale-95 duration-150">
+            notifications
+        </button>
+</header>
+<main class="flex-1 mt-16 mb-20 overflow-y-auto custom-scrollbar">
+<!-- User Summary Card (Floating Section) -->
+<section class="p-margin-sm">
+<div class="glass-card rounded-xl p-4 glow-gold border-secondary/20">
+<div class="flex justify-between items-start mb-4">
+<div>
+<p class="font-label-md text-on-surface-variant uppercase tracking-widest text-[10px]">Your Standing</p>
+<h2 class="font-headline-md text-secondary">Elite Rank #14</h2>
+</div>
+<div class="flex items-center gap-1 text-tertiary bg-tertiary-container/30 px-2 py-1 rounded-full">
+<span class="material-symbols-outlined text-[16px]">trending_up</span>
+<span class="font-label-md">+2</span>
+</div>
+</div>
+<div class="grid grid-cols-2 gap-4">
+<div class="bg-surface-container-high p-3 rounded-lg border border-outline-variant/10">
+<p class="font-label-md text-on-surface-variant text-xs">Total Points</p>
+<p class="font-stats-number text-on-surface">1,240</p>
+</div>
+<div class="bg-surface-container-high p-3 rounded-lg border border-outline-variant/10">
+<p class="font-label-md text-on-surface-variant text-xs">Accuracy</p>
+<p class="font-stats-number text-tertiary">68%</p>
+</div>
+</div>
+<div class="mt-4 flex items-center justify-between text-[11px] text-on-surface-variant">
+<span class="flex items-center gap-1">
+<span class="w-2 h-2 rounded-full bg-error animate-pulse-red"></span>
+                        LIVE UPDATE
+                    </span>
+<span>Last updated: 2m ago</span>
+</div>
+</div>
+</section>
+<!-- Search & Filter (Contextual) -->
+<section class="px-margin-sm mb-4">
+<div class="flex gap-2">
+<div class="relative flex-1">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-[20px]">search</span>
+<input class="w-full bg-surface-container-highest border-none rounded-lg pl-10 text-sm focus:ring-1 focus:ring-tertiary py-2.5" placeholder="Search rivals..." type="text"/>
+</div>
+<button class="bg-surface-container-highest p-2.5 rounded-lg text-on-surface-variant">
+<span class="material-symbols-outlined">filter_list</span>
+</button>
+</div>
+</section>
+<!-- Global Leaderboard List -->
+<section class="px-margin-sm pb-8">
+<div class="flex justify-between items-center mb-3">
+<h3 class="font-headline-md text-on-surface text-base">Global Leaderboard</h3>
+<span class="font-label-md text-tertiary text-xs">View My League</span>
+</div>
+<div class="space-y-2">
+<!-- Leaderboard Row: Rank 1 -->
+<div class="glass-card rounded-lg overflow-hidden transition-all duration-300">
+<div class="flex items-center p-3 gap-3" onclick="toggleDetails('user-1')">
+<div class="w-8 flex justify-center font-stats-number text-secondary text-lg">1</div>
+<img alt="Winner" class="w-10 h-10 rounded-full border-2 border-secondary" data-alt="A professional 3D rendered avatar of a legendary sports champion with a golden laurel crown, set against a dark cinematic background with anamorphic lens flares. High-energy lighting with sharp highlights of lime and gold. Sleek, premium digital art style." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDzJF_ymVshIugWuHZ9nSpz-YVwSGY9wZ2Pw6xiHsfh5VIIIlg3lr32c564Kv83icorCPfDr_65-Ah5n7RU28-UxyrUX1uZeemgZEH0OisRjn1IA54tBORuNK3XpbPxs0o5W6kPFmd80bpnln3wn-L4Q8UTnmL1KGGdQDEX7wslUm0xuAvA2apzF6voPcO0A77_tyOU7WUf_5BZARTNuwzo5jXnIDxBoofVNffD4WGCKfZppcbrf3x0cs_U-fOR1oZ_zxqS5FQ2uk89"/>
+<div class="flex-1">
+<p class="font-label-md text-on-surface">Marco Silva</p>
+<p class="text-[10px] text-on-surface-variant">Global Champion</p>
+</div>
+<div class="text-right">
+<p class="font-stats-number text-on-surface">1,482</p>
+<p class="text-[10px] text-tertiary">PTS</p>
+</div>
+</div>
+</div>
+<!-- Leaderboard Row: User (Highlighted) -->
+<div class="bg-surface-container-highest/60 border border-tertiary/40 rounded-lg overflow-hidden glow-lime shadow-lg">
+<div class="flex items-center p-3 gap-3" onclick="toggleDetails('user-user')">
+<div class="w-8 flex justify-center font-stats-number text-tertiary text-lg">14</div>
+<img alt="You" class="w-10 h-10 rounded-full border-2 border-tertiary" data-alt="A futuristic digital player avatar icon with glowing lime outlines and high-tech UI elements overlaying a dark slate background. The style is athletic and high-stakes, matching the competitive energy of a world-class football tournament. Dramatic lighting with neon accents." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCXmPKO9b1PRRett1mPMJaS8bXhWT8P812DmDp-2AoigM3JopxQPOyT1_fj7AtVGBFfmWKrS0OeFSU_ue7rCw6g7dTsxavERWrz8fsyTpDZIox3IY4NAw0kseNpfw85KnitRjRPdBT03or4Fzbr4X8sm6SF9p-vVwmtGCynTs_kwYKO_XOevrMhkwS_iQz3WlbaEh0tkihp3XzEtxOuN8hnpUQFKtYH1m_yWv2QWFpWAn4VQXpMNz2PocR4lby6KXFZcEhqWBL4WGox"/>
+<div class="flex-1">
+<p class="font-label-md text-tertiary">Alex Smith (You)</p>
+<p class="text-[10px] text-on-surface-variant">Rising Star • Local #1</p>
+</div>
+<div class="text-right">
+<p class="font-stats-number text-on-surface">1,240</p>
+<p class="text-[10px] text-tertiary">PTS</p>
+</div>
+</div>
+<!-- Expandable Details -->
+<div class="px-4 pb-4 pt-2 border-t border-outline-variant/10 bg-black/20" id="user-user-details">
+<p class="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest mb-2">Points Breakdown</p>
+<div class="grid grid-cols-2 gap-y-3 gap-x-6">
+<div>
+<p class="text-[10px] text-on-surface-variant">Match (Exact)</p>
+<div class="w-full bg-surface-container-low h-1.5 rounded-full mt-1">
+<div class="bg-tertiary h-full rounded-full" style="width: 45%"></div>
+</div>
+<p class="text-xs font-bold mt-1">450 <span class="text-[9px] font-normal text-on-surface-variant">pts</span></p>
+</div>
+<div>
+<p class="text-[10px] text-on-surface-variant">Match (Result)</p>
+<div class="w-full bg-surface-container-low h-1.5 rounded-full mt-1">
+<div class="bg-tertiary h-full rounded-full" style="width: 70%"></div>
+</div>
+<p class="text-xs font-bold mt-1">390 <span class="text-[9px] font-normal text-on-surface-variant">pts</span></p>
+</div>
+<div>
+<p class="text-[10px] text-on-surface-variant">Stage (Knockouts)</p>
+<div class="w-full bg-surface-container-low h-1.5 rounded-full mt-1">
+<div class="bg-secondary h-full rounded-full" style="width: 60%"></div>
+</div>
+<p class="text-xs font-bold mt-1">400 <span class="text-[9px] font-normal text-on-surface-variant">pts</span></p>
+</div>
+<div>
+<p class="text-[10px] text-on-surface-variant">Bonus Quests</p>
+<div class="w-full bg-surface-container-low h-1.5 rounded-full mt-1">
+<div class="bg-primary h-full rounded-full" style="width: 30%"></div>
+</div>
+<p class="text-xs font-bold mt-1">0 <span class="text-[9px] font-normal text-on-surface-variant">pts</span></p>
+</div>
+</div>
+</div>
+</div>
+<!-- Generic Rows -->
+<div class="glass-card rounded-lg overflow-hidden">
+<div class="flex items-center p-3 gap-3">
+<div class="w-8 flex justify-center font-stats-number text-on-surface-variant text-lg">2</div>
+<img alt="User" class="w-10 h-10 rounded-full border border-outline-variant" data-alt="A sleek minimalist digital avatar for a professional athlete, rendered in a dark, high-contrast aesthetic with subtle gold edge lighting. Deep navy background with a focus on high-fidelity textures and sports-oriented design. Sharp focus and cinematic mood." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDsdfi4i49gjXlxSTnBhCeXXeoj-SnfsGEPXt_7qiaYCQ-HIgmbCSZHlNFQLfSu-SzXGlX-4oYXMcx-M3bP6E_zGTma5I2w8HfPj8VVPIaLxLU64jztD6RRacv9lnVGZbJqTRcLYLPOyLxwq1HMv8VMvqibDQzjUmnlA4iYfr0KV2UJlqZiUSkIJVNzFS185CNQc7T2mW0AkMEQqyI41uwZMijgNUugyRf93NKABXqBfiuENeD3_72vbLhyDbMmXV2T73UBMgPdxp4f"/>
+<div class="flex-1">
+<p class="font-label-md text-on-surface">Elena Rodriguez</p>
+<p class="text-[10px] text-on-surface-variant">Tactician</p>
+</div>
+<div class="text-right">
+<p class="font-stats-number text-on-surface">1,455</p>
+<p class="text-[10px] text-tertiary">PTS</p>
+</div>
+</div>
+</div>
+<div class="glass-card rounded-lg overflow-hidden">
+<div class="flex items-center p-3 gap-3">
+<div class="w-8 flex justify-center font-stats-number text-on-surface-variant text-lg">3</div>
+<img alt="User" class="w-10 h-10 rounded-full border border-outline-variant" data-alt="Close up portrait of a futuristic sports fan with holographic overlays representing football data. The background is a dark stadium at night with emerald and gold spotlights. High-end digital illustration with crisp lines and glassmorphic depth effects." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAFiKM4_zVzld9nMIPa9Zgp_Zbfs7ZUKwpV942TH180fGgHs8l7U_Ww2mqMHo_FXZfiWTUrZEzgWw5Oq4QJJc0ndu2Ku5C5jn3G7g7sG8kXUFR-5eRNNfIttGNVZNgOglB3wNAuN_XpP9ud8uT6xFD0Ymb56WvthvnTl9aNKvTVRNqdcy9zl2KxwuKWS5QlmZ__tqmaHYQK4QfGUaEE2_wFPEoGuZMlWlXIQWPrI92H9a1Q2IvFtQxN2bJ9NKE0XaXp9CiGYJ17CgJN"/>
+<div class="flex-1">
+<p class="font-label-md text-on-surface">Kaito Tanaka</p>
+<p class="text-[10px] text-on-surface-variant">Global Scout</p>
+</div>
+<div class="text-right">
+<p class="font-stats-number text-on-surface">1,410</p>
+<p class="text-[10px] text-tertiary">PTS</p>
+</div>
+</div>
+</div>
+<!-- More Rows Placeholder -->
+<div class="py-4 flex flex-col items-center gap-2">
+<div class="w-1 h-1 rounded-full bg-outline-variant"></div>
+<div class="w-1 h-1 rounded-full bg-outline-variant"></div>
+<div class="w-1 h-1 rounded-full bg-outline-variant"></div>
+<button class="mt-2 text-sm font-label-md text-primary bg-primary-container/20 px-6 py-2 rounded-full border border-primary/20 active:scale-95 transition-all">
+                        Load More Rival Data
+                    </button>
+</div>
+</div>
+</section>
+</main>
+<!-- BottomNavBar -->
+<nav class="fixed bottom-0 w-full z-50 rounded-t-xl bg-surface-container-highest/90 backdrop-blur-lg border-t border-outline-variant/10 shadow-lg flex justify-around items-center h-20 pb-safe px-gutter-xs">
+<button class="flex flex-col items-center justify-center text-on-surface-variant hover:text-on-surface transition-all active:scale-90 duration-200">
+<span class="material-symbols-outlined" data-icon="dashboard">dashboard</span>
+<span class="font-label-md text-[10px] uppercase">Home</span>
+</button>
+<button class="flex flex-col items-center justify-center text-on-surface-variant hover:text-on-surface transition-all active:scale-90 duration-200">
+<span class="material-symbols-outlined" data-icon="sports_soccer">sports_soccer</span>
+<span class="font-label-md text-[10px] uppercase">Fixtures</span>
+</button>
+<button class="flex flex-col items-center justify-center text-on-surface-variant hover:text-on-surface transition-all active:scale-90 duration-200">
+<span class="material-symbols-outlined" data-icon="account_tree">account_tree</span>
+<span class="font-label-md text-[10px] uppercase">Bracket</span>
+</button>
+<button class="flex flex-col items-center justify-center bg-tertiary-container text-on-tertiary-container rounded-full px-4 py-1 active:scale-90 duration-200">
+<span class="material-symbols-outlined" data-icon="leaderboard" style="font-variation-settings: 'FILL' 1;">leaderboard</span>
+<span class="font-label-md text-[10px] uppercase">Rank</span>
+</button>
+<button class="flex flex-col items-center justify-center text-on-surface-variant hover:text-on-surface transition-all active:scale-90 duration-200">
+<span class="material-symbols-outlined" data-icon="menu">menu</span>
+<span class="font-label-md text-[10px] uppercase">More</span>
+</button>
+</nav>
+<script>
+        function toggleDetails(id) {
+            const details = document.getElementById(id + '-details');
+            if (details) {
+                if (details.classList.contains('hidden')) {
+                    details.classList.remove('hidden');
+                } else {
+                    details.classList.add('hidden');
+                }
+            }
+        }
+        
+        // Ensure only the user's detailed view is open by default
+        document.querySelectorAll('[id$="-details"]').forEach(el => {
+            if (el.id !== 'user-user-details') {
+                el.classList.add('hidden');
+            }
+        });
+    </script>
+</body></html>
