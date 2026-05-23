@@ -1,12 +1,10 @@
 import Link from "next/link";
-import {
-  formatKickoff,
-  matches,
-  tournament,
-} from "@/lib/world-cup/data";
+import { formatKickoff, tournament } from "@/lib/world-cup/data";
 import { MatchCard } from "@/components/world-cup/MatchCard";
+import { getSeededMatchesWithResults } from "@/lib/world-cup/repository";
 
-export default function DashboardPage() {
+export default async function DashboardPage() {
+  const matches = await getSeededMatchesWithResults();
   const nextMatches = matches.slice(0, 4);
 
   return (

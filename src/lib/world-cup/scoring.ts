@@ -1,11 +1,15 @@
 import { and, eq, inArray } from "drizzle-orm";
 import { db } from "@/db/client";
 import {
+  bonusPredictions,
   leagueMembers,
   leagues,
   matchPredictions,
   matches,
+  officialBonusResults,
+  officialStageResults,
   scoreEvents,
+  stagePredictions,
 } from "@/db/schema";
 
 type FinalMatch = {
@@ -15,10 +19,32 @@ type FinalMatch = {
   awayScore: number | null;
 };
 
+const STAGE_POINTS = {
+  r32: 10,
+  r16: 20,
+  qf: 40,
+  sf: 80,
+  final: 120,
+  champion: 150,
+} as const;
+
+const STAGE_REASON = {
+  r32: "Round of 32 qualifier",
+  r16: "Round of 16 qualifier",
+  qf: "Quarter-finalist",
+  sf: "Semi-finalist",
+  final: "Finalist",
+  champion: "World Cup champion",
+} as const;
+
 function outcome(homeScore: number, awayScore: number): "home" | "away" | "draw" {
   if (homeScore > awayScore) return "home";
   if (awayScore > homeScore) return "away";
   return "draw";
+}
+
+function normalizeName(value: string): string {
+  return value.trim().replace(/\s+/g, " ").toLocaleLowerCase();
 }
 
 export function scoreMatchPrediction(input: {
@@ -121,4 +147,161 @@ export async function recalculateMatchById(matchId: number): Promise<void> {
   if (match) {
     await recalculateMatchScoreEvents(match);
   }
+}
+
+export async function recalculateStageScoreEvents(tournamentId: number): Promise<void> {
+  const officialRows = await db
+    .select({
+      stage: officialStageResults.stage,
+      teamId: officialStageResults.teamId,
+    })
+    .from(officialStageResults)
+    .where(eq(officialStageResults.tournamentId, tournamentId));
+
+  const officialTeamByStage = officialRows.reduce<Map<string, Set<number>>>((acc, row) => {
+    const teamsForStage = acc.get(row.stage) ?? new Set<number>();
+    teamsForStage.add(row.teamId);
+    acc.set(row.stage, teamsForStage);
+    return acc;
+  }, new Map());
+
+  const predictions = await db
+    .select({
+      id: stagePredictions.id,
+      userId: stagePredictions.userId,
+      leagueId: stagePredictions.leagueId,
+      tournamentId: stagePredictions.tournamentId,
+      stage: stagePredictions.stage,
+      teamId: stagePredictions.teamId,
+      gameMode: leagues.gameMode,
+    })
+    .from(stagePredictions)
+    .innerJoin(leagues, eq(stagePredictions.leagueId, leagues.id))
+    .innerJoin(
+      leagueMembers,
+      and(
+        eq(leagueMembers.leagueId, stagePredictions.leagueId),
+        eq(leagueMembers.userId, stagePredictions.userId),
+      ),
+    )
+    .where(and(eq(stagePredictions.tournamentId, tournamentId), eq(leagues.gameMode, "stage_predictions")));
+
+  const predictionIds = predictions.map((prediction) => prediction.id);
+
+  await db.transaction(async (tx) => {
+    if (predictionIds.length > 0) {
+      await tx
+        .delete(scoreEvents)
+        .where(
+          and(
+            eq(scoreEvents.sourceType, "stage_prediction"),
+            inArray(scoreEvents.sourceId, predictionIds),
+          ),
+        );
+    }
+
+    const events = predictions.flatMap((prediction) => {
+      const officialTeams = officialTeamByStage.get(prediction.stage);
+      if (!officialTeams?.has(prediction.teamId)) return [];
+      return [
+        {
+          userId: prediction.userId,
+          leagueId: prediction.leagueId,
+          tournamentId: prediction.tournamentId,
+          gameMode: prediction.gameMode,
+          sourceType: "stage_prediction" as const,
+          sourceId: prediction.id,
+          points: STAGE_POINTS[prediction.stage],
+          reason: STAGE_REASON[prediction.stage],
+        },
+      ];
+    });
+
+    if (events.length > 0) {
+      await tx.insert(scoreEvents).values(events);
+    }
+  });
+}
+
+export async function recalculateBonusScoreEvents(tournamentId: number): Promise<void> {
+  const officialRows = await db
+    .select()
+    .from(officialBonusResults)
+    .where(eq(officialBonusResults.tournamentId, tournamentId));
+
+  const officialTopScorer = officialRows.find((row) => row.type === "top_scorer")?.playerName;
+  const officialWinnerTeamId = officialRows.find((row) => row.type === "tournament_winner")?.teamId;
+
+  const predictions = await db
+    .select({
+      id: bonusPredictions.id,
+      userId: bonusPredictions.userId,
+      leagueId: bonusPredictions.leagueId,
+      tournamentId: bonusPredictions.tournamentId,
+      type: bonusPredictions.type,
+      playerName: bonusPredictions.playerName,
+      teamId: bonusPredictions.teamId,
+      gameMode: leagues.gameMode,
+    })
+    .from(bonusPredictions)
+    .innerJoin(leagues, eq(bonusPredictions.leagueId, leagues.id))
+    .innerJoin(
+      leagueMembers,
+      and(
+        eq(leagueMembers.leagueId, bonusPredictions.leagueId),
+        eq(leagueMembers.userId, bonusPredictions.userId),
+      ),
+    )
+    .where(eq(bonusPredictions.tournamentId, tournamentId));
+
+  const predictionIds = predictions.map((prediction) => prediction.id);
+  const normalizedTopScorer = officialTopScorer ? normalizeName(officialTopScorer) : null;
+
+  await db.transaction(async (tx) => {
+    if (predictionIds.length > 0) {
+      await tx
+        .delete(scoreEvents)
+        .where(
+          and(
+            eq(scoreEvents.sourceType, "bonus_prediction"),
+            inArray(scoreEvents.sourceId, predictionIds),
+          ),
+        );
+    }
+
+    const events = predictions.flatMap((prediction) => {
+      const isTopScorerHit =
+        prediction.type === "top_scorer" &&
+        Boolean(normalizedTopScorer) &&
+        normalizeName(prediction.playerName ?? "") === normalizedTopScorer;
+      const isWinnerHit =
+        prediction.type === "tournament_winner" &&
+        prediction.gameMode === "match_scores" &&
+        Boolean(officialWinnerTeamId) &&
+        prediction.teamId === officialWinnerTeamId;
+
+      if (!isTopScorerHit && !isWinnerHit) return [];
+      return [
+        {
+          userId: prediction.userId,
+          leagueId: prediction.leagueId,
+          tournamentId: prediction.tournamentId,
+          gameMode: prediction.gameMode,
+          sourceType: "bonus_prediction" as const,
+          sourceId: prediction.id,
+          points: 100,
+          reason: isTopScorerHit ? "Top scorer bonus" : "World Cup winner bonus",
+        },
+      ];
+    });
+
+    if (events.length > 0) {
+      await tx.insert(scoreEvents).values(events);
+    }
+  });
+}
+
+export async function recalculateOfficialResultScoreEvents(tournamentId: number): Promise<void> {
+  await recalculateStageScoreEvents(tournamentId);
+  await recalculateBonusScoreEvents(tournamentId);
 }

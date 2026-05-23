@@ -33,7 +33,9 @@ export default async function LeaderboardPage() {
         </div>
       ) : (
         <section className="rounded-xl border border-white/10 bg-[var(--color-panel-low)] p-4">
-          <div className="text-xs font-bold uppercase text-[var(--color-fg-muted)]">Active league</div>
+          <div className="text-xs font-bold uppercase text-[var(--color-fg-muted)]">
+            Active league
+          </div>
           <div className="mt-1 font-display text-lg font-bold">{league.leagueName}</div>
           <div className="mt-1 text-sm text-[var(--color-fg-muted)]">
             {league.gameMode === "match_scores"
@@ -47,52 +49,129 @@ export default async function LeaderboardPage() {
         {rows.map((row, index) => {
           const highlighted = index === 0;
           return (
-            <article
+            <details
               key={row.userId}
               className={
-                "grid grid-cols-[auto_1fr_auto] items-center gap-4 rounded-xl p-4 " +
+                "group rounded-xl p-4 " +
                 (highlighted
                   ? "glass-card border-[var(--color-gold)] glow-gold"
                   : "bg-[var(--color-panel-low)]")
               }
             >
-              <div
-                className={
-                  "flex h-12 w-12 items-center justify-center rounded-full font-display text-xl font-extrabold " +
-                  (highlighted
-                    ? "bg-[var(--color-gold)] text-[#2a1700]"
-                    : "bg-[var(--color-panel-highest)] text-[var(--color-fg-muted)]")
-                }
-              >
-                {index + 1}
-              </div>
-              <div>
-                <div className="font-display text-lg font-bold">{row.name}</div>
-                <div className="mt-1 flex flex-wrap gap-2 text-xs text-[var(--color-fg-muted)]">
-                  <span>Exact {row.exactScores}</span>
-                  <span>Results {row.results}</span>
-                  <span>Stages {row.stages}</span>
-                  <span>Bonus {row.bonuses}</span>
+              <summary className="grid cursor-pointer list-none grid-cols-[auto_1fr_auto] items-center gap-4 [&::-webkit-details-marker]:hidden">
+                <div
+                  className={
+                    "flex h-12 w-12 items-center justify-center rounded-full font-display text-xl font-extrabold " +
+                    (highlighted
+                      ? "bg-[var(--color-gold)] text-[#2a1700]"
+                      : "bg-[var(--color-panel-highest)] text-[var(--color-fg-muted)]")
+                  }
+                >
+                  {index + 1}
                 </div>
-              </div>
-              <div className="text-right">
-                <div className="font-display text-2xl font-extrabold text-[var(--color-accent)]">
-                  {row.total}
+                <div>
+                  <div className="font-display text-lg font-bold">{row.name}</div>
+                  <div className="mt-1 flex flex-wrap gap-2 text-xs text-[var(--color-fg-muted)]">
+                    <ScorePill label="Exact" value={row.exactScores} />
+                    <ScorePill label="Results" value={row.results} />
+                    <ScorePill label="Stages" value={row.stages} />
+                    <ScorePill label="Bonus" value={row.bonuses} />
+                  </div>
+                  <div className="mt-2 text-xs font-semibold text-[var(--color-gold)]">
+                    {row.details.length > 0
+                      ? "Open for scoring breakdown"
+                      : "No scoring events yet"}
+                  </div>
                 </div>
-                <div className="text-xs font-bold uppercase text-[var(--color-fg-muted)]">
-                  points
+                <div className="text-right">
+                  <div className="font-display text-2xl font-extrabold text-[var(--color-accent)]">
+                    {row.total}
+                  </div>
+                  <div className="text-xs font-bold uppercase text-[var(--color-fg-muted)]">
+                    points
+                  </div>
                 </div>
+              </summary>
+
+              <div className="mt-4 border-t border-white/10 pt-4">
+                {row.details.length > 0 ? (
+                  <div className="grid gap-2">
+                    {row.details.map((detail, detailIndex) => (
+                      <div
+                        key={`${detail.sourceType}-${detail.label}-${detailIndex}`}
+                        className="grid grid-cols-[1fr_auto] gap-3 rounded-lg border border-white/10 bg-[var(--color-panel-high)] px-3 py-2"
+                      >
+                        <div>
+                          <div className="text-sm font-bold">{detail.label}</div>
+                          <div className="mt-0.5 text-xs text-[var(--color-fg-muted)]">
+                            {detail.reason} · {detail.detail}
+                          </div>
+                        </div>
+                        <div className="text-right font-display text-lg font-extrabold text-[var(--color-accent)]">
+                          +{detail.points}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="rounded-lg border border-white/10 bg-[var(--color-panel-high)] px-3 py-2 text-sm text-[var(--color-fg-muted)]">
+                    Points will appear here after match scores or official tournament results are entered.
+                  </div>
+                )}
               </div>
-            </article>
+            </details>
           );
         })}
       </div>
+
+      {league && rows.length > 0 ? (
+        <section className="rounded-xl border border-white/10 bg-[var(--color-panel-low)] p-4">
+          <h2 className="font-display text-lg font-bold">Scoring Summary</h2>
+          <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+            <SummaryTile
+              label="Exact scores"
+              value={rows.reduce((sum, row) => sum + row.exactScores, 0)}
+            />
+            <SummaryTile
+              label="Correct results"
+              value={rows.reduce((sum, row) => sum + row.results, 0)}
+            />
+            <SummaryTile
+              label="Stage picks"
+              value={rows.reduce((sum, row) => sum + row.stages, 0)}
+            />
+            <SummaryTile
+              label="Bonus picks"
+              value={rows.reduce((sum, row) => sum + row.bonuses, 0)}
+            />
+          </div>
+        </section>
+      ) : null}
 
       {league && rows.length === 0 ? (
         <div className="rounded-xl border border-white/10 bg-[var(--color-panel-low)] p-4 text-sm text-[var(--color-fg-muted)]">
           No league members found yet.
         </div>
       ) : null}
+    </div>
+  );
+}
+
+function ScorePill({ label, value }: { label: string; value: number }) {
+  return (
+    <span className="rounded-full bg-[var(--color-panel-highest)] px-2 py-1">
+      {label} {value}
+    </span>
+  );
+}
+
+function SummaryTile({ label, value }: { label: string; value: number }) {
+  return (
+    <div className="rounded-lg border border-white/10 bg-[var(--color-panel-high)] p-3">
+      <div className="text-xs font-bold uppercase text-[var(--color-fg-muted)]">{label}</div>
+      <div className="mt-1 font-display text-xl font-extrabold text-[var(--color-accent)]">
+        {value}
+      </div>
     </div>
   );
 }

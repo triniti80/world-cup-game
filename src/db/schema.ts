@@ -204,6 +204,7 @@ export const stagePredictions = pgTable(
     teamId: integer("team_id")
       .notNull()
       .references(() => teams.id, { onDelete: "cascade" }),
+    groupRank: integer("group_rank"),
     source: stagePredictionSourceEnum("source").notNull().default("manual"),
     submittedAt: timestamp("submitted_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
@@ -247,6 +248,46 @@ export const bonusPredictions = pgTable(
       t.type,
     ),
     leagueIdx: index("bonus_predictions_league_idx").on(t.leagueId),
+  }),
+);
+
+export const officialStageResults = pgTable(
+  "official_stage_results",
+  {
+    id: serial("id").primaryKey(),
+    tournamentId: integer("tournament_id")
+      .notNull()
+      .references(() => tournaments.id, { onDelete: "cascade" }),
+    stage: stagePredictionStageEnum("stage").notNull(),
+    teamId: integer("team_id")
+      .notNull()
+      .references(() => teams.id, { onDelete: "cascade" }),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    officialStageUnique: uniqueIndex("official_stage_results_unique").on(
+      t.tournamentId,
+      t.stage,
+      t.teamId,
+    ),
+    stageIdx: index("official_stage_results_stage_idx").on(t.tournamentId, t.stage),
+  }),
+);
+
+export const officialBonusResults = pgTable(
+  "official_bonus_results",
+  {
+    id: serial("id").primaryKey(),
+    tournamentId: integer("tournament_id")
+      .notNull()
+      .references(() => tournaments.id, { onDelete: "cascade" }),
+    type: bonusPredictionTypeEnum("type").notNull(),
+    playerName: text("player_name"),
+    teamId: integer("team_id").references(() => teams.id, { onDelete: "set null" }),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    officialBonusUnique: uniqueIndex("official_bonus_results_unique").on(t.tournamentId, t.type),
   }),
 );
 

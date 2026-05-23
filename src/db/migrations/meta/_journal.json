@@ -15,6 +15,20 @@
       "when": 1779409100000,
       "tag": "0001_league_modes_bonus_picks",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1779498000000,
+      "tag": "0002_official_results_scoring",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1779553000000,
+      "tag": "0003_stage_prediction_group_rank",
+      "breakpoints": true
     }
   ]
 }

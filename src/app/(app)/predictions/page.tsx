@@ -2,13 +2,13 @@ import Link from "next/link";
 import { BonusPredictionForm } from "@/components/BonusPredictionForm";
 import { PredictionsTabs } from "@/components/PredictionsTabs";
 import { StagePredictionForm } from "@/components/StagePredictionForm";
-import { matches } from "@/lib/world-cup/data";
 import { readActiveLeagueId, readSession } from "@/lib/session";
 import {
   getCurrentLeague,
   getSavedBonusPredictions,
   getSavedMatchPredictions,
   getSavedStagePredictions,
+  getSeededMatchesWithResults,
 } from "@/lib/world-cup/repository";
 
 export default async function PredictionsPage() {
@@ -23,7 +23,8 @@ export default async function PredictionsPage() {
     : {};
   const savedStagePredictions = session
     ? await getSavedStagePredictions(session.userId, activeLeagueId)
-    : {};
+    : { teams: {}, r32Ranks: {} };
+  const matches = await getSeededMatchesWithResults();
 
   return (
     <div className="space-y-6">

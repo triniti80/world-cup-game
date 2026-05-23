@@ -10,12 +10,23 @@ import {
   getDbTeamIdForSeedTeamSlug,
   getPreTournamentLockAt,
 } from "@/lib/world-cup/repository";
+import { teams } from "@/lib/world-cup/data";
 
 const stageSchema = z.enum(["r32", "r16", "qf", "sf", "final", "champion"]);
 const bodySchema = z.object({
   stage: stageSchema,
   teamIds: z.array(z.string().min(1)).max(48),
+  r32Ranks: z.record(z.string(), z.union([z.literal(1), z.literal(2), z.literal(3)])).optional(),
 });
+
+const stageMaximums = {
+  r32: 32,
+  r16: 16,
+  qf: 8,
+  sf: 4,
+  final: 2,
+  champion: 1,
+} as const;
 
 export async function POST(req: Request) {
   const session = await readSession();
@@ -57,6 +68,45 @@ export async function POST(req: Request) {
   }
 
   const uniqueTeamSlugs = Array.from(new Set(parsed.data.teamIds));
+  if (uniqueTeamSlugs.length > stageMaximums[parsed.data.stage]) {
+    return NextResponse.json(
+      { error: `${parsed.data.stage} can include at most ${stageMaximums[parsed.data.stage]} teams.` },
+      { status: 400 },
+    );
+  }
+
+  if (parsed.data.stage === "r32") {
+    const rankByTeam = parsed.data.r32Ranks ?? {};
+    const thirdPlaceCount = Object.values(rankByTeam).filter((rank) => rank === 3).length;
+    if (thirdPlaceCount > 8) {
+      return NextResponse.json(
+        { error: "Only 8 third-place teams can qualify to the Round of 32." },
+        { status: 400 },
+      );
+    }
+
+    const rankByGroup = new Map<string, Set<1 | 2 | 3>>();
+    for (const [teamSlug, rank] of Object.entries(rankByTeam)) {
+      if (!uniqueTeamSlugs.includes(teamSlug)) {
+        return NextResponse.json(
+          { error: "Round of 32 rank data must match selected teams." },
+          { status: 400 },
+        );
+      }
+      const team = teams.find((candidate) => candidate.id === teamSlug);
+      if (!team) continue;
+      const groupRanks = rankByGroup.get(team.group) ?? new Set<1 | 2 | 3>();
+      if (groupRanks.has(rank)) {
+        return NextResponse.json(
+          { error: `Group ${team.group} can only have one ${rankLabel(rank)} team.` },
+          { status: 400 },
+        );
+      }
+      groupRanks.add(rank);
+      rankByGroup.set(team.group, groupRanks);
+    }
+  }
+
   const teamIds = await Promise.all(
     uniqueTeamSlugs.map((slug) => getDbTeamIdForSeedTeamSlug(tournament.id, slug)),
   );
@@ -78,12 +128,16 @@ export async function POST(req: Request) {
 
     if (teamIds.length > 0) {
       await tx.insert(stagePredictions).values(
-        teamIds.map((teamId) => ({
+        teamIds.map((teamId, index) => ({
           userId: session.userId,
           leagueId: league.leagueId,
           tournamentId: tournament.id,
           stage: parsed.data.stage,
           teamId: teamId!,
+          groupRank:
+            parsed.data.stage === "r32" && uniqueTeamSlugs[index]
+              ? (parsed.data.r32Ranks?.[uniqueTeamSlugs[index]] ?? null)
+              : null,
           source: "manual" as const,
         })),
       );
@@ -95,4 +149,10 @@ export async function POST(req: Request) {
     stage: parsed.data.stage,
     teamIds: uniqueTeamSlugs,
   });
+}
+
+function rankLabel(rank: 1 | 2 | 3): string {
+  if (rank === 1) return "1st-place";
+  if (rank === 2) return "2nd-place";
+  return "3rd-place";
 }

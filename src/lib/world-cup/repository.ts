@@ -1,4 +1,4 @@
-import { and, eq, sql } from "drizzle-orm";
+import { and, eq, inArray, sql } from "drizzle-orm";
 import { db } from "@/db/client";
 import {
   bonusPredictions,
@@ -6,6 +6,8 @@ import {
   leagues,
   matchPredictions,
   matches as dbMatches,
+  officialBonusResults,
+  officialStageResults,
   scoreEvents,
   stagePredictions,
   teams as dbTeams,
@@ -63,7 +65,10 @@ export type SavedBonusPredictions = {
   };
 };
 
-export type SavedStagePredictions = Record<string, string[]>;
+export type SavedStagePredictions = {
+  teams: Record<string, string[]>;
+  r32Ranks: Record<string, 1 | 2 | 3>;
+};
 
 export type LeaderboardRow = {
   userId: number;
@@ -73,6 +78,15 @@ export type LeaderboardRow = {
   results: number;
   stages: number;
   bonuses: number;
+  details: LeaderboardDetail[];
+};
+
+export type LeaderboardDetail = {
+  sourceType: "match_prediction" | "stage_prediction" | "bonus_prediction";
+  reason: string;
+  points: number;
+  label: string;
+  detail: string;
 };
 
 export type LeaguePredictionMember = {
@@ -102,6 +116,12 @@ export type LeagueBonusPrediction = {
   winnerSubmitted: boolean;
   winnerRevealed: boolean;
   winnerTeamId?: string;
+};
+
+export type AdminOfficialResults = {
+  stages: Record<string, string[]>;
+  topScorer?: string;
+  tournamentWinner?: string;
 };
 
 export async function ensureSeedTournament(): Promise<TournamentRow> {
@@ -140,7 +160,14 @@ export async function ensureSeedTournament(): Promise<TournamentRow> {
         groupCode: team.group,
       })),
     )
-    .onConflictDoNothing({ target: [dbTeams.tournamentId, dbTeams.slug] });
+    .onConflictDoUpdate({
+      target: [dbTeams.tournamentId, dbTeams.slug],
+      set: {
+        fifaCode: sql`excluded.fifa_code`,
+        name: sql`excluded.name`,
+        groupCode: sql`excluded.group_code`,
+      },
+    });
 
   const seededTeams = await db
     .select()
@@ -148,16 +175,9 @@ export async function ensureSeedTournament(): Promise<TournamentRow> {
     .where(eq(dbTeams.tournamentId, tournamentRow.id));
   const teamIdBySlug = new Map(seededTeams.map((team) => [team.slug, team.id]));
 
-  const existingMatches = await db
-    .select({ matchNumber: dbMatches.matchNumber })
-    .from(dbMatches)
-    .where(eq(dbMatches.tournamentId, tournamentRow.id));
-  const existingMatchNumbers = new Set(existingMatches.map((match) => match.matchNumber));
-
-  const missingMatches = seedMatches.filter((match) => !existingMatchNumbers.has(match.number));
-  if (missingMatches.length > 0) {
+  if (seedMatches.length > 0) {
     await db.insert(dbMatches).values(
-      missingMatches.map((match) => ({
+      seedMatches.map((match) => ({
         tournamentId: tournamentRow.id,
         matchNumber: match.number,
         stage: match.stage,
@@ -172,7 +192,22 @@ export async function ensureSeedTournament(): Promise<TournamentRow> {
         homeScore: match.homeScore ?? null,
         awayScore: match.awayScore ?? null,
       })),
-    );
+    )
+      .onConflictDoUpdate({
+        target: [dbMatches.tournamentId, dbMatches.matchNumber],
+        set: {
+          stage: sql`excluded.stage`,
+          groupCode: sql`excluded.group_code`,
+          homeTeamId: sql`excluded.home_team_id`,
+          awayTeamId: sql`excluded.away_team_id`,
+          homePlaceholder: sql`excluded.home_placeholder`,
+          awayPlaceholder: sql`excluded.away_placeholder`,
+          kickoffAt: sql`excluded.kickoff_at`,
+          venue: sql`excluded.venue`,
+          updatedAt: new Date(),
+        },
+        setWhere: sql`${dbMatches.updatedAt} = ${dbMatches.createdAt}`,
+      });
   }
 
   return tournamentRow;
@@ -275,6 +310,11 @@ export async function getSeededMatchesWithResults(): Promise<SeededMatchWithResu
     .from(dbMatches)
     .where(eq(dbMatches.tournamentId, tournamentRow.id));
   const dbMatchByNumber = new Map(rows.map((match) => [match.matchNumber, match]));
+  const seededTeams = await db
+    .select({ id: dbTeams.id, slug: dbTeams.slug })
+    .from(dbTeams)
+    .where(eq(dbTeams.tournamentId, tournamentRow.id));
+  const slugByTeamId = new Map(seededTeams.map((team) => [team.id, team.slug]));
 
   return seedMatches.flatMap((seedMatch) => {
     const dbMatch = dbMatchByNumber.get(seedMatch.number);
@@ -283,6 +323,14 @@ export async function getSeededMatchesWithResults(): Promise<SeededMatchWithResu
       {
         ...seedMatch,
         dbId: dbMatch.id,
+        stage: dbMatch.stage,
+        group: dbMatch.groupCode ?? undefined,
+        homeTeamId: dbMatch.homeTeamId ? slugByTeamId.get(dbMatch.homeTeamId) : undefined,
+        awayTeamId: dbMatch.awayTeamId ? slugByTeamId.get(dbMatch.awayTeamId) : undefined,
+        homePlaceholder: dbMatch.homePlaceholder ?? undefined,
+        awayPlaceholder: dbMatch.awayPlaceholder ?? undefined,
+        kickoffAtUtc: dbMatch.kickoffAt.toISOString(),
+        venue: dbMatch.venue,
         status: dbMatch.status,
         homeScore: dbMatch.homeScore ?? undefined,
         awayScore: dbMatch.awayScore ?? undefined,
@@ -394,7 +442,7 @@ export async function getSavedStagePredictions(
 ): Promise<SavedStagePredictions> {
   const tournamentRow = await ensureSeedTournament();
   const league = await getCurrentLeague(userId, activeLeagueId);
-  if (!league) return {};
+  if (!league) return { teams: {}, r32Ranks: {} };
 
   const seededTeams = await db
     .select({ id: dbTeams.id, slug: dbTeams.slug })
@@ -406,6 +454,7 @@ export async function getSavedStagePredictions(
     .select({
       stage: stagePredictions.stage,
       teamId: stagePredictions.teamId,
+      groupRank: stagePredictions.groupRank,
     })
     .from(stagePredictions)
     .where(
@@ -416,12 +465,58 @@ export async function getSavedStagePredictions(
       ),
     );
 
-  return rows.reduce<SavedStagePredictions>((acc, row) => {
+  return rows.reduce<SavedStagePredictions>(
+    (acc, row) => {
+      const slug = slugByTeamId.get(row.teamId);
+      if (!slug) return acc;
+      acc.teams[row.stage] = [...(acc.teams[row.stage] ?? []), slug];
+      if (
+        row.stage === "r32" &&
+        (row.groupRank === 1 || row.groupRank === 2 || row.groupRank === 3)
+      ) {
+        acc.r32Ranks[slug] = row.groupRank;
+      }
+      return acc;
+    },
+    { teams: {}, r32Ranks: {} },
+  );
+}
+
+export async function getAdminOfficialResults(): Promise<AdminOfficialResults> {
+  const tournamentRow = await ensureSeedTournament();
+  const seededTeams = await db
+    .select({ id: dbTeams.id, slug: dbTeams.slug })
+    .from(dbTeams)
+    .where(eq(dbTeams.tournamentId, tournamentRow.id));
+  const slugByTeamId = new Map(seededTeams.map((team) => [team.id, team.slug]));
+
+  const stageRows = await db
+    .select({
+      stage: officialStageResults.stage,
+      teamId: officialStageResults.teamId,
+    })
+    .from(officialStageResults)
+    .where(eq(officialStageResults.tournamentId, tournamentRow.id));
+
+  const stages = stageRows.reduce<Record<string, string[]>>((acc, row) => {
     const slug = slugByTeamId.get(row.teamId);
     if (!slug) return acc;
     acc[row.stage] = [...(acc[row.stage] ?? []), slug];
     return acc;
   }, {});
+
+  const bonusRows = await db
+    .select()
+    .from(officialBonusResults)
+    .where(eq(officialBonusResults.tournamentId, tournamentRow.id));
+  const topScorer = bonusRows.find((row) => row.type === "top_scorer")?.playerName ?? undefined;
+  const winnerTeamId = bonusRows.find((row) => row.type === "tournament_winner")?.teamId;
+
+  return {
+    stages,
+    topScorer,
+    tournamentWinner: winnerTeamId ? slugByTeamId.get(winnerTeamId) : undefined,
+  };
 }
 
 export async function getDbTeamIdForSeedTeamSlug(
@@ -459,11 +554,14 @@ export async function getLeaderboardRows(
     .select({
       userId: scoreEvents.userId,
       sourceType: scoreEvents.sourceType,
+      sourceId: scoreEvents.sourceId,
       reason: scoreEvents.reason,
       points: sql<number>`${scoreEvents.points}::int`,
     })
     .from(scoreEvents)
     .where(eq(scoreEvents.leagueId, league.leagueId));
+
+  const detailBySource = await getLeaderboardDetailMap(events);
 
   const rows = members.map<LeaderboardRow>((member) => {
     const userEvents = events.filter((event) => event.userId === member.userId);
@@ -488,6 +586,17 @@ export async function getLeaderboardRows(
       stages,
       bonuses,
       total: exactScores + results + stages + bonuses,
+      details: userEvents
+        .map((event) => ({
+          sourceType: event.sourceType,
+          reason: event.reason,
+          points: event.points,
+          ...(detailBySource.get(`${event.sourceType}:${event.sourceId}`) ?? {
+            label: event.reason,
+            detail: "Scoring event",
+          }),
+        }))
+        .sort((a, b) => b.points - a.points || a.label.localeCompare(b.label)),
     };
   });
 
@@ -495,6 +604,136 @@ export async function getLeaderboardRows(
     league,
     rows: rows.sort((a, b) => b.total - a.total || a.name.localeCompare(b.name)),
   };
+}
+
+async function getLeaderboardDetailMap(
+  events: {
+    sourceType: "match_prediction" | "stage_prediction" | "bonus_prediction";
+    sourceId: number;
+  }[],
+): Promise<Map<string, { label: string; detail: string }>> {
+  const detailBySource = new Map<string, { label: string; detail: string }>();
+  const matchPredictionIds = events
+    .filter((event) => event.sourceType === "match_prediction")
+    .map((event) => event.sourceId);
+  const stagePredictionIds = events
+    .filter((event) => event.sourceType === "stage_prediction")
+    .map((event) => event.sourceId);
+  const bonusPredictionIds = events
+    .filter((event) => event.sourceType === "bonus_prediction")
+    .map((event) => event.sourceId);
+
+  const teamIds = new Set<number>();
+
+  const matchRows =
+    matchPredictionIds.length > 0
+      ? await db
+          .select({
+            id: matchPredictions.id,
+            homeScore: matchPredictions.homeScore,
+            awayScore: matchPredictions.awayScore,
+            matchNumber: dbMatches.matchNumber,
+            homeTeamId: dbMatches.homeTeamId,
+            awayTeamId: dbMatches.awayTeamId,
+            homePlaceholder: dbMatches.homePlaceholder,
+            awayPlaceholder: dbMatches.awayPlaceholder,
+          })
+          .from(matchPredictions)
+          .innerJoin(dbMatches, eq(matchPredictions.matchId, dbMatches.id))
+          .where(inArray(matchPredictions.id, matchPredictionIds))
+      : [];
+
+  const stageRows =
+    stagePredictionIds.length > 0
+      ? await db
+          .select({
+            id: stagePredictions.id,
+            stage: stagePredictions.stage,
+            teamId: stagePredictions.teamId,
+          })
+          .from(stagePredictions)
+          .where(inArray(stagePredictions.id, stagePredictionIds))
+      : [];
+
+  const bonusRows =
+    bonusPredictionIds.length > 0
+      ? await db
+          .select({
+            id: bonusPredictions.id,
+            type: bonusPredictions.type,
+            playerName: bonusPredictions.playerName,
+            teamId: bonusPredictions.teamId,
+          })
+          .from(bonusPredictions)
+          .where(inArray(bonusPredictions.id, bonusPredictionIds))
+      : [];
+
+  for (const row of matchRows) {
+    if (row.homeTeamId) teamIds.add(row.homeTeamId);
+    if (row.awayTeamId) teamIds.add(row.awayTeamId);
+  }
+  for (const row of stageRows) {
+    teamIds.add(row.teamId);
+  }
+  for (const row of bonusRows) {
+    if (row.teamId) teamIds.add(row.teamId);
+  }
+
+  const teamRows =
+    teamIds.size > 0
+      ? await db
+          .select({ id: dbTeams.id, name: dbTeams.name, fifaCode: dbTeams.fifaCode })
+          .from(dbTeams)
+          .where(inArray(dbTeams.id, Array.from(teamIds)))
+      : [];
+  const teamById = new Map(teamRows.map((team) => [team.id, team]));
+
+  for (const row of matchRows) {
+    const home = row.homeTeamId ? teamById.get(row.homeTeamId)?.name : undefined;
+    const away = row.awayTeamId ? teamById.get(row.awayTeamId)?.name : undefined;
+    detailBySource.set(`match_prediction:${row.id}`, {
+      label: `Match ${row.matchNumber}: ${home ?? row.homePlaceholder ?? "TBD"} vs ${away ?? row.awayPlaceholder ?? "TBD"}`,
+      detail: `Predicted ${row.homeScore}-${row.awayScore}`,
+    });
+  }
+
+  for (const row of stageRows) {
+    const team = teamById.get(row.teamId);
+    detailBySource.set(`stage_prediction:${row.id}`, {
+      label: `${stagePredictionLabel(row.stage)}: ${team?.name ?? "Unknown team"}`,
+      detail: team?.fifaCode ?? "Team pick",
+    });
+  }
+
+  for (const row of bonusRows) {
+    const team = row.teamId ? teamById.get(row.teamId) : undefined;
+    detailBySource.set(`bonus_prediction:${row.id}`, {
+      label:
+        row.type === "top_scorer"
+          ? `Top scorer: ${row.playerName ?? "Unknown player"}`
+          : `World Cup winner: ${team?.name ?? "Unknown team"}`,
+      detail: row.type === "top_scorer" ? "Pre-tournament bonus" : team?.fifaCode ?? "Winner bonus",
+    });
+  }
+
+  return detailBySource;
+}
+
+function stagePredictionLabel(stage: "r32" | "r16" | "qf" | "sf" | "final" | "champion"): string {
+  switch (stage) {
+    case "r32":
+      return "Round of 32";
+    case "r16":
+      return "Round of 16";
+    case "qf":
+      return "Quarter-finals";
+    case "sf":
+      return "Semi-finals";
+    case "final":
+      return "Final";
+    case "champion":
+      return "Champion";
+  }
 }
 
 export async function getLeaguePredictionVisibility(userId: number, activeLeagueId?: number | null): Promise<{

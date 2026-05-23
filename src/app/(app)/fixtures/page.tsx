@@ -1,14 +1,20 @@
 import { MatchCard } from "@/components/world-cup/MatchCard";
-import { matches, stageLabel } from "@/lib/world-cup/data";
+import { stageLabel } from "@/lib/world-cup/data";
+import { getSeededMatchesWithResults } from "@/lib/world-cup/repository";
 
-export default function FixturesPage() {
+export default async function FixturesPage() {
+  const matches = await getSeededMatchesWithResults();
+  const groups = Array.from(new Set(matches.filter((match) => match.stage === "group").map((match) => match.group)))
+    .filter((group): group is string => Boolean(group))
+    .sort();
+
   return (
     <div className="space-y-6">
       <div>
         <h1 className="font-display text-3xl font-extrabold">Fixtures</h1>
         <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--color-fg-muted)]">
-          Seed fixtures for the first implementation pass. Admin import/editing will
-          replace these with the full official World Cup schedule.
+          Imported tournament fixtures. Admins can correct teams, kickoff times,
+          venues, and knockout placeholders from Settings.
         </p>
       </div>
 
@@ -46,7 +52,7 @@ export default function FixturesPage() {
       </section>
 
       <div className="space-y-8">
-        {["A", "B", "C"].map((group) => {
+        {groups.map((group) => {
           const groupMatches = matches.filter((match) => match.group === group);
           if (groupMatches.length === 0) return null;
           return (

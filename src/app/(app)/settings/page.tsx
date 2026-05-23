@@ -1,11 +1,14 @@
+import { AdminFixturesForm } from "@/components/AdminFixturesForm";
+import { AdminOfficialResultsForm } from "@/components/AdminOfficialResultsForm";
 import { AdminResultsForm } from "@/components/AdminResultsForm";
 import { readSession } from "@/lib/session";
 import { formatKickoff, tournament } from "@/lib/world-cup/data";
-import { getSeededMatchesWithResults } from "@/lib/world-cup/repository";
+import { getAdminOfficialResults, getSeededMatchesWithResults } from "@/lib/world-cup/repository";
 
 export default async function SettingsPage() {
   const session = await readSession();
   const matches = session?.role === "admin" ? await getSeededMatchesWithResults() : [];
+  const officialResults = session?.role === "admin" ? await getAdminOfficialResults() : null;
 
   return (
     <div className="space-y-8">
@@ -32,7 +35,13 @@ export default async function SettingsPage() {
         </div>
       </section>
 
-      {session?.role === "admin" ? <AdminResultsForm matches={matches} /> : null}
+      {session?.role === "admin" ? (
+        <>
+          <AdminFixturesForm matches={matches} />
+          <AdminResultsForm matches={matches} />
+          {officialResults ? <AdminOfficialResultsForm initialResults={officialResults} /> : null}
+        </>
+      ) : null}
 
       <section className="rounded-xl border border-dashed border-[var(--color-gold)]/50 bg-[var(--color-panel-low)] p-5">
         <h2 className="font-display text-lg font-bold">Coming next</h2>
