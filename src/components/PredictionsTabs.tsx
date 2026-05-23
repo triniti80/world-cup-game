@@ -28,6 +28,7 @@ const tabs: PredictionsTab[] = [
   { kind: "stage", label: "Round of 16", stage: "r16" },
   { kind: "stage", label: "Quarter-finals", stage: "qf" },
   { kind: "stage", label: "Semi-finals", stage: "sf" },
+  { kind: "stage", label: "Third place", stage: "third" },
   { kind: "stage", label: "Final", stage: "final" },
   { kind: "stage", label: "Champion", stage: "champion" },
 ];
@@ -84,9 +85,7 @@ export function PredictionsTabs({ matches, initialPredictions }: PredictionsTabs
         <div className="glass-card rounded-xl p-6">
           <h2 className="font-display text-xl font-bold">{activeTab.label}</h2>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--color-fg-muted)]">
-            No fixtures are loaded for this tab yet. The current seed data only includes
-            Groups A-C and Round of 32 placeholders; this area will fill in when the full
-            World Cup schedule is imported.
+            No fixtures are loaded for this tab yet.
           </p>
         </div>
       )}

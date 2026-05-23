@@ -8,7 +8,7 @@ import { ensureSeedTournament, getDbTeamIdForSeedTeamSlug } from "@/lib/world-cu
 
 const bodySchema = z.object({
   matchDbId: z.number().int().positive(),
-  stage: z.enum(["group", "r32", "r16", "qf", "sf", "final"]),
+  stage: z.enum(["group", "r32", "r16", "qf", "sf", "third", "final"]),
   groupCode: z.string().max(2).optional().nullable(),
   homeTeamSlug: z.string().optional().nullable(),
   awayTeamSlug: z.string().optional().nullable(),

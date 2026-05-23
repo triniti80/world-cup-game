@@ -17,7 +17,7 @@ type DraftFixture = {
   status: SeededMatchWithResult["status"];
 };
 
-const stages = ["group", "r32", "r16", "qf", "sf", "final"] as const;
+const stages = ["group", "r32", "r16", "qf", "sf", "third", "final"] as const;
 const statuses = ["scheduled", "live", "final"] as const;
 
 export function AdminFixturesForm({ matches }: { matches: SeededMatchWithResult[] }) {

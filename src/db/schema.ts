@@ -16,7 +16,15 @@ export const leagueGameModeEnum = pgEnum("league_game_mode", [
   "stage_predictions",
   "match_scores",
 ]);
-export const matchStageEnum = pgEnum("match_stage", ["group", "r32", "r16", "qf", "sf", "final"]);
+export const matchStageEnum = pgEnum("match_stage", [
+  "group",
+  "r32",
+  "r16",
+  "qf",
+  "sf",
+  "third",
+  "final",
+]);
 export const matchStatusEnum = pgEnum("match_status", ["scheduled", "live", "final"]);
 export const stagePredictionStageEnum = pgEnum("stage_prediction_stage", [
   "r32",

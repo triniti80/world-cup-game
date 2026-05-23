@@ -1,4 +1,4 @@
-import { and, eq, inArray, sql } from "drizzle-orm";
+import { and, eq, inArray, or, sql } from "drizzle-orm";
 import { db } from "@/db/client";
 import {
   bonusPredictions,
@@ -21,6 +21,24 @@ import {
 } from "@/lib/world-cup/data";
 
 const TOURNAMENT_YEAR = 2026;
+const LEGACY_SEED_VENUES = [
+  "Mexico City Stadium",
+  "Estadio Guadalajara",
+  "Toronto Stadium",
+  "Los Angeles Stadium",
+  "Boston Stadium",
+  "BC Place Vancouver",
+  "New York New Jersey Stadium",
+  "San Francisco Bay Area Stadium",
+  "Philadelphia Stadium",
+  "Houston Stadium",
+  "Dallas Stadium",
+  "Estadio Monterrey",
+  "Miami Stadium",
+  "Atlanta Stadium",
+  "Seattle Stadium",
+  "Knockout venue TBD",
+];
 
 type TournamentRow = typeof tournaments.$inferSelect;
 type MatchRow = typeof dbMatches.$inferSelect;
@@ -149,6 +167,17 @@ export async function ensureSeedTournament(): Promise<TournamentRow> {
     throw new Error("Could not create tournament seed data.");
   }
 
+  if (existingTournament) {
+    await db
+      .update(tournaments)
+      .set({
+        name: seedTournament.name,
+        firstMatchAt: new Date(seedTournament.firstMatchAtUtc),
+        predictionLockAt: new Date(seedTournament.qualifierLockAtUtc),
+      })
+      .where(eq(tournaments.id, tournamentRow.id));
+  }
+
   await db
     .insert(dbTeams)
     .values(
@@ -206,7 +235,10 @@ export async function ensureSeedTournament(): Promise<TournamentRow> {
           venue: sql`excluded.venue`,
           updatedAt: new Date(),
         },
-        setWhere: sql`${dbMatches.updatedAt} = ${dbMatches.createdAt}`,
+        setWhere: or(
+          sql`${dbMatches.updatedAt} = ${dbMatches.createdAt}`,
+          inArray(dbMatches.venue, LEGACY_SEED_VENUES),
+        ),
       });
   }
 
