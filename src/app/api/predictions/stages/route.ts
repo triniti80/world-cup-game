@@ -1,4 +1,4 @@
-import { and, eq } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { db } from "@/db/client";
@@ -19,13 +19,30 @@ const bodySchema = z.object({
   r32Ranks: z.record(z.string(), z.union([z.literal(1), z.literal(2), z.literal(3)])).optional(),
 });
 
-const stageMaximums = {
+const stageExpectedCounts = {
   r32: 32,
   r16: 16,
   qf: 8,
   sf: 4,
   final: 2,
   champion: 1,
+} as const;
+
+const previousStageByStage = {
+  r16: "r32",
+  qf: "r16",
+  sf: "qf",
+  final: "sf",
+  champion: "final",
+} as const;
+
+const downstreamStagesByStage = {
+  r32: ["r16", "qf", "sf", "final", "champion"],
+  r16: ["qf", "sf", "final", "champion"],
+  qf: ["sf", "final", "champion"],
+  sf: ["final", "champion"],
+  final: ["champion"],
+  champion: [],
 } as const;
 
 export async function POST(req: Request) {
@@ -68,19 +85,28 @@ export async function POST(req: Request) {
   }
 
   const uniqueTeamSlugs = Array.from(new Set(parsed.data.teamIds));
-  if (uniqueTeamSlugs.length > stageMaximums[parsed.data.stage]) {
+  if (uniqueTeamSlugs.length !== stageExpectedCounts[parsed.data.stage]) {
     return NextResponse.json(
-      { error: `${parsed.data.stage} can include at most ${stageMaximums[parsed.data.stage]} teams.` },
+      { error: `${stageLabel(parsed.data.stage)} requires exactly ${stageExpectedCounts[parsed.data.stage]} teams.` },
       { status: 400 },
     );
   }
 
   if (parsed.data.stage === "r32") {
     const rankByTeam = parsed.data.r32Ranks ?? {};
-    const thirdPlaceCount = Object.values(rankByTeam).filter((rank) => rank === 3).length;
-    if (thirdPlaceCount > 8) {
+    if (Object.keys(rankByTeam).length !== uniqueTeamSlugs.length) {
       return NextResponse.json(
-        { error: "Only 8 third-place teams can qualify to the Round of 32." },
+        { error: "Every Round of 32 team must have a group rank." },
+        { status: 400 },
+      );
+    }
+
+    const firstPlaceCount = Object.values(rankByTeam).filter((rank) => rank === 1).length;
+    const secondPlaceCount = Object.values(rankByTeam).filter((rank) => rank === 2).length;
+    const thirdPlaceCount = Object.values(rankByTeam).filter((rank) => rank === 3).length;
+    if (firstPlaceCount !== 12 || secondPlaceCount !== 12 || thirdPlaceCount !== 8) {
+      return NextResponse.json(
+        { error: "Round of 32 requires 12 first-place, 12 second-place, and 8 third-place teams." },
         { status: 400 },
       );
     }
@@ -105,6 +131,16 @@ export async function POST(req: Request) {
       groupRanks.add(rank);
       rankByGroup.set(team.group, groupRanks);
     }
+
+    for (const group of Array.from(new Set(teams.map((team) => team.group)))) {
+      const groupRanks = rankByGroup.get(group);
+      if (!groupRanks?.has(1) || !groupRanks.has(2)) {
+        return NextResponse.json(
+          { error: `Group ${group} must have a 1st-place and 2nd-place team.` },
+          { status: 400 },
+        );
+      }
+    }
   }
 
   const teamIds = await Promise.all(
@@ -112,6 +148,37 @@ export async function POST(req: Request) {
   );
   if (teamIds.some((teamId) => teamId === null)) {
     return NextResponse.json({ error: "One or more selected teams were not found." }, { status: 404 });
+  }
+  const resolvedTeamIds = teamIds.filter((teamId): teamId is number => teamId !== null);
+
+  if (parsed.data.stage !== "r32") {
+    const previousStage = previousStageByStage[parsed.data.stage];
+    const previousRows = await db
+      .select({ teamId: stagePredictions.teamId })
+      .from(stagePredictions)
+      .where(
+        and(
+          eq(stagePredictions.userId, session.userId),
+          eq(stagePredictions.leagueId, league.leagueId),
+          eq(stagePredictions.tournamentId, tournament.id),
+          eq(stagePredictions.stage, previousStage),
+        ),
+      );
+
+    if (previousRows.length !== stageExpectedCounts[previousStage]) {
+      return NextResponse.json(
+        { error: `Save a complete ${stageLabel(previousStage)} before saving ${stageLabel(parsed.data.stage)}.` },
+        { status: 400 },
+      );
+    }
+
+    const previousTeamIds = new Set(previousRows.map((row) => row.teamId));
+    if (resolvedTeamIds.some((teamId) => !previousTeamIds.has(teamId))) {
+      return NextResponse.json(
+        { error: `${stageLabel(parsed.data.stage)} picks must come from your saved ${stageLabel(previousStage)} picks.` },
+        { status: 400 },
+      );
+    }
   }
 
   await db.transaction(async (tx) => {
@@ -126,14 +193,28 @@ export async function POST(req: Request) {
         ),
       );
 
-    if (teamIds.length > 0) {
+    const downstreamStages = downstreamStagesByStage[parsed.data.stage];
+    if (downstreamStages.length > 0) {
+      await tx
+        .delete(stagePredictions)
+        .where(
+          and(
+            eq(stagePredictions.userId, session.userId),
+            eq(stagePredictions.leagueId, league.leagueId),
+            eq(stagePredictions.tournamentId, tournament.id),
+            inArray(stagePredictions.stage, [...downstreamStages]),
+          ),
+        );
+    }
+
+    if (resolvedTeamIds.length > 0) {
       await tx.insert(stagePredictions).values(
-        teamIds.map((teamId, index) => ({
+        resolvedTeamIds.map((teamId, index) => ({
           userId: session.userId,
           leagueId: league.leagueId,
           tournamentId: tournament.id,
           stage: parsed.data.stage,
-          teamId: teamId!,
+          teamId,
           groupRank:
             parsed.data.stage === "r32" && uniqueTeamSlugs[index]
               ? (parsed.data.r32Ranks?.[uniqueTeamSlugs[index]] ?? null)
@@ -155,4 +236,21 @@ function rankLabel(rank: 1 | 2 | 3): string {
   if (rank === 1) return "1st-place";
   if (rank === 2) return "2nd-place";
   return "3rd-place";
+}
+
+function stageLabel(stage: keyof typeof stageExpectedCounts): string {
+  switch (stage) {
+    case "r32":
+      return "Round of 32";
+    case "r16":
+      return "Round of 16";
+    case "qf":
+      return "Quarter-finals";
+    case "sf":
+      return "Semi-finals";
+    case "final":
+      return "Final";
+    case "champion":
+      return "Champion";
+  }
 }
