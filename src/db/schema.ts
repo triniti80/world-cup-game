@@ -181,6 +181,7 @@ export const matchPredictions = pgTable(
     predictedWinnerTeamId: integer("predicted_winner_team_id").references(() => teams.id, {
       onDelete: "set null",
     }),
+    predictedWinnerSide: text("predicted_winner_side"),
     lockedAt: timestamp("locked_at", { withTimezone: true }),
     submittedAt: timestamp("submitted_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),

@@ -36,6 +36,13 @@
       "when": 1779559000000,
       "tag": "0004_match_stage_third_place",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1779564000000,
+      "tag": "0005_match_prediction_winner_side",
+      "breakpoints": true
     }
   ]
 }

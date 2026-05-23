@@ -141,7 +141,7 @@ export default async function LeaguePredictionsPage() {
                             {!prediction?.submitted
                               ? "Missing"
                               : prediction.revealed
-                                ? `${prediction.homeScore} - ${prediction.awayScore}`
+                                ? formatRevealedScore(match, prediction)
                                 : "Submitted"}
                           </div>
                         </div>
@@ -164,6 +164,28 @@ export default async function LeaguePredictionsPage() {
       ) : null}
     </div>
   );
+}
+
+function formatRevealedScore(
+  match: {
+    homeTeamId?: string;
+    awayTeamId?: string;
+    homePlaceholder?: string;
+    awayPlaceholder?: string;
+  },
+  prediction: {
+    homeScore?: number;
+    awayScore?: number;
+    predictedWinnerSide?: "home" | "away";
+  },
+): string {
+  const score = `${prediction.homeScore} - ${prediction.awayScore}`;
+  if (!prediction.predictedWinnerSide) return score;
+  const sideLabel =
+    prediction.predictedWinnerSide === "home"
+      ? getTeam(match.homeTeamId)?.name ?? match.homePlaceholder ?? "Home"
+      : getTeam(match.awayTeamId)?.name ?? match.awayPlaceholder ?? "Away";
+  return `${score}, ${sideLabel} advances`;
 }
 
 function VisibilityRow({

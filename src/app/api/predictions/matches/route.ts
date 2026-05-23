@@ -4,6 +4,10 @@ import { db } from "@/db/client";
 import { matchPredictions } from "@/db/schema";
 import { readActiveLeagueId, readSession } from "@/lib/session";
 import {
+  resolvePredictedWinnerSide,
+  type PredictedWinnerSide,
+} from "@/lib/world-cup/match-predictions";
+import {
   getDbMatchForSeedMatch,
   getMatchLockAtUtc,
   getCurrentLeague,
@@ -14,6 +18,7 @@ const bodySchema = z.object({
   matchId: z.string().min(1),
   homeScore: z.number().int().min(0).max(99),
   awayScore: z.number().int().min(0).max(99),
+  predictedWinnerSide: z.enum(["home", "away"]).optional().nullable(),
 });
 
 export async function POST(req: Request) {
@@ -67,10 +72,21 @@ export async function POST(req: Request) {
     );
   }
 
+  const winnerSide = resolvePredictedWinnerSide({
+    stage: match.stage,
+    homeScore: parsed.data.homeScore,
+    awayScore: parsed.data.awayScore,
+    selectedSide: parsed.data.predictedWinnerSide,
+  });
+  if (!winnerSide.ok) {
+    return NextResponse.json({ error: winnerSide.error }, { status: 400 });
+  }
+
+  const predictedWinnerSide: PredictedWinnerSide | null = winnerSide.side;
   const predictedWinnerTeamId =
-    parsed.data.homeScore > parsed.data.awayScore
+    predictedWinnerSide === "home"
       ? match.homeTeamId
-      : parsed.data.awayScore > parsed.data.homeScore
+      : predictedWinnerSide === "away"
         ? match.awayTeamId
         : null;
   const now = new Date();
@@ -84,6 +100,7 @@ export async function POST(req: Request) {
       homeScore: parsed.data.homeScore,
       awayScore: parsed.data.awayScore,
       predictedWinnerTeamId,
+      predictedWinnerSide,
       lockedAt: lockAt,
       updatedAt: now,
     })
@@ -97,6 +114,7 @@ export async function POST(req: Request) {
         homeScore: parsed.data.homeScore,
         awayScore: parsed.data.awayScore,
         predictedWinnerTeamId,
+        predictedWinnerSide,
         lockedAt: lockAt,
         updatedAt: now,
       },
@@ -110,6 +128,7 @@ export async function POST(req: Request) {
           matchId: seedMatch.id,
           homeScore: prediction.homeScore,
           awayScore: prediction.awayScore,
+          predictedWinnerSide: prediction.predictedWinnerSide,
           updatedAt: prediction.updatedAt.toISOString(),
         }
       : null,

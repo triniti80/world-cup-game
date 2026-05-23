@@ -2,16 +2,19 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { formatKickoff, getMatchLockAt, getTeam, type Match } from "@/lib/world-cup/data";
+import { isKnockoutStage, type PredictedWinnerSide } from "@/lib/world-cup/match-predictions";
 import { TeamBadge } from "@/components/world-cup/TeamBadge";
 
 type Prediction = {
   homeScore: string;
   awayScore: string;
+  predictedWinnerSide: "" | PredictedWinnerSide;
 };
 
 type SavedPrediction = {
   homeScore: number;
   awayScore: number;
+  predictedWinnerSide?: PredictedWinnerSide;
   updatedAt: string;
 };
 
@@ -31,6 +34,7 @@ export function PredictionForm({ matches, initialPredictions = {} }: PredictionF
             {
               homeScore: saved ? String(saved.homeScore) : "",
               awayScore: saved ? String(saved.awayScore) : "",
+              predictedWinnerSide: saved?.predictedWinnerSide ?? "",
             },
           ];
         }),
@@ -52,7 +56,7 @@ export function PredictionForm({ matches, initialPredictions = {} }: PredictionF
     setPredictions((current) => ({
       ...current,
       [matchId]: {
-        ...(current[matchId] ?? { homeScore: "", awayScore: "" }),
+        ...(current[matchId] ?? { homeScore: "", awayScore: "", predictedWinnerSide: "" }),
         [key]: value,
       },
     }));
@@ -74,13 +78,31 @@ export function PredictionForm({ matches, initialPredictions = {} }: PredictionF
       return;
     }
 
+    const match = matches.find((candidate) => candidate.id === matchId);
+    const predictedWinnerSide =
+      prediction.predictedWinnerSide === "home" || prediction.predictedWinnerSide === "away"
+        ? prediction.predictedWinnerSide
+        : null;
+    if (
+      match &&
+      isKnockoutStage(match.stage) &&
+      homeScore === awayScore &&
+      predictedWinnerSide === null
+    ) {
+      setErrors((current) => ({
+        ...current,
+        [matchId]: "Choose who advances for a tied knockout prediction.",
+      }));
+      return;
+    }
+
     setSavingMatchId(matchId);
     setErrors((current) => ({ ...current, [matchId]: "" }));
     try {
       const res = await fetch("/api/predictions/matches", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ matchId, homeScore, awayScore }),
+        body: JSON.stringify({ matchId, homeScore, awayScore, predictedWinnerSide }),
       });
       const body = await res.json().catch(() => null);
       if (!res.ok) {
@@ -96,6 +118,11 @@ export function PredictionForm({ matches, initialPredictions = {} }: PredictionF
         [matchId]: {
           homeScore,
           awayScore,
+          predictedWinnerSide:
+            body?.prediction?.predictedWinnerSide === "home" ||
+            body?.prediction?.predictedWinnerSide === "away"
+              ? body.prediction.predictedWinnerSide
+              : undefined,
           updatedAt: body?.prediction?.updatedAt ?? new Date().toISOString(),
         },
       }));
@@ -116,13 +143,24 @@ export function PredictionForm({ matches, initialPredictions = {} }: PredictionF
         const away = getTeam(match.awayTeamId)?.name ?? match.awayPlaceholder ?? "TBD";
         const lockAt = getMatchLockAt(match);
         const locked = Date.now() >= lockAt.getTime();
-        const prediction = predictions[match.id] ?? { homeScore: "", awayScore: "" };
-        const complete = prediction.homeScore !== "" && prediction.awayScore !== "";
+        const prediction = predictions[match.id] ?? {
+          homeScore: "",
+          awayScore: "",
+          predictedWinnerSide: "",
+        };
+        const complete = isPredictionComplete(match, prediction);
         const savedPrediction = savedPredictions[match.id];
+        const winnerSide = effectiveWinnerSide(match, prediction);
+        const needsAdvancingSide =
+          isKnockoutStage(match.stage) &&
+          prediction.homeScore !== "" &&
+          prediction.awayScore !== "" &&
+          Number(prediction.homeScore) === Number(prediction.awayScore);
         const saved =
           Boolean(savedPrediction) &&
           String(savedPrediction?.homeScore) === prediction.homeScore &&
-          String(savedPrediction?.awayScore) === prediction.awayScore;
+          String(savedPrediction?.awayScore) === prediction.awayScore &&
+          (savedPrediction?.predictedWinnerSide ?? null) === winnerSide;
         const saving = savingMatchId === match.id;
         const error = errors[match.id];
         const status = locked ? "Locked" : saved ? "Saved" : complete ? "Unsaved" : "Missing";
@@ -181,6 +219,36 @@ export function PredictionForm({ matches, initialPredictions = {} }: PredictionF
               <TeamBadge teamId={match.awayTeamId} label={away} />
             </div>
 
+            {needsAdvancingSide ? (
+              <div className="mt-4 rounded-xl border border-white/10 bg-[var(--color-panel-low)] p-3">
+                <div className="mb-2 text-xs font-bold uppercase text-[var(--color-fg-muted)]">
+                  Choose who advances
+                </div>
+                <div className="grid gap-2 sm:grid-cols-2">
+                  {(["home", "away"] as const).map((side) => {
+                    const active = prediction.predictedWinnerSide === side;
+                    const label = side === "home" ? home : away;
+                    return (
+                      <button
+                        key={side}
+                        type="button"
+                        disabled={locked}
+                        onClick={() => update(match.id, "predictedWinnerSide", side)}
+                        className={
+                          "rounded-lg border px-3 py-2 text-left text-sm font-bold transition active:scale-95 disabled:opacity-50 " +
+                          (active
+                            ? "border-[var(--color-accent)] bg-[var(--color-accent)]/10 text-[var(--color-accent)]"
+                            : "border-white/10 bg-[var(--color-panel-high)] text-[var(--color-fg-muted)] hover:bg-[var(--color-panel-highest)]")
+                        }
+                      >
+                        {label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            ) : null}
+
             <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-white/10 pt-3 text-xs text-[var(--color-fg-muted)]">
               <div>
                 <span>Locks {formatKickoff(lockAt.toISOString())}</span>
@@ -202,9 +270,31 @@ export function PredictionForm({ matches, initialPredictions = {} }: PredictionF
       })}
 
       <div className="rounded-xl border border-white/10 bg-[var(--color-panel-low)] p-4 text-sm text-[var(--color-fg-muted)]">
-        Match scores are now saved to Postgres and the server enforces the 5-minute lock.
-        The next build step adds league-wide visibility and scoring breakdowns.
+        Match scores are saved to Postgres and the server enforces the 5-minute lock.
+        Knockout draws also require an advancing team before they can be saved.
       </div>
     </div>
   );
+}
+
+function isPredictionComplete(match: Match, prediction: Prediction): boolean {
+  if (prediction.homeScore === "" || prediction.awayScore === "") return false;
+  if (!isKnockoutStage(match.stage)) return true;
+  if (Number(prediction.homeScore) !== Number(prediction.awayScore)) return true;
+  return prediction.predictedWinnerSide === "home" || prediction.predictedWinnerSide === "away";
+}
+
+function effectiveWinnerSide(
+  match: Match,
+  prediction: Prediction,
+): PredictedWinnerSide | null | undefined {
+  if (prediction.homeScore === "" || prediction.awayScore === "") return undefined;
+  const homeScore = Number(prediction.homeScore);
+  const awayScore = Number(prediction.awayScore);
+  if (homeScore > awayScore) return "home";
+  if (awayScore > homeScore) return "away";
+  if (!isKnockoutStage(match.stage)) return null;
+  return prediction.predictedWinnerSide === "home" || prediction.predictedWinnerSide === "away"
+    ? prediction.predictedWinnerSide
+    : undefined;
 }

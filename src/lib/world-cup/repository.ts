@@ -55,6 +55,7 @@ export type SavedPredictionMap = Record<
   {
     homeScore: number;
     awayScore: number;
+    predictedWinnerSide?: "home" | "away";
     updatedAt: string;
   }
 >;
@@ -118,6 +119,7 @@ export type LeagueMatchPrediction = {
   revealed: boolean;
   homeScore?: number;
   awayScore?: number;
+  predictedWinnerSide?: "home" | "away";
 };
 
 export type LeaguePredictionMatch = Match & {
@@ -395,6 +397,7 @@ export async function getSavedMatchPredictions(
       matchId: matchPredictions.matchId,
       homeScore: matchPredictions.homeScore,
       awayScore: matchPredictions.awayScore,
+      predictedWinnerSide: matchPredictions.predictedWinnerSide,
       updatedAt: matchPredictions.updatedAt,
     })
     .from(matchPredictions)
@@ -415,6 +418,10 @@ export async function getSavedMatchPredictions(
           {
             homeScore: row.homeScore,
             awayScore: row.awayScore,
+            predictedWinnerSide:
+              row.predictedWinnerSide === "home" || row.predictedWinnerSide === "away"
+                ? row.predictedWinnerSide
+                : undefined,
             updatedAt: row.updatedAt.toISOString(),
           },
         ],
@@ -803,6 +810,7 @@ export async function getLeaguePredictionVisibility(userId: number, activeLeague
       matchId: matchPredictions.matchId,
       homeScore: matchPredictions.homeScore,
       awayScore: matchPredictions.awayScore,
+      predictedWinnerSide: matchPredictions.predictedWinnerSide,
     })
     .from(matchPredictions)
     .where(eq(matchPredictions.leagueId, league.leagueId));
@@ -831,6 +839,12 @@ export async function getLeaguePredictionVisibility(userId: number, activeLeague
             revealed,
             homeScore: revealed ? prediction?.homeScore : undefined,
             awayScore: revealed ? prediction?.awayScore : undefined,
+            predictedWinnerSide:
+              revealed &&
+              (prediction?.predictedWinnerSide === "home" ||
+                prediction?.predictedWinnerSide === "away")
+                ? prediction.predictedWinnerSide
+                : undefined,
           };
         }),
       },
