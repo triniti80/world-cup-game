@@ -1,12 +1,14 @@
-import { MatchCard } from "@/components/world-cup/MatchCard";
-import { stageLabel } from "@/lib/world-cup/data";
-import { getSeededMatchesWithResults } from "@/lib/world-cup/repository";
+import { FixturesBrowser } from "@/components/FixturesBrowser";
+import { readActiveLeagueId, readSession } from "@/lib/session";
+import { getSavedMatchPredictions, getSeededMatchesWithResults } from "@/lib/world-cup/repository";
 
 export default async function FixturesPage() {
+  const session = await readSession();
+  const activeLeagueId = await readActiveLeagueId();
   const matches = await getSeededMatchesWithResults();
-  const groups = Array.from(new Set(matches.filter((match) => match.stage === "group").map((match) => match.group)))
-    .filter((group): group is string => Boolean(group))
-    .sort();
+  const savedPredictions = session
+    ? await getSavedMatchPredictions(session.userId, activeLeagueId)
+    : {};
 
   return (
     <div className="space-y-6">
@@ -18,79 +20,7 @@ export default async function FixturesPage() {
         </p>
       </div>
 
-      <section className="hide-scrollbar -mx-4 flex gap-3 overflow-x-auto px-4 pb-1">
-        {["10", "11", "12", "13", "14", "15"].map((day) => (
-          <button
-            key={day}
-            className={
-              "flex h-20 min-w-16 flex-col items-center justify-center rounded-xl font-bold transition active:scale-95 " +
-              (day === "11"
-                ? "bg-[var(--color-accent)] text-[#102000] glow-lime"
-                : "bg-[var(--color-panel-highest)] text-[var(--color-fg-muted)] hover:bg-[var(--color-panel-high)]")
-            }
-          >
-            <span className="text-xs">JUN</span>
-            <span className="font-display text-2xl font-extrabold">{day}</span>
-          </button>
-        ))}
-      </section>
-
-      <section className="flex flex-wrap gap-2">
-        {["All", "My Picks", "Live", "Group Stage", "Knockout"].map((filter, index) => (
-          <button
-            key={filter}
-            className={
-              "rounded-full px-5 py-2 text-sm font-bold transition active:scale-95 " +
-              (index === 0
-                ? "border border-[var(--color-accent)] bg-[var(--color-panel-highest)] text-[var(--color-accent)]"
-                : "bg-[var(--color-panel-low)] text-[var(--color-fg-muted)] hover:bg-[var(--color-panel-high)]")
-            }
-          >
-            {filter}
-          </button>
-        ))}
-      </section>
-
-      <div className="space-y-8">
-        {groups.map((group) => {
-          const groupMatches = matches.filter((match) => match.group === group);
-          if (groupMatches.length === 0) return null;
-          return (
-            <section key={group} className="space-y-4">
-              <div className="flex items-center justify-between">
-                <h2 className="flex items-center gap-2 font-display text-xl font-bold text-[var(--color-primary)]">
-                  <span className="h-6 w-1 rounded-full bg-[var(--color-accent)]" />
-                  Group {group}
-                </h2>
-                <span className="rounded-full bg-[var(--color-panel-high)] px-3 py-1 text-xs font-bold uppercase text-[var(--color-fg-muted)]">
-                  {stageLabel("group")}
-                </span>
-              </div>
-              <div className="grid gap-4 md:grid-cols-2">
-                {groupMatches.map((match) => (
-                  <MatchCard key={match.id} match={match} />
-                ))}
-              </div>
-            </section>
-          );
-        })}
-
-        <section className="space-y-4">
-          <div className="flex items-center gap-2">
-            <span className="h-6 w-1 rounded-full bg-[var(--color-gold)]" />
-            <h2 className="font-display text-xl font-bold text-[var(--color-primary)]">
-              Knockout placeholders
-            </h2>
-          </div>
-          <div className="grid gap-4 md:grid-cols-2">
-            {matches
-              .filter((match) => match.stage !== "group")
-              .map((match) => (
-                <MatchCard key={match.id} match={match} />
-              ))}
-          </div>
-        </section>
-      </div>
+      <FixturesBrowser matches={matches} savedPredictions={savedPredictions} />
     </div>
   );
 }
