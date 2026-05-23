@@ -25,6 +25,11 @@ type Pair = {
   home?: Team;
   away?: Team;
 };
+type StageCompletion = {
+  picked: number;
+  complete: boolean;
+  message: string;
+};
 
 export function StagePredictionForm({
   initialPredictions,
@@ -53,6 +58,14 @@ export function StagePredictionForm({
     final: sfPairs,
     champion: finalPairs,
   } satisfies Record<(typeof knockoutStages)[number]["id"], Pair[]>;
+  const completionMap = {
+    r32: getR32Completion(r32Ranks),
+    r16: getKnockoutCompletion(selected.r16 ?? [], r32Pairs, 16),
+    qf: getKnockoutCompletion(selected.qf ?? [], r16Pairs, 8),
+    sf: getKnockoutCompletion(selected.sf ?? [], qfPairs, 4),
+    final: getKnockoutCompletion(selected.final ?? [], sfPairs, 2),
+    champion: getKnockoutCompletion(selected.champion ?? [], finalPairs, 1),
+  } satisfies Record<StageId, StageCompletion>;
 
   function setRank(team: Team, rank: Rank) {
     setErrors((current) => ({ ...current, r32: "" }));
@@ -63,10 +76,7 @@ export function StagePredictionForm({
 
       if (existing === rank) {
         delete next[team.id];
-        setSelected((selectedCurrent) => ({
-          ...selectedCurrent,
-          r32: Object.keys(next),
-        }));
+        setSelected((selectedCurrent) => sanitizeAfterR32Change(selectedCurrent, next));
         return next;
       }
 
@@ -88,10 +98,7 @@ export function StagePredictionForm({
       }
 
       next[team.id] = rank;
-      setSelected((selectedCurrent) => ({
-        ...selectedCurrent,
-        r32: Object.keys(next),
-      }));
+      setSelected((selectedCurrent) => sanitizeAfterR32Change(selectedCurrent, next));
       return next;
     });
   }
@@ -102,11 +109,17 @@ export function StagePredictionForm({
     setSelected((current) => {
       const nextStage = [...(current[stage] ?? [])];
       nextStage[pairIndex] = nextStage[pairIndex] === teamId ? "" : teamId;
-      return { ...current, [stage]: nextStage };
+      return sanitizeAfterStageChange({ ...current, [stage]: nextStage }, stage);
     });
   }
 
   async function saveStage(stage: StageId) {
+    const completion = completionMap[stage];
+    if (!completion.complete) {
+      setErrors((current) => ({ ...current, [stage]: completion.message }));
+      return;
+    }
+
     setSaving(stage);
     setSavedStage(null);
     setErrors((current) => ({ ...current, [stage]: "" }));
@@ -207,6 +220,8 @@ export function StagePredictionForm({
           saving={saving}
           savedStage={savedStage}
           error={errors.r32}
+          helper={completionMap.r32.message}
+          disabled={!completionMap.r32.complete}
           onSave={() => void saveStage("r32")}
         />
       </section>
@@ -220,6 +235,7 @@ export function StagePredictionForm({
           expected={stage.expected}
           pairs={pairMap[stage.id]}
           selectedTeamIds={selected[stage.id] ?? []}
+          completion={completionMap[stage.id]}
           saving={saving}
           savedStage={savedStage}
           error={errors[stage.id]}
@@ -238,6 +254,7 @@ function KnockoutStage({
   expected,
   pairs,
   selectedTeamIds,
+  completion,
   saving,
   savedStage,
   error,
@@ -250,14 +267,13 @@ function KnockoutStage({
   expected: number;
   pairs: Pair[];
   selectedTeamIds: string[];
+  completion: StageCompletion;
   saving: string | null;
   savedStage: string | null;
   error?: string;
   onPick: (stage: Exclude<StageId, "r32">, pairIndex: number, teamId: string) => void;
   onSave: () => void;
 }) {
-  const pickedCount = selectedTeamIds.filter(Boolean).length;
-
   return (
     <section className="glass-card rounded-xl p-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -268,7 +284,7 @@ function KnockoutStage({
           </p>
         </div>
         <span className="rounded-full bg-[var(--color-panel-high)] px-3 py-1 text-xs font-bold">
-          {pickedCount}/{expected} selected
+          {completion.picked}/{expected} selected
         </span>
       </div>
 
@@ -306,6 +322,8 @@ function KnockoutStage({
         saving={saving}
         savedStage={savedStage}
         error={error}
+        helper={completion.message}
+        disabled={!completion.complete}
         onSave={onSave}
       />
     </section>
@@ -350,12 +368,16 @@ function StageFooter({
   saving,
   savedStage,
   error,
+  helper,
+  disabled = false,
   onSave,
 }: {
   stage: StageId;
   saving: string | null;
   savedStage: string | null;
   error?: string;
+  helper?: string;
+  disabled?: boolean;
   onSave: () => void;
 }) {
   return (
@@ -365,13 +387,15 @@ function StageFooter({
           <span className="font-semibold text-[var(--color-danger)]">{error}</span>
         ) : savedStage === stage ? (
           <span className="font-semibold text-[var(--color-accent)]">Saved</span>
+        ) : helper ? (
+          <span className="text-[var(--color-fg-muted)]">{helper}</span>
         ) : (
           <span className="text-[var(--color-fg-muted)]">Locks 1 hour before Match 1</span>
         )}
       </div>
       <button
         type="button"
-        disabled={saving !== null}
+        disabled={saving !== null || disabled}
         onClick={onSave}
         className="rounded-lg bg-[var(--color-accent)] px-4 py-2 text-sm font-bold text-[#102000] disabled:opacity-60"
       >
@@ -438,6 +462,108 @@ function getTeamById(teamId: string | undefined): Team | undefined {
 
 function thirdPlaceCount(ranks: Record<string, Rank>): number {
   return Object.values(ranks).filter((rank) => rank === 3).length;
+}
+
+function getR32Completion(ranks: Record<string, Rank>): StageCompletion {
+  const picked = Object.keys(ranks).length;
+  const firsts = Object.values(ranks).filter((rank) => rank === 1).length;
+  const seconds = Object.values(ranks).filter((rank) => rank === 2).length;
+  const thirds = Object.values(ranks).filter((rank) => rank === 3).length;
+  const complete = picked === 32 && firsts === 12 && seconds === 12 && thirds === 8;
+
+  return {
+    picked,
+    complete,
+    message: complete
+      ? "Locks 1 hour before Match 1"
+      : `Need 12 first-place, 12 second-place, and 8 third-place teams. Current: ${firsts}, ${seconds}, ${thirds}.`,
+  };
+}
+
+function getKnockoutCompletion(
+  selectedTeamIds: string[],
+  pairs: Pair[],
+  expected: number,
+): StageCompletion {
+  const playablePairs = pairs.filter((pair) => pair.home && pair.away);
+  const picked = selectedTeamIds.filter(Boolean).length;
+  const complete =
+    playablePairs.length === expected &&
+    picked === expected &&
+    playablePairs.every((pair, index) => {
+      const selectedTeamId = selectedTeamIds[index];
+      return selectedTeamId === pair.home?.id || selectedTeamId === pair.away?.id;
+    });
+
+  return {
+    picked,
+    complete,
+    message: complete
+      ? "Locks 1 hour before Match 1"
+      : playablePairs.length < expected
+        ? "Complete the previous round first."
+        : `Choose ${expected} winners from the available matchups.`,
+  };
+}
+
+function sanitizeAfterR32Change(
+  current: Record<string, string[]>,
+  ranks: Record<string, Rank>,
+): Record<string, string[]> {
+  const next: Record<string, string[]> = {
+    ...current,
+    r32: sortedRankTeamIds(ranks),
+  };
+  next.r16 = keepValidPairWinners(next.r16 ?? [], buildRoundOf32Pairs(ranks));
+  next.qf = keepValidPairWinners(next.qf ?? [], buildPairsFromTeamIds(next.r16 ?? [], "R16"));
+  next.sf = keepValidPairWinners(next.sf ?? [], buildPairsFromTeamIds(next.qf ?? [], "QF"));
+  next.final = keepValidPairWinners(next.final ?? [], buildPairsFromTeamIds(next.sf ?? [], "SF"));
+  next.champion = keepValidPairWinners(
+    next.champion ?? [],
+    buildPairsFromTeamIds(next.final ?? [], "Final"),
+  );
+  return next;
+}
+
+function sanitizeAfterStageChange(
+  current: Record<string, string[]>,
+  stage: Exclude<StageId, "r32">,
+): Record<string, string[]> {
+  const next = { ...current };
+
+  if (stage === "r16") {
+    next.qf = keepValidPairWinners(next.qf ?? [], buildPairsFromTeamIds(next.r16 ?? [], "R16"));
+  }
+  if (stage === "r16" || stage === "qf") {
+    next.sf = keepValidPairWinners(next.sf ?? [], buildPairsFromTeamIds(next.qf ?? [], "QF"));
+  }
+  if (stage === "r16" || stage === "qf" || stage === "sf") {
+    next.final = keepValidPairWinners(next.final ?? [], buildPairsFromTeamIds(next.sf ?? [], "SF"));
+  }
+  if (stage !== "champion") {
+    next.champion = keepValidPairWinners(
+      next.champion ?? [],
+      buildPairsFromTeamIds(next.final ?? [], "Final"),
+    );
+  }
+
+  return next;
+}
+
+function keepValidPairWinners(selectedTeamIds: string[], pairs: Pair[]): string[] {
+  return pairs.map((pair, index) => {
+    const selectedTeamId = selectedTeamIds[index];
+    if (selectedTeamId && (pair.home?.id === selectedTeamId || pair.away?.id === selectedTeamId)) {
+      return selectedTeamId;
+    }
+    return "";
+  });
+}
+
+function sortedRankTeamIds(ranks: Record<string, Rank>): string[] {
+  return Object.entries(ranks)
+    .sort((a, b) => sortByGroupAndRank(a, b))
+    .map(([teamId]) => teamId);
 }
 
 function rankOrdinal(rank: Rank): string {
