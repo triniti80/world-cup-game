@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { teams } from "@/lib/world-cup/data";
+import { useI18n } from "@/components/I18nProvider";
+import { getTeamName, teams } from "@/lib/world-cup/data";
 import type { AdminOfficialResults } from "@/lib/world-cup/repository";
 
 const stages = [
@@ -20,6 +21,7 @@ export function AdminOfficialResultsForm({
 }: {
   initialResults: AdminOfficialResults;
 }) {
+  const { locale, t } = useI18n();
   const [selected, setSelected] = useState<Record<string, string[]>>(initialResults.stages);
   const [topScorer, setTopScorer] = useState(initialResults.topScorer ?? "");
   const [winner, setWinner] = useState(initialResults.tournamentWinner ?? "");
@@ -56,7 +58,7 @@ export function AdminOfficialResultsForm({
       }
       setMessage(successMessage);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Network error.");
+      setError(err instanceof Error ? err.message : t("auth.networkError"));
     } finally {
       setSaving(null);
     }
@@ -65,20 +67,24 @@ export function AdminOfficialResultsForm({
   return (
     <section className="glass-card rounded-xl p-5">
       <div className="mb-4">
-        <h2 className="font-display text-lg font-bold">Official Tournament Results</h2>
+        <h2 className="font-display text-lg font-bold">
+          {locale === "he" ? "תוצאות טורניר רשמיות" : "Official Tournament Results"}
+        </h2>
         <p className="mt-1 text-sm text-[var(--color-fg-muted)]">
-          Record official qualifiers and bonuses. Saving recalculates stage and bonus leaderboard points.
+          {locale === "he"
+            ? "הזן עולות ובונוסים רשמיים. שמירה מחשבת מחדש נקודות שלבים ובונוס בטבלה."
+            : "Record official qualifiers and bonuses. Saving recalculates stage and bonus leaderboard points."}
         </p>
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">
         <label className="block rounded-xl border border-white/10 bg-[var(--color-panel-low)] p-4">
-          <span className="mb-2 block text-sm font-bold">Official top scorer</span>
+          <span className="mb-2 block text-sm font-bold">{locale === "he" ? "מלך שערים רשמי" : "Official top scorer"}</span>
           <div className="flex gap-2">
             <input
               value={topScorer}
               onChange={(event) => setTopScorer(event.target.value)}
-              placeholder="Golden Boot winner"
+              placeholder={locale === "he" ? "זוכה נעל הזהב" : "Golden Boot winner"}
               className="min-w-0 flex-1 rounded-lg border border-white/10 bg-[var(--color-panel-highest)] px-3 py-3 outline-none focus:border-[var(--color-accent)]"
             />
             <button
@@ -88,28 +94,28 @@ export function AdminOfficialResultsForm({
                 void save(
                   { kind: "top_scorer", playerName: topScorer },
                   "top_scorer",
-                  "Official top scorer saved and scoring recalculated.",
+                  locale === "he" ? "מלך השערים הרשמי נשמר והניקוד חושב מחדש." : "Official top scorer saved and scoring recalculated.",
                 )
               }
               className="rounded-lg bg-[var(--color-accent)] px-4 py-3 text-sm font-bold text-[#102000] disabled:opacity-60"
             >
-              {saving === "top_scorer" ? "Saving..." : "Save"}
+              {saving === "top_scorer" ? t("common.saving") : t("common.save")}
             </button>
           </div>
         </label>
 
         <label className="block rounded-xl border border-white/10 bg-[var(--color-panel-low)] p-4">
-          <span className="mb-2 block text-sm font-bold">Official World Cup winner</span>
+          <span className="mb-2 block text-sm font-bold">{locale === "he" ? "זוכת מונדיאל רשמית" : "Official World Cup winner"}</span>
           <div className="flex gap-2">
             <select
               value={winner}
               onChange={(event) => setWinner(event.target.value)}
               className="min-w-0 flex-1 rounded-lg border border-white/10 bg-[var(--color-panel-highest)] px-3 py-3 outline-none focus:border-[var(--color-accent)]"
             >
-              <option value="">Choose team</option>
+              <option value="">{locale === "he" ? "בחר קבוצה" : "Choose team"}</option>
               {teams.map((team) => (
                 <option key={team.id} value={team.id}>
-                  {team.name}
+                  {getTeamName(team, locale)}
                 </option>
               ))}
             </select>
@@ -120,12 +126,12 @@ export function AdminOfficialResultsForm({
                 void save(
                   { kind: "tournament_winner", teamId: winner },
                   "winner",
-                  "Official winner saved and scoring recalculated.",
+                  locale === "he" ? "הזוכה הרשמית נשמרה והניקוד חושב מחדש." : "Official winner saved and scoring recalculated.",
                 )
               }
               className="rounded-lg bg-[var(--color-accent)] px-4 py-3 text-sm font-bold text-[#102000] disabled:opacity-60"
             >
-              {saving === "winner" ? "Saving..." : "Save"}
+              {saving === "winner" ? t("common.saving") : t("common.save")}
             </button>
           </div>
         </label>
@@ -155,7 +161,7 @@ export function AdminOfficialResultsForm({
                   }
                   className="rounded-lg bg-[var(--color-accent)] px-4 py-2 text-sm font-bold text-[#102000] disabled:opacity-60"
                 >
-                  {saving === stage.id ? "Saving..." : "Save Stage"}
+                  {saving === stage.id ? t("common.saving") : locale === "he" ? "שמירת שלב" : "Save Stage"}
                 </button>
               </div>
 
@@ -168,14 +174,14 @@ export function AdminOfficialResultsForm({
                       type="button"
                       onClick={() => toggle(stage.id, team.id)}
                       className={
-                        "rounded-lg border px-3 py-2 text-left text-sm transition active:scale-95 " +
+                        "rounded-lg border px-3 py-2 text-start text-sm transition active:scale-95 " +
                         (active
                           ? "border-[var(--color-accent)] bg-[var(--color-accent)]/10 text-[var(--color-accent)]"
                           : "border-white/10 bg-[var(--color-panel-high)] text-[var(--color-fg-muted)]")
                       }
                     >
                       <span className="font-bold">{team.code}</span>
-                      <span className="ml-2">{team.name}</span>
+                      <span className="ms-2">{getTeamName(team, locale)}</span>
                     </button>
                   );
                 })}

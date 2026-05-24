@@ -1,9 +1,12 @@
 import Link from "next/link";
+import { t } from "@/lib/i18n";
+import { readLocale } from "@/lib/i18n-server";
 import { formatKickoff, tournament } from "@/lib/world-cup/data";
 import { MatchCard } from "@/components/world-cup/MatchCard";
 import { getSeededMatchesWithResults } from "@/lib/world-cup/repository";
 
 export default async function DashboardPage() {
+  const locale = await readLocale();
   const matches = await getSeededMatchesWithResults();
   const nextMatches = matches.slice(0, 4);
 
@@ -15,50 +18,48 @@ export default async function DashboardPage() {
         </div>
         <p className="text-sm font-bold uppercase text-[var(--color-gold)]">{tournament.name}</p>
         <h1 className="mt-2 max-w-3xl font-display text-3xl font-extrabold text-[var(--color-fg)] md:text-5xl">
-          Friend pool command center
+          {t(locale, "dashboard.title")}
         </h1>
         <p className="mt-4 max-w-2xl text-sm leading-6 text-[var(--color-fg-muted)] md:text-base">
-          Make score guesses, lock qualifier picks, and watch the table shift as
-          matches begin. The interface now follows the Elite Tournament Pulse design
-          system from the provided Stitch mockups.
+          {t(locale, "dashboard.body")}
         </p>
         <div className="mt-6 flex flex-wrap gap-3">
           <Link
             href="/predictions"
             className="rounded-lg bg-[var(--color-accent)] px-4 py-3 text-sm font-bold text-[#102000] glow-lime active:scale-95"
           >
-            Make Predictions
+            {t(locale, "dashboard.makePredictions")}
           </Link>
           <Link
             href="/instructions"
             className="rounded-lg border border-[var(--color-gold)] px-4 py-3 text-sm font-bold text-[var(--color-gold)] active:scale-95"
           >
-            How to Play
+            {t(locale, "dashboard.howToPlay")}
           </Link>
         </div>
       </section>
 
       <section className="grid gap-4 md:grid-cols-3">
-        <SummaryCard label="Qualifier picks lock" value={formatKickoff(tournament.qualifierLockAtUtc)} />
-        <SummaryCard label="Score picks lock" value="5 min before kickoff" />
-        <SummaryCard label="Guess visibility" value="Revealed after game starts" />
+        <SummaryCard label={t(locale, "dashboard.qualifierLock")} value={formatKickoff(tournament.qualifierLockAtUtc, locale)} />
+        <SummaryCard label={t(locale, "dashboard.scoreLock")} value={t(locale, "dashboard.scoreLockValue")} />
+        <SummaryCard label={t(locale, "dashboard.visibility")} value={t(locale, "dashboard.visibilityValue")} />
       </section>
 
       <section>
         <div className="mb-3 flex items-end justify-between gap-4">
           <div>
-            <h2 className="font-display text-xl font-bold">Next Up</h2>
+            <h2 className="font-display text-xl font-bold">{t(locale, "dashboard.nextUp")}</h2>
             <p className="text-sm text-[var(--color-fg-muted)]">
-              Enter scores before each match locks.
+              {t(locale, "dashboard.nextUpBody")}
             </p>
           </div>
           <Link href="/fixtures" className="text-sm font-medium">
-            All fixtures
+            {t(locale, "dashboard.allFixtures")}
           </Link>
         </div>
         <div className="grid gap-4 md:grid-cols-2">
           {nextMatches.map((match) => (
-            <MatchCard key={match.id} match={match} />
+            <MatchCard key={match.id} match={match} locale={locale} />
           ))}
         </div>
       </section>

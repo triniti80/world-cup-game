@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { formatKickoff, getMatchLockAt, getTeam, type Match } from "@/lib/world-cup/data";
+import { useI18n } from "@/components/I18nProvider";
+import { formatKickoff, getMatchLockAt, getTeam, getTeamName, type Match } from "@/lib/world-cup/data";
 import { isKnockoutStage, type PredictedWinnerSide } from "@/lib/world-cup/match-predictions";
 import { TeamBadge } from "@/components/world-cup/TeamBadge";
 
@@ -24,6 +25,7 @@ type PredictionFormProps = {
 };
 
 export function PredictionForm({ matches, initialPredictions = {} }: PredictionFormProps) {
+  const { locale, t } = useI18n();
   const initial = useMemo(
     () =>
       Object.fromEntries(
@@ -74,7 +76,7 @@ export function PredictionForm({ matches, initialPredictions = {} }: PredictionF
       homeScore < 0 ||
       awayScore < 0
     ) {
-      setErrors((current) => ({ ...current, [matchId]: "Enter whole-number scores first." }));
+      setErrors((current) => ({ ...current, [matchId]: t("predictions.enterScores") }));
       return;
     }
 
@@ -91,7 +93,7 @@ export function PredictionForm({ matches, initialPredictions = {} }: PredictionF
     ) {
       setErrors((current) => ({
         ...current,
-        [matchId]: "Choose who advances for a tied knockout prediction.",
+        [matchId]: t("predictions.chooseAdvance"),
       }));
       return;
     }
@@ -129,7 +131,7 @@ export function PredictionForm({ matches, initialPredictions = {} }: PredictionF
     } catch (err) {
       setErrors((current) => ({
         ...current,
-        [matchId]: err instanceof Error ? err.message : "Network error.",
+        [matchId]: err instanceof Error ? err.message : t("auth.networkError"),
       }));
     } finally {
       setSavingMatchId((current) => (current === matchId ? null : current));
@@ -139,8 +141,8 @@ export function PredictionForm({ matches, initialPredictions = {} }: PredictionF
   return (
     <div className="space-y-4">
       {matches.map((match) => {
-        const home = getTeam(match.homeTeamId)?.name ?? match.homePlaceholder ?? "TBD";
-        const away = getTeam(match.awayTeamId)?.name ?? match.awayPlaceholder ?? "TBD";
+        const home = getTeamName(getTeam(match.homeTeamId), locale) ?? match.homePlaceholder ?? t("common.tbd");
+        const away = getTeamName(getTeam(match.awayTeamId), locale) ?? match.awayPlaceholder ?? t("common.tbd");
         const lockAt = getMatchLockAt(match);
         const locked = Date.now() >= lockAt.getTime();
         const prediction = predictions[match.id] ?? {
@@ -163,7 +165,13 @@ export function PredictionForm({ matches, initialPredictions = {} }: PredictionF
           (savedPrediction?.predictedWinnerSide ?? null) === winnerSide;
         const saving = savingMatchId === match.id;
         const error = errors[match.id];
-        const status = locked ? "Locked" : saved ? "Saved" : complete ? "Unsaved" : "Missing";
+        const status = locked
+          ? t("predictions.locked")
+          : saved
+            ? t("common.saved")
+            : complete
+              ? t("predictions.unsaved")
+              : t("common.missing");
 
         return (
           <div
@@ -175,7 +183,7 @@ export function PredictionForm({ matches, initialPredictions = {} }: PredictionF
           >
             <div className="mb-4 flex items-center justify-between gap-3">
               <div className="text-xs font-bold uppercase text-[var(--color-fg-muted)]">
-                Match {match.number} · {formatKickoff(match.kickoffAtUtc)}
+                {t("common.match")} {match.number} · {formatKickoff(match.kickoffAtUtc, locale)}
               </div>
               <span
                 className={
@@ -194,7 +202,7 @@ export function PredictionForm({ matches, initialPredictions = {} }: PredictionF
             </div>
 
             <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3">
-              <TeamBadge teamId={match.homeTeamId} label={home} />
+              <TeamBadge teamId={match.homeTeamId} label={home} locale={locale} />
               <div className="flex items-center gap-2">
                 <input
                   type="number"
@@ -216,13 +224,13 @@ export function PredictionForm({ matches, initialPredictions = {} }: PredictionF
                   className="h-12 w-12 rounded-lg border border-white/10 bg-[var(--color-panel-highest)] text-center font-display text-xl font-extrabold text-[var(--color-accent)] outline-none focus:border-[var(--color-accent)] disabled:opacity-50"
                 />
               </div>
-              <TeamBadge teamId={match.awayTeamId} label={away} />
+              <TeamBadge teamId={match.awayTeamId} label={away} locale={locale} />
             </div>
 
             {needsAdvancingSide ? (
               <div className="mt-4 rounded-xl border border-white/10 bg-[var(--color-panel-low)] p-3">
                 <div className="mb-2 text-xs font-bold uppercase text-[var(--color-fg-muted)]">
-                  Choose who advances
+                  {t("predictions.chooseAdvances")}
                 </div>
                 <div className="grid gap-2 sm:grid-cols-2">
                   {(["home", "away"] as const).map((side) => {
@@ -235,7 +243,7 @@ export function PredictionForm({ matches, initialPredictions = {} }: PredictionF
                         disabled={locked}
                         onClick={() => update(match.id, "predictedWinnerSide", side)}
                         className={
-                          "rounded-lg border px-3 py-2 text-left text-sm font-bold transition active:scale-95 disabled:opacity-50 " +
+                          "rounded-lg border px-3 py-2 text-start text-sm font-bold transition active:scale-95 disabled:opacity-50 " +
                           (active
                             ? "border-[var(--color-accent)] bg-[var(--color-accent)]/10 text-[var(--color-accent)]"
                             : "border-white/10 bg-[var(--color-panel-high)] text-[var(--color-fg-muted)] hover:bg-[var(--color-panel-highest)]")
@@ -251,7 +259,7 @@ export function PredictionForm({ matches, initialPredictions = {} }: PredictionF
 
             <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-white/10 pt-3 text-xs text-[var(--color-fg-muted)]">
               <div>
-                <span>Locks {formatKickoff(lockAt.toISOString())}</span>
+                <span>{t("predictions.locks", { time: formatKickoff(lockAt.toISOString(), locale) })}</span>
                 {error ? (
                   <div className="mt-1 font-semibold text-[var(--color-danger)]">{error}</div>
                 ) : null}
@@ -262,7 +270,7 @@ export function PredictionForm({ matches, initialPredictions = {} }: PredictionF
                 onClick={() => void savePrediction(match.id)}
                 className="rounded-lg bg-[var(--color-accent)] px-4 py-2 font-bold text-[#102000] transition active:scale-95 disabled:opacity-50"
               >
-                {saving ? "Saving..." : saved ? "Saved" : "Save Prediction"}
+                {saving ? t("common.saving") : saved ? t("common.saved") : t("predictions.savePrediction")}
               </button>
             </div>
           </div>
@@ -270,8 +278,7 @@ export function PredictionForm({ matches, initialPredictions = {} }: PredictionF
       })}
 
       <div className="rounded-xl border border-white/10 bg-[var(--color-panel-low)] p-4 text-sm text-[var(--color-fg-muted)]">
-        Match scores are saved to Postgres and the server enforces the 5-minute lock.
-        Knockout draws also require an advancing team before they can be saved.
+        {t("predictions.savedBody")}
       </div>
     </div>
   );

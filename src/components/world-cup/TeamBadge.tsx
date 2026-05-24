@@ -1,4 +1,5 @@
-import { getTeam } from "@/lib/world-cup/data";
+import { getTeam, getTeamName } from "@/lib/world-cup/data";
+import type { Locale } from "@/lib/i18n";
 
 const COLORS: Record<string, string> = {
   canada: "from-red-500 to-white",
@@ -19,14 +20,16 @@ export function TeamBadge({
   teamId,
   label,
   size = "md",
+  locale = "en",
 }: {
   teamId?: string;
   label?: string;
   size?: "sm" | "md" | "lg";
+  locale?: Locale;
 }) {
   const team = getTeam(teamId);
   const code = team?.code ?? label?.slice(0, 3).toUpperCase() ?? "TBD";
-  const name = team?.name ?? label ?? "TBD";
+  const name = getTeamName(team, locale) ?? label ?? "TBD";
   const badgeSize = size === "lg" ? "h-16 w-16 text-base" : size === "sm" ? "h-10 w-10 text-xs" : "h-12 w-12 text-sm";
 
   return (

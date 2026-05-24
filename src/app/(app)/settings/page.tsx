@@ -1,6 +1,8 @@
 import { AdminFixturesForm } from "@/components/AdminFixturesForm";
 import { AdminOfficialResultsForm } from "@/components/AdminOfficialResultsForm";
 import { AdminResultsForm } from "@/components/AdminResultsForm";
+import { t } from "@/lib/i18n";
+import { readLocale } from "@/lib/i18n-server";
 import { readSession } from "@/lib/session";
 import { formatKickoff, tournament } from "@/lib/world-cup/data";
 import {
@@ -11,6 +13,7 @@ import {
 } from "@/lib/world-cup/repository";
 
 export default async function SettingsPage() {
+  const locale = await readLocale();
   const session = await readSession();
   const matches = session?.role === "admin" ? await getSeededMatchesWithResults() : [];
   const officialResults = session?.role === "admin" ? await getAdminOfficialResults() : null;
@@ -19,25 +22,24 @@ export default async function SettingsPage() {
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="font-display text-3xl font-extrabold">Settings</h1>
+        <h1 className="font-display text-3xl font-extrabold">{t(locale, "settings.title")}</h1>
         <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--color-fg-muted)]">
-          Admin tools for the pool. Full fixture import, users, leagues, and result
-          entry will be added as the database model comes online.
+          {t(locale, "settings.body")}
         </p>
       </div>
 
       <section className="glass-card rounded-xl p-5">
-        <h2 className="font-display text-lg font-bold">Tournament locks</h2>
+        <h2 className="font-display text-lg font-bold">{t(locale, "settings.locks")}</h2>
         <div className="mt-4 divide-y divide-white/10 text-sm">
-          <SettingRow label="Tournament" value={tournament.name} />
-          <SettingRow label="First match starts" value={formatKickoff(tournament.firstMatchAtUtc)} />
+          <SettingRow label={t(locale, "settings.tournament")} value={tournament.name} />
+          <SettingRow label={t(locale, "settings.firstMatch")} value={formatKickoff(tournament.firstMatchAtUtc, locale)} />
           <SettingRow
-            label="Qualifier picks lock"
-            value={formatKickoff(tournament.qualifierLockAtUtc)}
+            label={t(locale, "settings.qualifierLock")}
+            value={formatKickoff(tournament.qualifierLockAtUtc, locale)}
           />
-          <SettingRow label="Score picks lock" value="5 minutes before each match" />
-          <SettingRow label="Qualifier visibility" value="After the first match starts" />
-          <SettingRow label="Score visibility" value="After each match starts" />
+          <SettingRow label={t(locale, "settings.scoreLock")} value={t(locale, "settings.scoreLockValue")} />
+          <SettingRow label={t(locale, "settings.qualifierVisibility")} value={t(locale, "settings.qualifierVisibilityValue")} />
+          <SettingRow label={t(locale, "settings.scoreVisibility")} value={t(locale, "settings.scoreVisibilityValue")} />
         </div>
       </section>
 
@@ -46,12 +48,12 @@ export default async function SettingsPage() {
           <AdminFixturesForm matches={matches} />
           <AdminResultsForm matches={matches} />
           {officialResults ? <AdminOfficialResultsForm initialResults={officialResults} /> : null}
-          <AdminAuditLog entries={auditEntries} />
+          <AdminAuditLog entries={auditEntries} locale={locale} />
         </>
       ) : null}
 
       <section className="rounded-xl border border-dashed border-[var(--color-gold)]/50 bg-[var(--color-panel-low)] p-5">
-        <h2 className="font-display text-lg font-bold">Coming next</h2>
+        <h2 className="font-display text-lg font-bold">{locale === "he" ? "בהמשך" : "Coming next"}</h2>
         <ul className="mt-3 space-y-2 text-sm text-[var(--color-fg-muted)]">
           <li>Invite codes and real user accounts.</li>
           <li>Admin fixture import and editing.</li>
@@ -63,19 +65,19 @@ export default async function SettingsPage() {
   );
 }
 
-function AdminAuditLog({ entries }: { entries: AdminAuditEntry[] }) {
+function AdminAuditLog({ entries, locale }: { entries: AdminAuditEntry[]; locale: "en" | "he" }) {
   return (
     <section className="glass-card rounded-xl p-5">
       <div className="mb-4">
-        <h2 className="font-display text-lg font-bold">Recent Admin Changes</h2>
+        <h2 className="font-display text-lg font-bold">{t(locale, "settings.adminChanges")}</h2>
         <p className="mt-1 text-sm text-[var(--color-fg-muted)]">
-          Fixture, result, and official tournament changes are recorded with before/after details.
+          {t(locale, "settings.adminChangesBody")}
         </p>
       </div>
 
       {entries.length === 0 ? (
         <div className="rounded-xl border border-white/10 bg-[var(--color-panel-low)] p-4 text-sm text-[var(--color-fg-muted)]">
-          No admin changes have been recorded yet.
+          {t(locale, "settings.noAdminChanges")}
         </div>
       ) : (
         <div className="space-y-3">
@@ -94,12 +96,12 @@ function AdminAuditLog({ entries }: { entries: AdminAuditEntry[] }) {
                   </h3>
                 </div>
                 <span className="h-fit rounded-full bg-[var(--color-panel-highest)] px-3 py-1 text-xs font-bold text-[var(--color-gold)]">
-                  {formatKickoff(entry.createdAt)}
+                  {formatKickoff(entry.createdAt, locale)}
                 </span>
               </summary>
               <div className="mt-4 grid gap-3 border-t border-white/10 pt-4 md:grid-cols-2">
-                <AuditJsonBlock title="Before" value={entry.beforeJson} />
-                <AuditJsonBlock title="After" value={entry.afterJson} />
+                <AuditJsonBlock title={t(locale, "settings.before")} value={entry.beforeJson} />
+                <AuditJsonBlock title={t(locale, "settings.after")} value={entry.afterJson} />
               </div>
             </details>
           ))}
@@ -124,7 +126,7 @@ function SettingRow({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex justify-between gap-4 py-3">
       <span className="text-[var(--color-fg-muted)]">{label}</span>
-      <span className="text-right font-bold text-[var(--color-accent)]">{value}</span>
+      <span className="text-end font-bold text-[var(--color-accent)]">{value}</span>
     </div>
   );
 }

@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useI18n } from "@/components/I18nProvider";
 import {
   formatKickoff,
   getMatchName,
@@ -17,6 +18,7 @@ type DraftResult = {
 };
 
 export function AdminResultsForm({ matches }: { matches: SeededMatchWithResult[] }) {
+  const { locale, t } = useI18n();
   const [drafts, setDrafts] = useState<Record<number, DraftResult>>(
     Object.fromEntries(
       matches.map((match) => [
@@ -83,7 +85,7 @@ export function AdminResultsForm({ matches }: { matches: SeededMatchWithResult[]
     const homeScore = Number(draft.homeScore);
     const awayScore = Number(draft.awayScore);
     if (!Number.isInteger(homeScore) || !Number.isInteger(awayScore) || homeScore < 0 || awayScore < 0) {
-      setErrors((current) => ({ ...current, [match.dbId]: "Enter valid whole-number scores." }));
+      setErrors((current) => ({ ...current, [match.dbId]: locale === "he" ? "צריך להזין תוצאות תקינות במספרים שלמים." : "Enter valid whole-number scores." }));
       return;
     }
     const winnerSide =
@@ -91,7 +93,7 @@ export function AdminResultsForm({ matches }: { matches: SeededMatchWithResult[]
     if (isKnockoutStage(match.stage) && homeScore === awayScore && winnerSide === null) {
       setErrors((current) => ({
         ...current,
-        [match.dbId]: "Choose who advanced for a tied knockout result.",
+        [match.dbId]: locale === "he" ? "בחר מי עלתה בתוצאת תיקו בנוקאאוט." : "Choose who advanced for a tied knockout result.",
       }));
       return;
     }
@@ -119,11 +121,11 @@ export function AdminResultsForm({ matches }: { matches: SeededMatchWithResult[]
         }));
         return;
       }
-      setStatuses((current) => ({ ...current, [match.dbId]: "Final score saved and scoring recalculated." }));
+      setStatuses((current) => ({ ...current, [match.dbId]: locale === "he" ? "התוצאה נשמרה והניקוד חושב מחדש." : "Final score saved and scoring recalculated." }));
     } catch (err) {
       setErrors((current) => ({
         ...current,
-        [match.dbId]: err instanceof Error ? err.message : "Network error.",
+        [match.dbId]: err instanceof Error ? err.message : t("auth.networkError"),
       }));
     } finally {
       setSaving(null);
@@ -133,9 +135,11 @@ export function AdminResultsForm({ matches }: { matches: SeededMatchWithResult[]
   return (
     <section className="glass-card rounded-xl p-5">
       <div className="mb-4">
-        <h2 className="font-display text-lg font-bold">Admin Results</h2>
+        <h2 className="font-display text-lg font-bold">{locale === "he" ? "ניהול תוצאות" : "Admin Results"}</h2>
         <p className="mt-1 text-sm text-[var(--color-fg-muted)]">
-          Enter final scores for seeded fixtures. Saving a final score recalculates score-prediction points.
+          {locale === "he"
+            ? "הזן תוצאות סופיות למשחקים. שמירת תוצאה מחשבת מחדש את נקודות ניחושי התוצאה."
+            : "Enter final scores for seeded fixtures. Saving a final score recalculates score-prediction points."}
         </p>
       </div>
 
@@ -143,7 +147,7 @@ export function AdminResultsForm({ matches }: { matches: SeededMatchWithResult[]
         <input
           value={query}
           onChange={(event) => setQuery(event.target.value)}
-          placeholder="Search match, team, venue"
+          placeholder={locale === "he" ? "חיפוש משחק, קבוצה, אצטדיון" : "Search match, team, venue"}
           className={inputClass}
         />
         <select
@@ -154,7 +158,7 @@ export function AdminResultsForm({ matches }: { matches: SeededMatchWithResult[]
           className={inputClass}
           aria-label="Filter result stage"
         >
-          <option value="all">All stages</option>
+          <option value="all">{locale === "he" ? "כל השלבים" : "All stages"}</option>
           {["group", "r32", "r16", "qf", "sf", "third", "final"].map((stage) => (
             <option key={stage} value={stage}>
               {stage}
@@ -169,10 +173,10 @@ export function AdminResultsForm({ matches }: { matches: SeededMatchWithResult[]
           className={inputClass}
           aria-label="Filter result status"
         >
-          <option value="all">All results</option>
-          <option value="missing">Missing score</option>
-          <option value="entered">Score entered</option>
-          <option value="final">Marked final</option>
+          <option value="all">{locale === "he" ? "כל התוצאות" : "All results"}</option>
+          <option value="missing">{locale === "he" ? "תוצאה חסרה" : "Missing score"}</option>
+          <option value="entered">{locale === "he" ? "תוצאה הוזנה" : "Score entered"}</option>
+          <option value="final">{locale === "he" ? "סומן כסופי" : "Marked final"}</option>
         </select>
         <div className="flex items-center rounded-lg bg-[var(--color-panel-highest)] px-3 text-sm font-bold text-[var(--color-accent)]">
           {visibleMatches.length}/{matches.length}
@@ -199,10 +203,10 @@ export function AdminResultsForm({ matches }: { matches: SeededMatchWithResult[]
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
                   <div className="text-xs font-bold uppercase text-[var(--color-fg-muted)]">
-                    Match {match.number} · {formatKickoff(match.kickoffAtUtc)}
+                    {t("common.match")} {match.number} · {formatKickoff(match.kickoffAtUtc, locale)}
                   </div>
                   <h3 className="mt-1 font-display text-base font-bold">
-                    {getMatchName(match as Match)}
+                    {getMatchName(match as Match, locale)}
                   </h3>
                 </div>
                 <span className="rounded-full bg-[var(--color-panel-highest)] px-3 py-1 text-xs font-bold text-[var(--color-gold)]">
@@ -236,14 +240,14 @@ export function AdminResultsForm({ matches }: { matches: SeededMatchWithResult[]
                   onClick={() => void save(match)}
                   className="rounded-lg bg-[var(--color-accent)] px-4 py-2 text-sm font-bold text-[#102000] disabled:opacity-60"
                 >
-                  {saving === match.dbId ? "Saving..." : "Save Final"}
+                  {saving === match.dbId ? t("common.saving") : locale === "he" ? "שמירת תוצאה" : "Save Final"}
                 </button>
               </div>
 
               {needsWinnerSide ? (
                 <div className="mt-4 rounded-xl border border-white/10 bg-[var(--color-panel-high)] p-3">
                   <div className="mb-2 text-xs font-bold uppercase text-[var(--color-fg-muted)]">
-                    Winner after extra time or penalties
+                    {locale === "he" ? "מנצחת אחרי הארכה או פנדלים" : "Winner after extra time or penalties"}
                   </div>
                   <div className="grid gap-2 sm:grid-cols-2">
                     {(["home", "away"] as const).map((side) => {
@@ -254,7 +258,7 @@ export function AdminResultsForm({ matches }: { matches: SeededMatchWithResult[]
                           type="button"
                           onClick={() => update(match.dbId, "winnerSide", side)}
                           className={
-                            "rounded-lg border px-3 py-2 text-left text-sm font-bold transition active:scale-95 " +
+                            "rounded-lg border px-3 py-2 text-start text-sm font-bold transition active:scale-95 " +
                             (active
                               ? "border-[var(--color-accent)] bg-[var(--color-accent)]/10 text-[var(--color-accent)]"
                               : "border-white/10 bg-[var(--color-panel-highest)] text-[var(--color-fg-muted)]")

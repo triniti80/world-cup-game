@@ -2,6 +2,7 @@
 
 import type { ReactNode } from "react";
 import { useMemo, useState } from "react";
+import { useI18n } from "@/components/I18nProvider";
 import { formatKickoff, teams } from "@/lib/world-cup/data";
 import type { SeededMatchWithResult } from "@/lib/world-cup/repository";
 
@@ -21,6 +22,7 @@ const stages = ["group", "r32", "r16", "qf", "sf", "third", "final"] as const;
 const statuses = ["scheduled", "live", "final"] as const;
 
 export function AdminFixturesForm({ matches }: { matches: SeededMatchWithResult[] }) {
+  const { locale, t } = useI18n();
   const [drafts, setDrafts] = useState<Record<number, DraftFixture>>(
     Object.fromEntries(
       matches.map((match) => [
@@ -119,11 +121,11 @@ export function AdminFixturesForm({ matches }: { matches: SeededMatchWithResult[
         }));
         return;
       }
-      setMessages((current) => ({ ...current, [match.dbId]: "Fixture saved." }));
+      setMessages((current) => ({ ...current, [match.dbId]: locale === "he" ? "המשחק נשמר." : "Fixture saved." }));
     } catch (err) {
       setErrors((current) => ({
         ...current,
-        [match.dbId]: err instanceof Error ? err.message : "Network error.",
+        [match.dbId]: err instanceof Error ? err.message : t("auth.networkError"),
       }));
     } finally {
       setSaving(null);
@@ -133,9 +135,11 @@ export function AdminFixturesForm({ matches }: { matches: SeededMatchWithResult[
   return (
     <section className="glass-card rounded-xl p-5">
       <div className="mb-4">
-        <h2 className="font-display text-lg font-bold">Admin Fixture Management</h2>
+        <h2 className="font-display text-lg font-bold">{locale === "he" ? "ניהול משחקים" : "Admin Fixture Management"}</h2>
         <p className="mt-1 text-sm text-[var(--color-fg-muted)]">
-          Edit imported fixtures without changing code. Use UTC ISO timestamps for kickoff times.
+          {locale === "he"
+            ? "עריכת משחקים מיובאים בלי לשנות קוד. השתמש בזמני UTC ISO לשעת פתיחה."
+            : "Edit imported fixtures without changing code. Use UTC ISO timestamps for kickoff times."}
         </p>
       </div>
 
@@ -143,7 +147,7 @@ export function AdminFixturesForm({ matches }: { matches: SeededMatchWithResult[
         <input
           value={query}
           onChange={(event) => setQuery(event.target.value)}
-          placeholder="Search match, team, venue"
+          placeholder={locale === "he" ? "חיפוש משחק, קבוצה, אצטדיון" : "Search match, team, venue"}
           className={inputClass}
         />
         <select
@@ -154,7 +158,7 @@ export function AdminFixturesForm({ matches }: { matches: SeededMatchWithResult[
           className={inputClass}
           aria-label="Filter fixture stage"
         >
-          <option value="all">All stages</option>
+          <option value="all">{locale === "he" ? "כל השלבים" : "All stages"}</option>
           {stages.map((stage) => (
             <option key={stage} value={stage}>
               {stage}
@@ -169,7 +173,7 @@ export function AdminFixturesForm({ matches }: { matches: SeededMatchWithResult[
           className={inputClass}
           aria-label="Filter fixture status"
         >
-          <option value="all">All statuses</option>
+          <option value="all">{locale === "he" ? "כל הסטטוסים" : "All statuses"}</option>
           {statuses.map((status) => (
             <option key={status} value={status}>
               {status}
@@ -194,15 +198,15 @@ export function AdminFixturesForm({ matches }: { matches: SeededMatchWithResult[
               <summary className="grid cursor-pointer list-none gap-3 md:grid-cols-[1fr_auto] [&::-webkit-details-marker]:hidden">
                 <div>
                   <div className="text-xs font-bold uppercase text-[var(--color-fg-muted)]">
-                    Match {match.number} · {draft.stage}
-                    {draft.groupCode ? ` · Group ${draft.groupCode}` : ""}
+                    {t("common.match")} {match.number} · {draft.stage}
+                    {draft.groupCode ? ` · ${t("common.group")} ${draft.groupCode}` : ""}
                   </div>
                   <h3 className="mt-1 font-display text-base font-bold">
-                    {teamName(draft.homeTeamSlug) || draft.homePlaceholder || "TBD"} vs{" "}
-                    {teamName(draft.awayTeamSlug) || draft.awayPlaceholder || "TBD"}
+                    {teamName(draft.homeTeamSlug) || draft.homePlaceholder || t("common.tbd")} {t("common.vs")}{" "}
+                    {teamName(draft.awayTeamSlug) || draft.awayPlaceholder || t("common.tbd")}
                   </h3>
                   <div className="mt-1 text-xs text-[var(--color-fg-muted)]">
-                    {formatKickoff(draft.kickoffAtUtc)} · {draft.venue}
+                    {formatKickoff(draft.kickoffAtUtc, locale)} · {draft.venue}
                   </div>
                 </div>
                 <span className="h-fit rounded-full bg-[var(--color-panel-highest)] px-3 py-1 text-xs font-bold text-[var(--color-gold)]">
@@ -297,7 +301,9 @@ export function AdminFixturesForm({ matches }: { matches: SeededMatchWithResult[
                   ) : message ? (
                     <span className="font-semibold text-[var(--color-accent)]">{message}</span>
                   ) : (
-                    <span className="text-[var(--color-fg-muted)]">Changes affect fixtures and future picks.</span>
+                    <span className="text-[var(--color-fg-muted)]">
+                      {locale === "he" ? "שינויים משפיעים על משחקים וניחושים עתידיים." : "Changes affect fixtures and future picks."}
+                    </span>
                   )}
                 </div>
                 <button
@@ -306,7 +312,7 @@ export function AdminFixturesForm({ matches }: { matches: SeededMatchWithResult[
                   onClick={() => void save(match)}
                   className="rounded-lg bg-[var(--color-accent)] px-4 py-2 text-sm font-bold text-[#102000] disabled:opacity-60"
                 >
-                  {saving === match.dbId ? "Saving..." : "Save Fixture"}
+                  {saving === match.dbId ? t("common.saving") : locale === "he" ? "שמירת משחק" : "Save Fixture"}
                 </button>
               </div>
             </details>

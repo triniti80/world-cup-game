@@ -1,8 +1,12 @@
+"use client";
+
 import type { ReactNode } from "react";
 import Link from "next/link";
 import { AppNav } from "./AppNav";
+import { LanguageSelector } from "./LanguageSelector";
 import { LogoutButton } from "./LogoutButton";
 import { ProfileAvatar } from "./ProfileAvatar";
+import { useI18n } from "./I18nProvider";
 
 export function AppShell({
   children,
@@ -19,6 +23,7 @@ export function AppShell({
   activeLeagueName?: string;
   activeLeagueMode?: "stage_predictions" | "match_scores";
 }) {
+  const { t } = useI18n();
   return (
     <div className="min-h-screen bg-[var(--color-bg)] pb-24 md:pb-0">
       <header className="sticky top-0 z-50 border-b border-white/10 bg-[var(--color-panel)]/80 backdrop-blur-md">
@@ -37,17 +42,20 @@ export function AppShell({
                 WC2026
               </div>
               <div className="text-xs font-semibold uppercase text-[var(--color-fg-muted)]">
-                {activeLeagueName ?? "No active league"}
+                {activeLeagueName ?? t("app.noActiveLeague")}
               </div>
               {activeLeagueMode ? (
                 <div className="hidden text-[10px] font-semibold uppercase text-[var(--color-gold)] md:block">
-                  {activeLeagueMode === "match_scores" ? "Score game" : "Stage game"}
+                  {activeLeagueMode === "match_scores" ? t("app.scoreGame") : t("app.stageGame")}
                 </div>
               ) : null}
             </div>
           </div>
           <div className="flex items-center gap-2">
             <AppNav />
+            <div className="hidden md:block">
+              <LanguageSelector />
+            </div>
             <div className="hidden md:block">
               <LogoutButton />
             </div>

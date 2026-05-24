@@ -3,9 +3,11 @@
 import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { useI18n } from "@/components/I18nProvider";
 
 export function LoginForm({ next }: { next?: string }) {
   const router = useRouter();
+  const { t } = useI18n();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
@@ -22,14 +24,14 @@ export function LoginForm({ next }: { next?: string }) {
         body: JSON.stringify({ email, password }),
       });
       if (!res.ok) {
-        const body = await res.json().catch(() => ({ error: "Login failed" }));
+        const body = await res.json().catch(() => ({ error: t("auth.loginFailed") }));
         setError(body.error ?? `Server responded ${res.status}.`);
         setBusy(false);
         return;
       }
       router.push(next && next.startsWith("/") ? next : "/");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Network error.");
+      setError(err instanceof Error ? err.message : t("auth.networkError"));
       setBusy(false);
     }
   }
@@ -37,7 +39,7 @@ export function LoginForm({ next }: { next?: string }) {
   return (
     <form onSubmit={onSubmit} className="space-y-5">
       <label className="block">
-        <span className="mb-1 block text-sm font-semibold">Email</span>
+        <span className="mb-1 block text-sm font-semibold">{t("auth.email")}</span>
         <input
           type="email"
           autoComplete="email"
@@ -49,7 +51,7 @@ export function LoginForm({ next }: { next?: string }) {
       </label>
 
       <label className="block">
-        <span className="mb-1 block text-sm font-semibold">Password</span>
+        <span className="mb-1 block text-sm font-semibold">{t("auth.password")}</span>
         <input
           type="password"
           autoComplete="current-password"
@@ -71,13 +73,13 @@ export function LoginForm({ next }: { next?: string }) {
         disabled={busy}
         className="w-full rounded-lg bg-[var(--color-accent)] px-4 py-3 text-sm font-bold text-[#102000] glow-lime disabled:opacity-60"
       >
-        {busy ? "Signing in..." : "Sign in"}
+        {busy ? t("auth.signingIn") : t("auth.signIn")}
       </button>
 
       <p className="text-center text-sm text-[var(--color-fg-muted)]">
-        New to the pool?{" "}
+        {t("auth.newToPool")}{" "}
         <Link href="/register" className="font-bold text-[var(--color-gold)]">
-          Create an account
+          {t("auth.createAccount")}
         </Link>
       </p>
     </form>

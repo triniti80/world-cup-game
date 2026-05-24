@@ -1,7 +1,9 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useI18n } from "@/components/I18nProvider";
 import { MatchCard } from "@/components/world-cup/MatchCard";
+import type { TranslationKey } from "@/lib/i18n";
 import { stageLabel, type Match } from "@/lib/world-cup/data";
 import type { SavedPredictionMap } from "@/lib/world-cup/repository";
 
@@ -14,12 +16,12 @@ type DateTab = {
   label: string;
 };
 
-const filters: { id: FixtureFilter; label: string }[] = [
-  { id: "all", label: "All" },
-  { id: "my-picks", label: "My Picks" },
-  { id: "live", label: "Live" },
-  { id: "group", label: "Group Stage" },
-  { id: "knockout", label: "Knockout" },
+const filters: { id: FixtureFilter; labelKey: TranslationKey }[] = [
+  { id: "all", labelKey: "common.all" },
+  { id: "my-picks", labelKey: "fixtures.myPicks" },
+  { id: "live", labelKey: "common.live" },
+  { id: "group", labelKey: "fixtures.groupStage" },
+  { id: "knockout", labelKey: "common.knockout" },
 ];
 
 export function FixturesBrowser({
@@ -29,10 +31,11 @@ export function FixturesBrowser({
   matches: Match[];
   savedPredictions: SavedPredictionMap;
 }) {
+  const { locale, t } = useI18n();
   const [activeDate, setActiveDate] = useState("all");
   const [activeFilter, setActiveFilter] = useState<FixtureFilter>("all");
 
-  const dateTabs = useMemo(() => buildDateTabs(matches), [matches]);
+  const dateTabs = useMemo(() => buildDateTabs(matches, locale), [locale, matches]);
   const visibleMatches = useMemo(
     () =>
       matches.filter((match) => {
@@ -55,7 +58,7 @@ export function FixturesBrowser({
     [activeDate, activeFilter, matches, savedPredictions],
   );
 
-  const sections = useMemo(() => buildSections(visibleMatches), [visibleMatches]);
+  const sections = useMemo(() => buildSections(visibleMatches, locale), [locale, visibleMatches]);
 
   return (
     <div className="space-y-6">
@@ -66,7 +69,7 @@ export function FixturesBrowser({
           className={dateButtonClass(activeDate === "all")}
           aria-pressed={activeDate === "all"}
         >
-          <span className="text-xs">ALL</span>
+          <span className="text-xs">{t("common.all").toUpperCase()}</span>
           <span className="font-display text-2xl font-extrabold">{matches.length}</span>
         </button>
         {dateTabs.map((date) => (
@@ -100,7 +103,7 @@ export function FixturesBrowser({
               }
               aria-pressed={active}
             >
-              {filter.label}
+              {t(filter.labelKey)}
             </button>
           );
         })}
@@ -123,12 +126,12 @@ export function FixturesBrowser({
                   {section.title}
                 </h2>
                 <span className="rounded-full bg-[var(--color-panel-high)] px-3 py-1 text-xs font-bold uppercase text-[var(--color-fg-muted)]">
-                  {section.count} matches
+                  {section.count} {t("fixtures.matches")}
                 </span>
               </div>
               <div className="grid gap-4 md:grid-cols-2">
                 {section.matches.map((match) => (
-                  <MatchCard key={match.id} match={match} />
+                  <MatchCard key={match.id} match={match} locale={locale} />
                 ))}
               </div>
             </section>
@@ -136,9 +139,9 @@ export function FixturesBrowser({
         </div>
       ) : (
         <div className="glass-card rounded-xl p-6">
-          <h2 className="font-display text-xl font-bold">No fixtures found</h2>
+          <h2 className="font-display text-xl font-bold">{t("fixtures.noFixtures")}</h2>
           <p className="mt-2 text-sm text-[var(--color-fg-muted)]">
-            Try another date or filter.
+            {t("fixtures.tryAnother")}
           </p>
         </div>
       )}
@@ -155,7 +158,7 @@ function dateButtonClass(active: boolean): string {
   );
 }
 
-function buildDateTabs(matches: Match[]): DateTab[] {
+function buildDateTabs(matches: Match[], locale: "en" | "he"): DateTab[] {
   const seen = new Set<string>();
   return matches.flatMap((match) => {
     const key = getLocalDateKey(match.kickoffAtUtc);
@@ -166,9 +169,9 @@ function buildDateTabs(matches: Match[]): DateTab[] {
     return [
       {
         key,
-        month: new Intl.DateTimeFormat("en", { month: "short" }).format(date).toUpperCase(),
-        day: new Intl.DateTimeFormat("en", { day: "2-digit" }).format(date),
-        label: new Intl.DateTimeFormat("en", {
+        month: new Intl.DateTimeFormat(locale, { month: "short" }).format(date).toUpperCase(),
+        day: new Intl.DateTimeFormat(locale, { day: "2-digit" }).format(date),
+        label: new Intl.DateTimeFormat(locale, {
           weekday: "long",
           month: "long",
           day: "numeric",
@@ -187,7 +190,7 @@ function getLocalDateKey(iso: string): string {
   ].join("-");
 }
 
-function buildSections(matches: Match[]) {
+function buildSections(matches: Match[], locale: "en" | "he") {
   const sectionMap = new Map<
     string,
     { key: string; title: string; stage: Match["stage"]; matches: Match[] }
@@ -196,7 +199,9 @@ function buildSections(matches: Match[]) {
   for (const match of matches) {
     const key = match.stage === "group" ? `group-${match.group}` : match.stage;
     const title =
-      match.stage === "group" ? `Group ${match.group ?? "TBD"}` : stageLabel(match.stage);
+      match.stage === "group"
+        ? `${locale === "he" ? "בית" : "Group"} ${match.group ?? "TBD"}`
+        : stageLabel(match.stage, locale);
     const section = sectionMap.get(key) ?? {
       key,
       title,

@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { teams } from "@/lib/world-cup/data";
+import { useI18n } from "@/components/I18nProvider";
+import { getTeamName, teams } from "@/lib/world-cup/data";
 import type { LeagueGameMode, SavedBonusPredictions } from "@/lib/world-cup/repository";
 
 type BonusPredictionFormProps = {
@@ -10,6 +11,7 @@ type BonusPredictionFormProps = {
 };
 
 export function BonusPredictionForm({ gameMode, initialPredictions }: BonusPredictionFormProps) {
+  const { locale, t } = useI18n();
   const [topScorer, setTopScorer] = useState(initialPredictions.topScorer?.playerName ?? "");
   const [winner, setWinner] = useState(initialPredictions.tournamentWinner?.teamId ?? "");
   const [saving, setSaving] = useState<string | null>(null);
@@ -31,9 +33,9 @@ export function BonusPredictionForm({ gameMode, initialPredictions }: BonusPredi
         setError(body?.error ?? `Server responded ${res.status}.`);
         return;
       }
-      setMessage("Bonus pick saved.");
+      setMessage(t("predictions.bonusSaved"));
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Network error.");
+      setError(err instanceof Error ? err.message : t("auth.networkError"));
     } finally {
       setSaving(null);
     }
@@ -43,24 +45,26 @@ export function BonusPredictionForm({ gameMode, initialPredictions }: BonusPredi
     <section className="glass-card rounded-xl p-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h2 className="font-display text-xl font-bold">Pre-tournament Bonus Picks</h2>
+          <h2 className="font-display text-xl font-bold">{t("predictions.bonusTitle")}</h2>
           <p className="mt-1 text-sm text-[var(--color-fg-muted)]">
-            These picks lock 1 hour before the first World Cup match.
+            {t("predictions.bonusBody")}
           </p>
         </div>
         <span className="rounded-full bg-[var(--color-gold)]/15 px-3 py-1 text-xs font-bold text-[var(--color-gold)]">
-          100 pts each
+          {t("predictions.pointsEach")}
         </span>
       </div>
 
       <div className="mt-5 grid gap-4 md:grid-cols-2">
         <label className="block">
-          <span className="mb-1 block text-sm font-semibold">Top scorer</span>
+          <span className="mb-1 block text-sm font-semibold">
+            {locale === "he" ? "מלך השערים" : "Top scorer"}
+          </span>
           <div className="flex gap-2">
             <input
               value={topScorer}
               onChange={(event) => setTopScorer(event.target.value)}
-              placeholder="Player name"
+              placeholder={locale === "he" ? "שם שחקן" : "Player name"}
               className="min-w-0 flex-1 rounded-lg border border-white/10 bg-[var(--color-panel-highest)] px-3 py-3 outline-none focus:border-[var(--color-accent)]"
             />
             <button
@@ -69,24 +73,26 @@ export function BonusPredictionForm({ gameMode, initialPredictions }: BonusPredi
               onClick={() => void save({ type: "top_scorer", playerName: topScorer }, "top_scorer")}
               className="rounded-lg bg-[var(--color-accent)] px-4 py-3 text-sm font-bold text-[#102000] disabled:opacity-60"
             >
-              {saving === "top_scorer" ? "Saving..." : "Save"}
+              {saving === "top_scorer" ? t("common.saving") : t("common.save")}
             </button>
           </div>
         </label>
 
         {gameMode === "match_scores" ? (
           <label className="block">
-            <span className="mb-1 block text-sm font-semibold">World Cup winner</span>
+            <span className="mb-1 block text-sm font-semibold">
+              {locale === "he" ? "זוכת המונדיאל" : "World Cup winner"}
+            </span>
             <div className="flex gap-2">
               <select
                 value={winner}
                 onChange={(event) => setWinner(event.target.value)}
                 className="min-w-0 flex-1 rounded-lg border border-white/10 bg-[var(--color-panel-highest)] px-3 py-3 outline-none focus:border-[var(--color-accent)]"
               >
-                <option value="">Choose team</option>
+                <option value="">{locale === "he" ? "בחר קבוצה" : "Choose team"}</option>
                 {teams.map((team) => (
                   <option key={team.id} value={team.id}>
-                    {team.name}
+                    {getTeamName(team, locale)}
                   </option>
                 ))}
               </select>
@@ -96,7 +102,7 @@ export function BonusPredictionForm({ gameMode, initialPredictions }: BonusPredi
                 onClick={() => void save({ type: "tournament_winner", teamId: winner }, "winner")}
                 className="rounded-lg bg-[var(--color-accent)] px-4 py-3 text-sm font-bold text-[#102000] disabled:opacity-60"
               >
-                {saving === "winner" ? "Saving..." : "Save"}
+                {saving === "winner" ? t("common.saving") : t("common.save")}
               </button>
             </div>
           </label>

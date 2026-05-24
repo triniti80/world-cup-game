@@ -3,9 +3,11 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
+import { useI18n } from "@/components/I18nProvider";
 
 export function RegisterForm({ inviteCode }: { inviteCode?: string }) {
   const router = useRouter();
+  const { t } = useI18n();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -18,7 +20,7 @@ export function RegisterForm({ inviteCode }: { inviteCode?: string }) {
     setError(null);
 
     if (password.length < 8) {
-      setError("Password must be at least 8 characters.");
+      setError(t("auth.passwordTooShort"));
       return;
     }
 
@@ -30,7 +32,7 @@ export function RegisterForm({ inviteCode }: { inviteCode?: string }) {
         body: JSON.stringify({ name, email, password, inviteCode: invite }),
       });
       if (!res.ok) {
-        const body = await res.json().catch(() => ({ error: "Registration failed" }));
+        const body = await res.json().catch(() => ({ error: t("auth.registrationFailed") }));
         setError(body.error ?? `Server responded ${res.status}.`);
         setBusy(false);
         return;
@@ -38,7 +40,7 @@ export function RegisterForm({ inviteCode }: { inviteCode?: string }) {
       router.push("/");
       router.refresh();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Network error.");
+      setError(err instanceof Error ? err.message : t("auth.networkError"));
       setBusy(false);
     }
   }
@@ -46,7 +48,7 @@ export function RegisterForm({ inviteCode }: { inviteCode?: string }) {
   return (
     <form onSubmit={onSubmit} className="space-y-5">
       <label className="block">
-        <span className="mb-1 block text-sm font-semibold">Display name</span>
+        <span className="mb-1 block text-sm font-semibold">{t("auth.displayName")}</span>
         <input
           type="text"
           autoComplete="name"
@@ -58,7 +60,7 @@ export function RegisterForm({ inviteCode }: { inviteCode?: string }) {
       </label>
 
       <label className="block">
-        <span className="mb-1 block text-sm font-semibold">Email</span>
+        <span className="mb-1 block text-sm font-semibold">{t("auth.email")}</span>
         <input
           type="email"
           autoComplete="email"
@@ -70,7 +72,7 @@ export function RegisterForm({ inviteCode }: { inviteCode?: string }) {
       </label>
 
       <label className="block">
-        <span className="mb-1 block text-sm font-semibold">Password</span>
+        <span className="mb-1 block text-sm font-semibold">{t("auth.password")}</span>
         <input
           type="password"
           autoComplete="new-password"
@@ -82,12 +84,12 @@ export function RegisterForm({ inviteCode }: { inviteCode?: string }) {
       </label>
 
       <label className="block">
-        <span className="mb-1 block text-sm font-semibold">Invite code</span>
+        <span className="mb-1 block text-sm font-semibold">{t("auth.inviteCode")}</span>
         <input
           type="text"
           value={invite}
           onChange={(e) => setInvite(e.target.value.toUpperCase())}
-          placeholder="Optional for the first league"
+          placeholder={t("auth.invitePlaceholder")}
           className="w-full rounded-lg border border-white/10 bg-[var(--color-panel-highest)] px-3 py-3 uppercase outline-none focus:border-[var(--color-accent)]"
         />
       </label>
@@ -103,13 +105,13 @@ export function RegisterForm({ inviteCode }: { inviteCode?: string }) {
         disabled={busy}
         className="w-full rounded-lg bg-[var(--color-accent)] px-4 py-3 text-sm font-bold text-[#102000] glow-lime disabled:opacity-60"
       >
-        {busy ? "Creating account..." : "Create account"}
+        {busy ? t("auth.creatingAccount") : t("auth.createAccount")}
       </button>
 
       <p className="text-center text-sm text-[var(--color-fg-muted)]">
-        Already registered?{" "}
+        {t("auth.alreadyRegistered")}{" "}
         <Link href="/login" className="font-bold text-[var(--color-gold)]">
-          Sign in
+          {t("auth.signIn")}
         </Link>
       </p>
     </form>

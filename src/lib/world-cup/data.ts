@@ -1,3 +1,5 @@
+import { formatDateTime, t, teamNamesHe, type Locale } from "@/lib/i18n";
+
 export type Stage = "group" | "r32" | "r16" | "qf" | "sf" | "third" | "final";
 
 export type Team = {
@@ -275,42 +277,25 @@ export function getTeam(teamId: string | undefined): Team | undefined {
   return teams.find((team) => team.id === teamId);
 }
 
-export function getMatchName(match: Match): string {
-  const home = getTeam(match.homeTeamId)?.name ?? match.homePlaceholder ?? "TBD";
-  const away = getTeam(match.awayTeamId)?.name ?? match.awayPlaceholder ?? "TBD";
-  return `${home} vs ${away}`;
+export function getTeamName(team: Team | undefined, locale: Locale = "en"): string | undefined {
+  if (!team) return undefined;
+  return locale === "he" ? teamNamesHe[team.id] ?? team.name : team.name;
+}
+
+export function getMatchName(match: Match, locale: Locale = "en"): string {
+  const home = getTeamName(getTeam(match.homeTeamId), locale) ?? match.homePlaceholder ?? t(locale, "common.tbd");
+  const away = getTeamName(getTeam(match.awayTeamId), locale) ?? match.awayPlaceholder ?? t(locale, "common.tbd");
+  return `${home} ${t(locale, "common.vs")} ${away}`;
 }
 
 export function getMatchLockAt(match: Match): Date {
   return new Date(new Date(match.kickoffAtUtc).getTime() - 5 * 60 * 1000);
 }
 
-export function formatKickoff(iso: string): string {
-  return new Intl.DateTimeFormat("en", {
-    weekday: "short",
-    month: "short",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-    timeZoneName: "short",
-  }).format(new Date(iso));
+export function formatKickoff(iso: string, locale: Locale = "en"): string {
+  return formatDateTime(iso, locale);
 }
 
-export function stageLabel(stage: Stage): string {
-  switch (stage) {
-    case "group":
-      return "Group stage";
-    case "r32":
-      return "Round of 32";
-    case "r16":
-      return "Round of 16";
-    case "qf":
-      return "Quarter-finals";
-    case "sf":
-      return "Semi-finals";
-    case "third":
-      return "Third-place match";
-    case "final":
-      return "Final";
-  }
+export function stageLabel(stage: Stage, locale: Locale = "en"): string {
+  return t(locale, `stage.${stage}`);
 }

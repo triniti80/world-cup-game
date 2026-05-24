@@ -1,24 +1,29 @@
 import Link from "next/link";
 import { ProfileAvatar } from "@/components/ProfileAvatar";
+import { t } from "@/lib/i18n";
+import { readLocale } from "@/lib/i18n-server";
 import { readSession } from "@/lib/session";
 import { getUserProfileSummary } from "@/lib/world-cup/repository";
 
 export default async function ProfilePage() {
+  const locale = await readLocale();
   const session = await readSession();
   const profile = session ? await getUserProfileSummary(session.userId) : null;
 
   if (!profile) {
     return (
       <div className="glass-card rounded-xl p-6">
-        <h1 className="font-display text-2xl font-extrabold">Profile unavailable</h1>
+        <h1 className="font-display text-2xl font-extrabold">
+          {locale === "he" ? "הפרופיל לא זמין" : "Profile unavailable"}
+        </h1>
         <p className="mt-2 text-sm text-[var(--color-fg-muted)]">
-          Sign in again to view your profile.
+          {locale === "he" ? "צריך להתחבר שוב כדי לראות את הפרופיל." : "Sign in again to view your profile."}
         </p>
         <Link
           href="/login"
           className="mt-4 inline-flex rounded-lg bg-[var(--color-accent)] px-4 py-3 text-sm font-bold text-[#102000] glow-lime"
         >
-          Go to Login
+          {t(locale, "auth.goToLogin")}
         </Link>
       </div>
     );
@@ -34,14 +39,13 @@ export default async function ProfilePage() {
               <h1 className="font-display text-3xl font-extrabold">{profile.user.name}</h1>
               {profile.user.role === "admin" ? (
                 <span className="rounded-full border border-[var(--color-gold)]/40 bg-[var(--color-gold)]/10 px-3 py-1 text-xs font-bold uppercase text-[var(--color-gold)]">
-                  Admin
+                  {t(locale, "common.admin")}
                 </span>
               ) : null}
             </div>
             <p className="mt-2 text-sm text-[var(--color-fg-muted)]">{profile.user.email}</p>
             <p className="mt-3 max-w-2xl text-sm leading-6 text-[var(--color-fg-muted)]">
-              This profile photo is generated from your account name. League totals and ranks
-              are calculated from stored scoring events.
+              {t(locale, "profile.body")}
             </p>
           </div>
           {profile.user.role === "admin" ? (
@@ -49,7 +53,7 @@ export default async function ProfilePage() {
               href="/settings"
               className="h-fit rounded-lg bg-[var(--color-accent)] px-4 py-3 text-center text-sm font-bold text-[#102000] glow-lime"
             >
-              Admin Settings
+              {t(locale, "profile.adminSettings")}
             </Link>
           ) : null}
         </div>
@@ -57,9 +61,9 @@ export default async function ProfilePage() {
 
       <section className="space-y-4">
         <div>
-          <h2 className="font-display text-2xl font-extrabold">My Leagues</h2>
+          <h2 className="font-display text-2xl font-extrabold">{t(locale, "profile.myLeagues")}</h2>
           <p className="mt-1 text-sm text-[var(--color-fg-muted)]">
-            Your registered leagues, score, and rank in each table.
+            {t(locale, "profile.myLeaguesBody")}
           </p>
         </div>
 
@@ -75,33 +79,33 @@ export default async function ProfilePage() {
                     <h3 className="font-display text-lg font-bold">{league.leagueName}</h3>
                     <div className="mt-1 flex flex-wrap gap-2 text-xs text-[var(--color-fg-muted)]">
                       <span className="rounded-full bg-[var(--color-panel-highest)] px-3 py-1 font-bold">
-                        {league.gameMode === "match_scores" ? "Score game" : "Stage game"}
+                        {league.gameMode === "match_scores" ? t(locale, "app.scoreGame") : t(locale, "app.stageGame")}
                       </span>
                       <span className="rounded-full bg-[var(--color-panel-highest)] px-3 py-1 font-bold">
-                        Display: {league.displayName}
+                        {locale === "he" ? "תצוגה" : "Display"}: {league.displayName}
                       </span>
                       <span className="rounded-full bg-[var(--color-panel-highest)] px-3 py-1 font-bold">
-                        Invite: {league.inviteCode}
+                        {locale === "he" ? "הזמנה" : "Invite"}: {league.inviteCode}
                       </span>
                     </div>
                   </div>
-                  <ProfileStat label="Rank" value={`#${league.rank} / ${league.memberCount}`} />
-                  <ProfileStat label="Total" value={`${league.total} pts`} />
+                  <ProfileStat label={t(locale, "common.rank")} value={`#${league.rank} / ${league.memberCount}`} />
+                  <ProfileStat label={t(locale, "common.total")} value={`${league.total} ${t(locale, "common.pts")}`} />
                 </div>
               </article>
             ))}
           </div>
         ) : (
           <div className="glass-card rounded-xl p-6">
-            <h3 className="font-display text-xl font-bold">No leagues yet</h3>
+            <h3 className="font-display text-xl font-bold">{t(locale, "profile.noLeagues")}</h3>
             <p className="mt-2 text-sm text-[var(--color-fg-muted)]">
-              Create or join a league to start playing.
+              {t(locale, "profile.noLeaguesBody")}
             </p>
             <Link
               href="/leagues"
               className="mt-4 inline-flex rounded-lg bg-[var(--color-accent)] px-4 py-3 text-sm font-bold text-[#102000] glow-lime"
             >
-              Go to Leagues
+              {t(locale, "common.goToLeagues")}
             </Link>
           </div>
         )}
@@ -112,7 +116,7 @@ export default async function ProfilePage() {
 
 function ProfileStat({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-xl bg-[var(--color-panel-highest)] px-4 py-3 text-right">
+    <div className="rounded-xl bg-[var(--color-panel-highest)] px-4 py-3 text-end">
       <div className="text-xs font-bold uppercase text-[var(--color-fg-muted)]">{label}</div>
       <div className="mt-1 font-display text-xl font-extrabold text-[var(--color-accent)]">
         {value}

@@ -5,9 +5,18 @@ import {
   stageLabel,
   type Match,
 } from "@/lib/world-cup/data";
+import { t, type Locale } from "@/lib/i18n";
 import { TeamBadge } from "./TeamBadge";
 
-export function MatchCard({ match, compact = false }: { match: Match; compact?: boolean }) {
+export function MatchCard({
+  match,
+  compact = false,
+  locale = "en",
+}: {
+  match: Match;
+  compact?: boolean;
+  locale?: Locale;
+}) {
   const lockAt = getMatchLockAt(match);
 
   return (
@@ -15,42 +24,44 @@ export function MatchCard({ match, compact = false }: { match: Match; compact?: 
       <div className="mb-4 flex items-start justify-between gap-3">
         <div>
           <div className="text-xs font-bold uppercase text-[var(--color-fg-muted)]">
-            Match {match.number} · {stageLabel(match.stage)}
-            {match.group ? ` · Group ${match.group}` : ""}
+            {t(locale, "common.match")} {match.number} · {stageLabel(match.stage, locale)}
+            {match.group ? ` · ${t(locale, "common.group")} ${match.group}` : ""}
           </div>
           <h3 className="mt-1 font-display text-lg font-bold text-[var(--color-fg)]">
-            {getMatchName(match)}
+            {getMatchName(match, locale)}
           </h3>
         </div>
         <span className="rounded-full bg-[var(--color-panel-highest)] px-3 py-1 text-xs font-bold text-[var(--color-gold)]">
-          {match.status}
+          {t(locale, `status.${match.status}`)}
         </span>
       </div>
 
       {!compact && (
         <div className="mb-4 grid grid-cols-[1fr_auto_1fr] items-center gap-4">
-          <TeamBadge teamId={match.homeTeamId} label={match.homePlaceholder} />
-          <div className="font-display text-2xl font-extrabold text-[var(--color-fg-muted)]">VS</div>
-          <TeamBadge teamId={match.awayTeamId} label={match.awayPlaceholder} />
+          <TeamBadge teamId={match.homeTeamId} label={match.homePlaceholder} locale={locale} />
+          <div className="font-display text-2xl font-extrabold text-[var(--color-fg-muted)]">
+            {t(locale, "common.vs").toUpperCase()}
+          </div>
+          <TeamBadge teamId={match.awayTeamId} label={match.awayPlaceholder} locale={locale} />
         </div>
       )}
 
       <div className="grid gap-2 text-sm text-[var(--color-fg-muted)]">
         <div className="flex justify-between gap-3">
-          <span>Kickoff</span>
-          <span className="text-right font-semibold text-[var(--color-fg)]">
-            {formatKickoff(match.kickoffAtUtc)}
+          <span>{t(locale, "match.kickoff")}</span>
+          <span className="text-end font-semibold text-[var(--color-fg)]">
+            {formatKickoff(match.kickoffAtUtc, locale)}
           </span>
         </div>
         <div className="flex justify-between gap-3">
-          <span>Prediction lock</span>
-          <span className="text-right font-semibold text-[var(--color-danger)]">
-            {formatKickoff(lockAt.toISOString())}
+          <span>{t(locale, "match.predictionLock")}</span>
+          <span className="text-end font-semibold text-[var(--color-danger)]">
+            {formatKickoff(lockAt.toISOString(), locale)}
           </span>
         </div>
         <div className="flex justify-between gap-3">
-          <span>Venue</span>
-          <span className="max-w-52 text-right">{match.venue}</span>
+          <span>{t(locale, "match.venue")}</span>
+          <span className="max-w-52 text-end">{match.venue}</span>
         </div>
       </div>
     </article>

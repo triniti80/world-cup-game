@@ -1,4 +1,7 @@
 import type { Metadata } from "next";
+import { I18nProvider } from "@/components/I18nProvider";
+import { dirForLocale } from "@/lib/i18n";
+import { readLocale } from "@/lib/i18n-server";
 import "./globals.css";
 
 // Every page in this single-tenant app depends on DB state — nothing should
@@ -15,10 +18,13 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  const locale = await readLocale();
   return (
-    <html lang="en">
-      <body>{children}</body>
+    <html lang={locale} dir={dirForLocale(locale)}>
+      <body>
+        <I18nProvider locale={locale}>{children}</I18nProvider>
+      </body>
     </html>
   );
 }

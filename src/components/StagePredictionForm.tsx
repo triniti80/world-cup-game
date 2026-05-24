@@ -1,7 +1,9 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { teams, type Team } from "@/lib/world-cup/data";
+import { useI18n } from "@/components/I18nProvider";
+import type { Locale, TranslationKey } from "@/lib/i18n";
+import { getTeamName, teams, type Team } from "@/lib/world-cup/data";
 import type { SavedStagePredictions } from "@/lib/world-cup/repository";
 
 const groups = Array.from(new Set(teams.map((team) => team.group))).sort();
@@ -30,12 +32,14 @@ type StageCompletion = {
   complete: boolean;
   message: string;
 };
+type Translate = (key: TranslationKey, params?: Record<string, string | number>) => string;
 
 export function StagePredictionForm({
   initialPredictions,
 }: {
   initialPredictions: SavedStagePredictions;
 }) {
+  const { locale, t } = useI18n();
   const [selected, setSelected] = useState<Record<string, string[]>>(initialPredictions.teams);
   const [r32Ranks, setR32Ranks] = useState<Record<string, Rank>>(initialPredictions.r32Ranks);
   const [saving, setSaving] = useState<string | null>(null);
@@ -59,12 +63,12 @@ export function StagePredictionForm({
     champion: finalPairs,
   } satisfies Record<(typeof knockoutStages)[number]["id"], Pair[]>;
   const completionMap = {
-    r32: getR32Completion(r32Ranks),
-    r16: getKnockoutCompletion(selected.r16 ?? [], r32Pairs, 16),
-    qf: getKnockoutCompletion(selected.qf ?? [], r16Pairs, 8),
-    sf: getKnockoutCompletion(selected.sf ?? [], qfPairs, 4),
-    final: getKnockoutCompletion(selected.final ?? [], sfPairs, 2),
-    champion: getKnockoutCompletion(selected.champion ?? [], finalPairs, 1),
+    r32: getR32Completion(r32Ranks, t),
+    r16: getKnockoutCompletion(selected.r16 ?? [], r32Pairs, 16, t),
+    qf: getKnockoutCompletion(selected.qf ?? [], r16Pairs, 8, t),
+    sf: getKnockoutCompletion(selected.sf ?? [], qfPairs, 4, t),
+    final: getKnockoutCompletion(selected.final ?? [], sfPairs, 2, t),
+    champion: getKnockoutCompletion(selected.champion ?? [], finalPairs, 1, t),
   } satisfies Record<StageId, StageCompletion>;
 
   function setRank(team: Team, rank: Rank) {
@@ -87,7 +91,7 @@ export function StagePredictionForm({
         if (currentThirdCount >= 8) {
           setErrors((errorCurrent) => ({
             ...errorCurrent,
-            r32: "Only 8 third-place teams can qualify to the Round of 32.",
+            r32: t("predictions.onlyEightThirds"),
           }));
           return current;
         }
@@ -164,20 +168,22 @@ export function StagePredictionForm({
       <section className="glass-card rounded-xl p-5">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <h2 className="font-display text-xl font-bold">Round of 32</h2>
+            <h2 className="font-display text-xl font-bold">{t("stage.r32")}</h2>
             <p className="mt-1 text-sm text-[var(--color-fg-muted)]">
-              Pick 1st and 2nd from every group, then choose only 8 third-place qualifiers.
+              {t("predictions.r32Body")}
             </p>
           </div>
           <span className="rounded-full bg-[var(--color-panel-high)] px-3 py-1 text-xs font-bold">
-            {Object.keys(r32Ranks).length} selected · {thirdPlaceCount(r32Ranks)}/8 thirds
+            {t("predictions.selected", { count: Object.keys(r32Ranks).length, thirds: thirdPlaceCount(r32Ranks) })}
           </span>
         </div>
 
         <div className="mt-4 grid gap-3 lg:grid-cols-2">
           {teamsByGroup.map(({ group, teams: groupTeams }) => (
             <div key={group} className="rounded-xl border border-white/10 bg-[var(--color-panel-low)] p-4">
-              <h3 className="font-display text-base font-bold">Group {group}</h3>
+              <h3 className="font-display text-base font-bold">
+                {t("common.group")} {group}
+              </h3>
               <div className="mt-3 space-y-2">
                 {groupTeams.map((team) => (
                   <div
@@ -186,7 +192,7 @@ export function StagePredictionForm({
                   >
                     <div>
                       <span className="font-bold">{team.code}</span>
-                      <span className="ml-2 text-sm text-[var(--color-fg)]">{team.name}</span>
+                      <span className="ms-2 text-sm text-[var(--color-fg)]">{getTeamName(team, locale)}</span>
                     </div>
                     <div className="grid grid-cols-3 gap-1">
                       {[1, 2, 3].map((rank) => {
@@ -203,7 +209,7 @@ export function StagePredictionForm({
                                 : "bg-[var(--color-panel-highest)] text-[var(--color-fg-muted)] hover:text-[var(--color-fg)]")
                             }
                           >
-                            {rankOrdinal(rank as Rank)}
+                            {rankOrdinal(rank as Rank, locale)}
                           </button>
                         );
                       })}
@@ -219,6 +225,10 @@ export function StagePredictionForm({
           stage="r32"
           saving={saving}
           savedStage={savedStage}
+          savedLabel={t("common.saved")}
+          saveLabel={t("common.save")}
+          savingLabel={t("common.saving")}
+          defaultHelper={t("predictions.lockMatch1")}
           error={errors.r32}
           helper={completionMap.r32.message}
           disabled={!completionMap.r32.complete}
@@ -230,14 +240,20 @@ export function StagePredictionForm({
         <KnockoutStage
           key={stage.id}
           stage={stage.id}
-          label={stage.label}
-          previousLabel={stage.previousLabel}
+          label={stageLabelForForm(stage.id, locale)}
+          previousLabel={previousStageLabelForForm(stage.id, locale)}
+          translate={t}
           expected={stage.expected}
           pairs={pairMap[stage.id]}
           selectedTeamIds={selected[stage.id] ?? []}
           completion={completionMap[stage.id]}
+          locale={locale}
           saving={saving}
           savedStage={savedStage}
+          savedLabel={locale === "he" ? "נשמר" : "Saved"}
+          saveLabel={locale === "he" ? "שמירה" : "Save"}
+          savingLabel={locale === "he" ? "שומר..." : "Saving..."}
+          defaultHelper={locale === "he" ? "ננעל שעה לפני משחק 1" : "Locks 1 hour before Match 1"}
           error={errors[stage.id]}
           onPick={setPairWinner}
           onSave={() => void saveStage(stage.id)}
@@ -251,12 +267,18 @@ function KnockoutStage({
   stage,
   label,
   previousLabel,
+  translate,
   expected,
   pairs,
   selectedTeamIds,
   completion,
+  locale,
   saving,
   savedStage,
+  savedLabel,
+  saveLabel,
+  savingLabel,
+  defaultHelper,
   error,
   onPick,
   onSave,
@@ -264,12 +286,18 @@ function KnockoutStage({
   stage: Exclude<StageId, "r32">;
   label: string;
   previousLabel: string;
+  translate: Translate;
   expected: number;
   pairs: Pair[];
   selectedTeamIds: string[];
   completion: StageCompletion;
+  locale: Locale;
   saving: string | null;
   savedStage: string | null;
+  savedLabel: string;
+  saveLabel: string;
+  savingLabel: string;
+  defaultHelper: string;
   error?: string;
   onPick: (stage: Exclude<StageId, "r32">, pairIndex: number, teamId: string) => void;
   onSave: () => void;
@@ -280,11 +308,11 @@ function KnockoutStage({
         <div>
           <h2 className="font-display text-xl font-bold">{label}</h2>
           <p className="mt-1 text-sm text-[var(--color-fg-muted)]">
-            Choose winners from your {previousLabel} matchups.
+            {translate("predictions.chooseWinners", { stage: previousLabel })}
           </p>
         </div>
         <span className="rounded-full bg-[var(--color-panel-high)] px-3 py-1 text-xs font-bold">
-          {completion.picked}/{expected} selected
+          {translate("predictions.selectedCount", { picked: completion.picked, expected })}
         </span>
       </div>
 
@@ -298,21 +326,23 @@ function KnockoutStage({
               <PairTeamButton
                 team={pair.home}
                 active={Boolean(pair.home && selectedTeamIds[index] === pair.home.id)}
+                locale={locale}
                 onClick={() => pair.home && onPick(stage, index, pair.home.id)}
               />
               <div className="my-2 text-center text-xs font-bold uppercase text-[var(--color-fg-muted)]">
-                vs
+                {translate("common.vs")}
               </div>
               <PairTeamButton
                 team={pair.away}
                 active={Boolean(pair.away && selectedTeamIds[index] === pair.away.id)}
+                locale={locale}
                 onClick={() => pair.away && onPick(stage, index, pair.away.id)}
               />
             </div>
           ))
         ) : (
           <div className="rounded-xl border border-white/10 bg-[var(--color-panel-low)] p-4 text-sm text-[var(--color-fg-muted)] md:col-span-2">
-            Select teams in the previous round first.
+            {translate("predictions.previousFirst")}
           </div>
         )}
       </div>
@@ -321,6 +351,10 @@ function KnockoutStage({
         stage={stage}
         saving={saving}
         savedStage={savedStage}
+        savedLabel={savedLabel}
+        saveLabel={saveLabel}
+        savingLabel={savingLabel}
+        defaultHelper={defaultHelper}
         error={error}
         helper={completion.message}
         disabled={!completion.complete}
@@ -333,10 +367,12 @@ function KnockoutStage({
 function PairTeamButton({
   team,
   active,
+  locale,
   onClick,
 }: {
   team?: Team;
   active: boolean;
+  locale: Locale;
   onClick: () => void;
 }) {
   return (
@@ -345,7 +381,7 @@ function PairTeamButton({
       disabled={!team}
       onClick={onClick}
       className={
-        "w-full rounded-lg border px-3 py-2 text-left text-sm transition active:scale-95 disabled:cursor-not-allowed disabled:opacity-50 " +
+        "w-full rounded-lg border px-3 py-2 text-start text-sm transition active:scale-95 disabled:cursor-not-allowed disabled:opacity-50 " +
         (active
           ? "border-[var(--color-accent)] bg-[var(--color-accent)]/10 text-[var(--color-accent)]"
           : "border-white/10 bg-[var(--color-panel-high)] text-[var(--color-fg-muted)] hover:text-[var(--color-fg)]")
@@ -354,10 +390,10 @@ function PairTeamButton({
       {team ? (
         <>
           <span className="font-bold">{team.code}</span>
-          <span className="ml-2">{team.name}</span>
+          <span className="ms-2">{getTeamName(team, locale)}</span>
         </>
       ) : (
-        "Waiting for qualifier"
+        locale === "he" ? "ממתין לקבוצה" : "Waiting for qualifier"
       )}
     </button>
   );
@@ -367,6 +403,10 @@ function StageFooter({
   stage,
   saving,
   savedStage,
+  savedLabel,
+  saveLabel,
+  savingLabel,
+  defaultHelper,
   error,
   helper,
   disabled = false,
@@ -375,6 +415,10 @@ function StageFooter({
   stage: StageId;
   saving: string | null;
   savedStage: string | null;
+  savedLabel: string;
+  saveLabel: string;
+  savingLabel: string;
+  defaultHelper: string;
   error?: string;
   helper?: string;
   disabled?: boolean;
@@ -386,11 +430,13 @@ function StageFooter({
         {error ? (
           <span className="font-semibold text-[var(--color-danger)]">{error}</span>
         ) : savedStage === stage ? (
-          <span className="font-semibold text-[var(--color-accent)]">Saved</span>
+          <span className="font-semibold text-[var(--color-accent)]">
+            {savedLabel}
+          </span>
         ) : helper ? (
           <span className="text-[var(--color-fg-muted)]">{helper}</span>
         ) : (
-          <span className="text-[var(--color-fg-muted)]">Locks 1 hour before Match 1</span>
+          <span className="text-[var(--color-fg-muted)]">{defaultHelper}</span>
         )}
       </div>
       <button
@@ -399,7 +445,7 @@ function StageFooter({
         onClick={onSave}
         className="rounded-lg bg-[var(--color-accent)] px-4 py-2 text-sm font-bold text-[#102000] disabled:opacity-60"
       >
-        {saving === stage ? "Saving..." : "Save"}
+        {saving === stage ? savingLabel : saveLabel}
       </button>
     </div>
   );
@@ -464,7 +510,7 @@ function thirdPlaceCount(ranks: Record<string, Rank>): number {
   return Object.values(ranks).filter((rank) => rank === 3).length;
 }
 
-function getR32Completion(ranks: Record<string, Rank>): StageCompletion {
+function getR32Completion(ranks: Record<string, Rank>, t: Translate): StageCompletion {
   const picked = Object.keys(ranks).length;
   const firsts = Object.values(ranks).filter((rank) => rank === 1).length;
   const seconds = Object.values(ranks).filter((rank) => rank === 2).length;
@@ -475,8 +521,8 @@ function getR32Completion(ranks: Record<string, Rank>): StageCompletion {
     picked,
     complete,
     message: complete
-      ? "Locks 1 hour before Match 1"
-      : `Need 12 first-place, 12 second-place, and 8 third-place teams. Current: ${firsts}, ${seconds}, ${thirds}.`,
+      ? t("predictions.lockMatch1")
+      : t("predictions.r32Need", { firsts, seconds, thirds }),
   };
 }
 
@@ -484,6 +530,7 @@ function getKnockoutCompletion(
   selectedTeamIds: string[],
   pairs: Pair[],
   expected: number,
+  t: Translate,
 ): StageCompletion {
   const playablePairs = pairs.filter((pair) => pair.home && pair.away);
   const picked = selectedTeamIds.filter(Boolean).length;
@@ -499,10 +546,10 @@ function getKnockoutCompletion(
     picked,
     complete,
     message: complete
-      ? "Locks 1 hour before Match 1"
+      ? t("predictions.lockMatch1")
       : playablePairs.length < expected
-        ? "Complete the previous round first."
-        : `Choose ${expected} winners from the available matchups.`,
+        ? t("predictions.completePrevious")
+        : t("predictions.chooseExpected", { expected }),
   };
 }
 
@@ -566,10 +613,33 @@ function sortedRankTeamIds(ranks: Record<string, Rank>): string[] {
     .map(([teamId]) => teamId);
 }
 
-function rankOrdinal(rank: Rank): string {
+function rankOrdinal(rank: Rank, locale: Locale): string {
+  if (locale === "he") return rank === 1 ? "1" : rank === 2 ? "2" : "3";
   if (rank === 1) return "1st";
   if (rank === 2) return "2nd";
   return "3rd";
+}
+
+function stageLabelForForm(stage: Exclude<StageId, "r32">, locale: Locale): string {
+  const labels: Record<Exclude<StageId, "r32">, { en: string; he: string }> = {
+    r16: { en: "Round of 16", he: "שמינית גמר" },
+    qf: { en: "Quarter-finals", he: "רבע גמר" },
+    sf: { en: "Semi-finals", he: "חצי גמר" },
+    final: { en: "Final", he: "גמר" },
+    champion: { en: "Champion", he: "אלופה" },
+  };
+  return labels[stage][locale];
+}
+
+function previousStageLabelForForm(stage: Exclude<StageId, "r32">, locale: Locale): string {
+  const labels: Record<Exclude<StageId, "r32">, { en: string; he: string }> = {
+    r16: { en: "Round of 32", he: "שלב 32 האחרונות" },
+    qf: { en: "Round of 16", he: "שמינית גמר" },
+    sf: { en: "Quarter-finals", he: "רבע גמר" },
+    final: { en: "Semi-finals", he: "חצי גמר" },
+    champion: { en: "Final", he: "גמר" },
+  };
+  return labels[stage][locale];
 }
 
 function sortByGroupAndRank(a: [string, Rank], b: [string, Rank]): number {

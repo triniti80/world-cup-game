@@ -1,8 +1,11 @@
 import Link from "next/link";
+import { t } from "@/lib/i18n";
+import { readLocale } from "@/lib/i18n-server";
 import { readActiveLeagueId, readSession } from "@/lib/session";
 import { getLeaderboardRows } from "@/lib/world-cup/repository";
 
 export default async function LeaderboardPage() {
+  const locale = await readLocale();
   const session = await readSession();
   const activeLeagueId = await readActiveLeagueId();
   const { league, rows } = session
@@ -12,35 +15,35 @@ export default async function LeaderboardPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="font-display text-3xl font-extrabold">Leaderboard</h1>
+        <h1 className="font-display text-3xl font-extrabold">{t(locale, "leaderboard.title")}</h1>
         <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--color-fg-muted)]">
-          Standings for your active league, calculated from stored scoring events.
+          {t(locale, "leaderboard.body")}
         </p>
       </div>
 
       {!league ? (
         <div className="glass-card rounded-xl p-6">
-          <h2 className="font-display text-xl font-bold">No active league</h2>
+          <h2 className="font-display text-xl font-bold">{t(locale, "common.noActiveLeague")}</h2>
           <p className="mt-2 text-sm text-[var(--color-fg-muted)]">
-            Create or join a league before viewing standings.
+            {t(locale, "leaderboard.noLeagueBody")}
           </p>
           <Link
             href="/leagues"
             className="mt-4 inline-flex rounded-lg bg-[var(--color-accent)] px-4 py-3 text-sm font-bold text-[#102000] glow-lime"
           >
-            Go to Leagues
+            {t(locale, "common.goToLeagues")}
           </Link>
         </div>
       ) : (
         <section className="rounded-xl border border-white/10 bg-[var(--color-panel-low)] p-4">
           <div className="text-xs font-bold uppercase text-[var(--color-fg-muted)]">
-            Active league
+            {t(locale, "common.activeLeague")}
           </div>
           <div className="mt-1 font-display text-lg font-bold">{league.leagueName}</div>
           <div className="mt-1 text-sm text-[var(--color-fg-muted)]">
             {league.gameMode === "match_scores"
-              ? "Match score guessing"
-              : "Pre-tournament stage prediction"}
+              ? t(locale, "app.matchScores")
+              : t(locale, "app.stagePredictions")}
           </div>
         </section>
       )}
@@ -72,23 +75,23 @@ export default async function LeaderboardPage() {
                 <div>
                   <div className="font-display text-lg font-bold">{row.name}</div>
                   <div className="mt-1 flex flex-wrap gap-2 text-xs text-[var(--color-fg-muted)]">
-                    <ScorePill label="Exact" value={row.exactScores} />
-                    <ScorePill label="Results" value={row.results} />
-                    <ScorePill label="Stages" value={row.stages} />
-                    <ScorePill label="Bonus" value={row.bonuses} />
+                    <ScorePill label={t(locale, "leaderboard.exact")} value={row.exactScores} />
+                    <ScorePill label={t(locale, "leaderboard.results")} value={row.results} />
+                    <ScorePill label={t(locale, "leaderboard.stages")} value={row.stages} />
+                    <ScorePill label={t(locale, "leaderboard.bonus")} value={row.bonuses} />
                   </div>
                   <div className="mt-2 text-xs font-semibold text-[var(--color-gold)]">
                     {row.details.length > 0
-                      ? "Open for scoring breakdown"
-                      : "No scoring events yet"}
+                      ? t(locale, "leaderboard.openBreakdown")
+                      : t(locale, "leaderboard.noEvents")}
                   </div>
                 </div>
-                <div className="text-right">
+                <div className="text-end">
                   <div className="font-display text-2xl font-extrabold text-[var(--color-accent)]">
                     {row.total}
                   </div>
                   <div className="text-xs font-bold uppercase text-[var(--color-fg-muted)]">
-                    points
+                    {t(locale, "common.points")}
                   </div>
                 </div>
               </summary>
@@ -107,7 +110,7 @@ export default async function LeaderboardPage() {
                             {detail.reason} · {detail.detail}
                           </div>
                         </div>
-                        <div className="text-right font-display text-lg font-extrabold text-[var(--color-accent)]">
+                        <div className="text-end font-display text-lg font-extrabold text-[var(--color-accent)]">
                           +{detail.points}
                         </div>
                       </div>
@@ -115,7 +118,7 @@ export default async function LeaderboardPage() {
                   </div>
                 ) : (
                   <div className="rounded-lg border border-white/10 bg-[var(--color-panel-high)] px-3 py-2 text-sm text-[var(--color-fg-muted)]">
-                    Points will appear here after match scores or official tournament results are entered.
+                    {t(locale, "leaderboard.emptyDetails")}
                   </div>
                 )}
               </div>
@@ -126,22 +129,22 @@ export default async function LeaderboardPage() {
 
       {league && rows.length > 0 ? (
         <section className="rounded-xl border border-white/10 bg-[var(--color-panel-low)] p-4">
-          <h2 className="font-display text-lg font-bold">Scoring Summary</h2>
+          <h2 className="font-display text-lg font-bold">{t(locale, "leaderboard.summary")}</h2>
           <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
             <SummaryTile
-              label="Exact scores"
+              label={t(locale, "leaderboard.exactScores")}
               value={rows.reduce((sum, row) => sum + row.exactScores, 0)}
             />
             <SummaryTile
-              label="Correct results"
+              label={t(locale, "leaderboard.correctResults")}
               value={rows.reduce((sum, row) => sum + row.results, 0)}
             />
             <SummaryTile
-              label="Stage picks"
+              label={t(locale, "leaderboard.stagePicks")}
               value={rows.reduce((sum, row) => sum + row.stages, 0)}
             />
             <SummaryTile
-              label="Bonus picks"
+              label={t(locale, "leaderboard.bonusPicks")}
               value={rows.reduce((sum, row) => sum + row.bonuses, 0)}
             />
           </div>
@@ -150,7 +153,7 @@ export default async function LeaderboardPage() {
 
       {league && rows.length === 0 ? (
         <div className="rounded-xl border border-white/10 bg-[var(--color-panel-low)] p-4 text-sm text-[var(--color-fg-muted)]">
-          No league members found yet.
+          {t(locale, "leaderboard.noMembers")}
         </div>
       ) : null}
     </div>
