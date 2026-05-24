@@ -2,7 +2,7 @@ import { eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { db } from "@/db/client";
-import { matches } from "@/db/schema";
+import { auditLog, matches } from "@/db/schema";
 import { readSession } from "@/lib/session";
 import {
   resolvePredictedWinnerSide,
@@ -43,8 +43,14 @@ export async function POST(req: Request) {
     .select({
       id: matches.id,
       stage: matches.stage,
+      matchNumber: matches.matchNumber,
       homeTeamId: matches.homeTeamId,
       awayTeamId: matches.awayTeamId,
+      homeScore: matches.homeScore,
+      awayScore: matches.awayScore,
+      status: matches.status,
+      winnerTeamId: matches.winnerTeamId,
+      winnerSide: matches.winnerSide,
     })
     .from(matches)
     .where(eq(matches.id, parsed.data.matchDbId))
@@ -75,28 +81,63 @@ export async function POST(req: Request) {
         ? existing.awayTeamId
         : null;
 
-  const [updated] = await db
-    .update(matches)
-    .set({
-      homeScore: parsed.data.homeScore,
-      awayScore: parsed.data.awayScore,
-      status: parsed.data.status,
-      winnerTeamId,
-      winnerSide,
-      updatedAt: new Date(),
-    })
-    .where(eq(matches.id, parsed.data.matchDbId))
-    .returning({
-      id: matches.id,
-      homeScore: matches.homeScore,
-      awayScore: matches.awayScore,
-      winnerSide: matches.winnerSide,
-      status: matches.status,
+  const nextResult = {
+    homeScore: parsed.data.homeScore,
+    awayScore: parsed.data.awayScore,
+    status: parsed.data.status,
+    winnerTeamId,
+    winnerSide,
+  };
+
+  const [updated] = await db.transaction(async (tx) => {
+    const updatedRows = await tx
+      .update(matches)
+      .set({
+        ...nextResult,
+        updatedAt: new Date(),
+      })
+      .where(eq(matches.id, parsed.data.matchDbId))
+      .returning({
+        id: matches.id,
+        homeScore: matches.homeScore,
+        awayScore: matches.awayScore,
+        winnerSide: matches.winnerSide,
+        status: matches.status,
+      });
+
+    await tx.insert(auditLog).values({
+      actorUserId: session.userId,
+      action: "match_result.update",
+      entityType: "match",
+      entityId: String(parsed.data.matchDbId),
+      beforeJson: normalizeResultAudit(existing),
+      afterJson: normalizeResultAudit({ ...existing, ...nextResult }),
     });
+
+    return updatedRows;
+  });
 
   if (parsed.data.status === "final") {
     await recalculateMatchById(parsed.data.matchDbId);
   }
 
   return NextResponse.json({ ok: true, match: updated ?? null });
+}
+
+function normalizeResultAudit(result: {
+  matchNumber: number;
+  homeScore: number | null;
+  awayScore: number | null;
+  status: string;
+  winnerTeamId: number | null;
+  winnerSide: string | null;
+}) {
+  return {
+    matchNumber: result.matchNumber,
+    homeScore: result.homeScore,
+    awayScore: result.awayScore,
+    status: result.status,
+    winnerTeamId: result.winnerTeamId,
+    winnerSide: result.winnerSide,
+  };
 }

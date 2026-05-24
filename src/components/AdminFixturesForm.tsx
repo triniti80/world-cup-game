@@ -1,7 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { formatKickoff, teams } from "@/lib/world-cup/data";
 import type { SeededMatchWithResult } from "@/lib/world-cup/repository";
 
@@ -42,6 +42,38 @@ export function AdminFixturesForm({ matches }: { matches: SeededMatchWithResult[
   const [saving, setSaving] = useState<number | null>(null);
   const [errors, setErrors] = useState<Record<number, string>>({});
   const [messages, setMessages] = useState<Record<number, string>>({});
+  const [query, setQuery] = useState("");
+  const [stageFilter, setStageFilter] = useState<"all" | SeededMatchWithResult["stage"]>("all");
+  const [statusFilter, setStatusFilter] = useState<"all" | SeededMatchWithResult["status"]>("all");
+
+  const visibleMatches = useMemo(
+    () =>
+      matches.filter((match) => {
+        const draft = drafts[match.dbId];
+        if (!draft) return false;
+        const search = query.trim().toLocaleLowerCase();
+        const home = teamName(draft.homeTeamSlug) || draft.homePlaceholder || "";
+        const away = teamName(draft.awayTeamSlug) || draft.awayPlaceholder || "";
+        const haystack = [
+          String(match.number),
+          draft.stage,
+          draft.groupCode,
+          draft.status,
+          home,
+          away,
+          draft.venue,
+        ]
+          .join(" ")
+          .toLocaleLowerCase();
+
+        return (
+          (search === "" || haystack.includes(search)) &&
+          (stageFilter === "all" || draft.stage === stageFilter) &&
+          (statusFilter === "all" || draft.status === statusFilter)
+        );
+      }),
+    [drafts, matches, query, stageFilter, statusFilter],
+  );
 
   function update(matchDbId: number, key: keyof DraftFixture, value: string) {
     setErrors((current) => ({ ...current, [matchDbId]: "" }));
@@ -107,8 +139,50 @@ export function AdminFixturesForm({ matches }: { matches: SeededMatchWithResult[
         </p>
       </div>
 
+      <div className="mb-4 grid gap-3 rounded-xl border border-white/10 bg-[var(--color-panel-low)] p-3 md:grid-cols-[1fr_auto_auto_auto]">
+        <input
+          value={query}
+          onChange={(event) => setQuery(event.target.value)}
+          placeholder="Search match, team, venue"
+          className={inputClass}
+        />
+        <select
+          value={stageFilter}
+          onChange={(event) =>
+            setStageFilter(event.target.value as "all" | SeededMatchWithResult["stage"])
+          }
+          className={inputClass}
+          aria-label="Filter fixture stage"
+        >
+          <option value="all">All stages</option>
+          {stages.map((stage) => (
+            <option key={stage} value={stage}>
+              {stage}
+            </option>
+          ))}
+        </select>
+        <select
+          value={statusFilter}
+          onChange={(event) =>
+            setStatusFilter(event.target.value as "all" | SeededMatchWithResult["status"])
+          }
+          className={inputClass}
+          aria-label="Filter fixture status"
+        >
+          <option value="all">All statuses</option>
+          {statuses.map((status) => (
+            <option key={status} value={status}>
+              {status}
+            </option>
+          ))}
+        </select>
+        <div className="flex items-center rounded-lg bg-[var(--color-panel-highest)] px-3 text-sm font-bold text-[var(--color-accent)]">
+          {visibleMatches.length}/{matches.length}
+        </div>
+      </div>
+
       <div className="space-y-3">
-        {matches.map((match) => {
+        {visibleMatches.map((match) => {
           const draft = drafts[match.dbId]!;
           const error = errors[match.dbId];
           const message = messages[match.dbId];
@@ -238,6 +312,11 @@ export function AdminFixturesForm({ matches }: { matches: SeededMatchWithResult[
             </details>
           );
         })}
+        {visibleMatches.length === 0 ? (
+          <div className="rounded-xl border border-white/10 bg-[var(--color-panel-low)] p-4 text-sm text-[var(--color-fg-muted)]">
+            No fixtures match these filters.
+          </div>
+        ) : null}
       </div>
     </section>
   );

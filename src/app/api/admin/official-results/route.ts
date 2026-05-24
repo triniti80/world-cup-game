@@ -2,7 +2,7 @@ import { and, eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { db } from "@/db/client";
-import { officialBonusResults, officialStageResults } from "@/db/schema";
+import { auditLog, officialBonusResults, officialStageResults } from "@/db/schema";
 import { readSession } from "@/lib/session";
 import {
   ensureSeedTournament,
@@ -69,6 +69,16 @@ export async function POST(req: Request) {
       );
     }
 
+    const beforeRows = await db
+      .select({ teamId: officialStageResults.teamId })
+      .from(officialStageResults)
+      .where(
+        and(
+          eq(officialStageResults.tournamentId, tournament.id),
+          eq(officialStageResults.stage, stagePayload.stage),
+        ),
+      );
+
     await db.transaction(async (tx) => {
       await tx
         .delete(officialStageResults)
@@ -89,26 +99,54 @@ export async function POST(req: Request) {
           })),
         );
       }
+
+      await tx.insert(auditLog).values({
+        actorUserId: session.userId,
+        action: "official_stage_result.update",
+        entityType: "official_stage_result",
+        entityId: `${tournament.id}:${stagePayload.stage}`,
+        beforeJson: {
+          stage: stagePayload.stage,
+          teamIds: beforeRows.map((row) => row.teamId).sort((a, b) => a - b),
+        },
+        afterJson: {
+          stage: stagePayload.stage,
+          teamIds: teamIds.map((teamId) => teamId!).sort((a, b) => a - b),
+        },
+      });
     });
   }
 
   if (parsed.data.kind === "top_scorer") {
-    await db
-      .insert(officialBonusResults)
-      .values({
-        tournamentId: tournament.id,
-        type: "top_scorer",
-        playerName: parsed.data.playerName.trim(),
-        updatedAt: now,
-      })
-      .onConflictDoUpdate({
-        target: [officialBonusResults.tournamentId, officialBonusResults.type],
-        set: {
-          playerName: parsed.data.playerName.trim(),
-          teamId: null,
+    const [before] = await getOfficialBonusResult(tournament.id, "top_scorer");
+    const playerName = parsed.data.playerName.trim();
+    await db.transaction(async (tx) => {
+      await tx
+        .insert(officialBonusResults)
+        .values({
+          tournamentId: tournament.id,
+          type: "top_scorer",
+          playerName,
           updatedAt: now,
-        },
+        })
+        .onConflictDoUpdate({
+          target: [officialBonusResults.tournamentId, officialBonusResults.type],
+          set: {
+            playerName,
+            teamId: null,
+            updatedAt: now,
+          },
+        });
+
+      await tx.insert(auditLog).values({
+        actorUserId: session.userId,
+        action: "official_bonus_result.update",
+        entityType: "official_bonus_result",
+        entityId: `${tournament.id}:top_scorer`,
+        beforeJson: normalizeBonusAudit(before),
+        afterJson: { type: "top_scorer", playerName, teamId: null },
       });
+    });
   }
 
   if (parsed.data.kind === "tournament_winner") {
@@ -117,25 +155,75 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Unknown tournament winner team." }, { status: 404 });
     }
 
-    await db
-      .insert(officialBonusResults)
-      .values({
-        tournamentId: tournament.id,
-        type: "tournament_winner",
-        teamId,
-        updatedAt: now,
-      })
-      .onConflictDoUpdate({
-        target: [officialBonusResults.tournamentId, officialBonusResults.type],
-        set: {
-          playerName: null,
+    const [before] = await getOfficialBonusResult(tournament.id, "tournament_winner");
+    await db.transaction(async (tx) => {
+      await tx
+        .insert(officialBonusResults)
+        .values({
+          tournamentId: tournament.id,
+          type: "tournament_winner",
           teamId,
           updatedAt: now,
-        },
+        })
+        .onConflictDoUpdate({
+          target: [officialBonusResults.tournamentId, officialBonusResults.type],
+          set: {
+            playerName: null,
+            teamId,
+            updatedAt: now,
+          },
+        });
+
+      await tx.insert(auditLog).values({
+        actorUserId: session.userId,
+        action: "official_bonus_result.update",
+        entityType: "official_bonus_result",
+        entityId: `${tournament.id}:tournament_winner`,
+        beforeJson: normalizeBonusAudit(before),
+        afterJson: { type: "tournament_winner", playerName: null, teamId },
       });
+    });
   }
 
   await recalculateOfficialResultScoreEvents(tournament.id);
 
   return NextResponse.json({ ok: true });
+}
+
+function getOfficialBonusResult(
+  tournamentId: number,
+  type: "top_scorer" | "tournament_winner",
+) {
+  return db
+    .select({
+      type: officialBonusResults.type,
+      playerName: officialBonusResults.playerName,
+      teamId: officialBonusResults.teamId,
+    })
+    .from(officialBonusResults)
+    .where(
+      and(
+        eq(officialBonusResults.tournamentId, tournamentId),
+        eq(officialBonusResults.type, type),
+      ),
+    )
+    .limit(1);
+}
+
+function normalizeBonusAudit(
+  bonus:
+    | {
+        type: "top_scorer" | "tournament_winner";
+        playerName: string | null;
+        teamId: number | null;
+      }
+    | undefined,
+) {
+  return bonus
+    ? {
+        type: bonus.type,
+        playerName: bonus.playerName,
+        teamId: bonus.teamId,
+      }
+    : null;
 }

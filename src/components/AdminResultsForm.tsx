@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import {
   formatKickoff,
   getMatchName,
@@ -32,6 +32,38 @@ export function AdminResultsForm({ matches }: { matches: SeededMatchWithResult[]
   const [saving, setSaving] = useState<number | null>(null);
   const [statuses, setStatuses] = useState<Record<number, string>>({});
   const [errors, setErrors] = useState<Record<number, string>>({});
+  const [query, setQuery] = useState("");
+  const [stageFilter, setStageFilter] = useState<"all" | SeededMatchWithResult["stage"]>("all");
+  const [resultFilter, setResultFilter] = useState<"all" | "missing" | "entered" | "final">("all");
+
+  const visibleMatches = useMemo(
+    () =>
+      matches.filter((match) => {
+        const draft = drafts[match.dbId] ?? { homeScore: "", awayScore: "", winnerSide: "" };
+        const hasScore = draft.homeScore !== "" && draft.awayScore !== "";
+        const search = query.trim().toLocaleLowerCase();
+        const haystack = [
+          String(match.number),
+          match.stage,
+          match.group ?? "",
+          match.status,
+          getMatchName(match as Match),
+          match.venue,
+        ]
+          .join(" ")
+          .toLocaleLowerCase();
+
+        return (
+          (search === "" || haystack.includes(search)) &&
+          (stageFilter === "all" || match.stage === stageFilter) &&
+          (resultFilter === "all" ||
+            (resultFilter === "missing" && !hasScore) ||
+            (resultFilter === "entered" && hasScore) ||
+            (resultFilter === "final" && match.status === "final"))
+        );
+      }),
+    [drafts, matches, query, resultFilter, stageFilter],
+  );
 
   function update(matchDbId: number, key: keyof DraftResult, value: string) {
     setErrors((current) => ({ ...current, [matchDbId]: "" }));
@@ -107,8 +139,48 @@ export function AdminResultsForm({ matches }: { matches: SeededMatchWithResult[]
         </p>
       </div>
 
+      <div className="mb-4 grid gap-3 rounded-xl border border-white/10 bg-[var(--color-panel-low)] p-3 md:grid-cols-[1fr_auto_auto_auto]">
+        <input
+          value={query}
+          onChange={(event) => setQuery(event.target.value)}
+          placeholder="Search match, team, venue"
+          className={inputClass}
+        />
+        <select
+          value={stageFilter}
+          onChange={(event) =>
+            setStageFilter(event.target.value as "all" | SeededMatchWithResult["stage"])
+          }
+          className={inputClass}
+          aria-label="Filter result stage"
+        >
+          <option value="all">All stages</option>
+          {["group", "r32", "r16", "qf", "sf", "third", "final"].map((stage) => (
+            <option key={stage} value={stage}>
+              {stage}
+            </option>
+          ))}
+        </select>
+        <select
+          value={resultFilter}
+          onChange={(event) =>
+            setResultFilter(event.target.value as "all" | "missing" | "entered" | "final")
+          }
+          className={inputClass}
+          aria-label="Filter result status"
+        >
+          <option value="all">All results</option>
+          <option value="missing">Missing score</option>
+          <option value="entered">Score entered</option>
+          <option value="final">Marked final</option>
+        </select>
+        <div className="flex items-center rounded-lg bg-[var(--color-panel-highest)] px-3 text-sm font-bold text-[var(--color-accent)]">
+          {visibleMatches.length}/{matches.length}
+        </div>
+      </div>
+
       <div className="space-y-3">
-        {matches.map((match) => {
+        {visibleMatches.map((match) => {
           const draft = drafts[match.dbId] ?? { homeScore: "", awayScore: "", winnerSide: "" };
           const error = errors[match.dbId];
           const status = statuses[match.dbId];
@@ -211,7 +283,15 @@ export function AdminResultsForm({ matches }: { matches: SeededMatchWithResult[]
             </article>
           );
         })}
+        {visibleMatches.length === 0 ? (
+          <div className="rounded-xl border border-white/10 bg-[var(--color-panel-low)] p-4 text-sm text-[var(--color-fg-muted)]">
+            No matches match these filters.
+          </div>
+        ) : null}
       </div>
     </section>
   );
 }
+
+const inputClass =
+  "w-full rounded-lg border border-white/10 bg-[var(--color-panel-highest)] px-3 py-2 text-sm outline-none focus:border-[var(--color-accent)]";

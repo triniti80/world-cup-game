@@ -3,12 +3,18 @@ import { AdminOfficialResultsForm } from "@/components/AdminOfficialResultsForm"
 import { AdminResultsForm } from "@/components/AdminResultsForm";
 import { readSession } from "@/lib/session";
 import { formatKickoff, tournament } from "@/lib/world-cup/data";
-import { getAdminOfficialResults, getSeededMatchesWithResults } from "@/lib/world-cup/repository";
+import {
+  getAdminOfficialResults,
+  getRecentAdminAuditEntries,
+  getSeededMatchesWithResults,
+  type AdminAuditEntry,
+} from "@/lib/world-cup/repository";
 
 export default async function SettingsPage() {
   const session = await readSession();
   const matches = session?.role === "admin" ? await getSeededMatchesWithResults() : [];
   const officialResults = session?.role === "admin" ? await getAdminOfficialResults() : null;
+  const auditEntries = session?.role === "admin" ? await getRecentAdminAuditEntries() : [];
 
   return (
     <div className="space-y-8">
@@ -40,6 +46,7 @@ export default async function SettingsPage() {
           <AdminFixturesForm matches={matches} />
           <AdminResultsForm matches={matches} />
           {officialResults ? <AdminOfficialResultsForm initialResults={officialResults} /> : null}
+          <AdminAuditLog entries={auditEntries} />
         </>
       ) : null}
 
@@ -52,6 +59,63 @@ export default async function SettingsPage() {
           <li>League-specific visibility and leaderboard permissions.</li>
         </ul>
       </section>
+    </div>
+  );
+}
+
+function AdminAuditLog({ entries }: { entries: AdminAuditEntry[] }) {
+  return (
+    <section className="glass-card rounded-xl p-5">
+      <div className="mb-4">
+        <h2 className="font-display text-lg font-bold">Recent Admin Changes</h2>
+        <p className="mt-1 text-sm text-[var(--color-fg-muted)]">
+          Fixture, result, and official tournament changes are recorded with before/after details.
+        </p>
+      </div>
+
+      {entries.length === 0 ? (
+        <div className="rounded-xl border border-white/10 bg-[var(--color-panel-low)] p-4 text-sm text-[var(--color-fg-muted)]">
+          No admin changes have been recorded yet.
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {entries.map((entry) => (
+            <details
+              key={entry.id}
+              className="rounded-xl border border-white/10 bg-[var(--color-panel-low)] p-4"
+            >
+              <summary className="grid cursor-pointer list-none gap-3 md:grid-cols-[1fr_auto] [&::-webkit-details-marker]:hidden">
+                <div>
+                  <div className="text-xs font-bold uppercase text-[var(--color-fg-muted)]">
+                    {entry.action} · {entry.entityType} #{entry.entityId}
+                  </div>
+                  <h3 className="mt-1 font-display text-base font-bold">
+                    {entry.actorName}
+                  </h3>
+                </div>
+                <span className="h-fit rounded-full bg-[var(--color-panel-highest)] px-3 py-1 text-xs font-bold text-[var(--color-gold)]">
+                  {formatKickoff(entry.createdAt)}
+                </span>
+              </summary>
+              <div className="mt-4 grid gap-3 border-t border-white/10 pt-4 md:grid-cols-2">
+                <AuditJsonBlock title="Before" value={entry.beforeJson} />
+                <AuditJsonBlock title="After" value={entry.afterJson} />
+              </div>
+            </details>
+          ))}
+        </div>
+      )}
+    </section>
+  );
+}
+
+function AuditJsonBlock({ title, value }: { title: string; value: unknown }) {
+  return (
+    <div className="rounded-lg bg-[var(--color-panel-highest)] p-3">
+      <div className="mb-2 text-xs font-bold uppercase text-[var(--color-fg-muted)]">{title}</div>
+      <pre className="max-h-64 overflow-auto whitespace-pre-wrap break-words text-xs leading-5 text-[var(--color-fg)]">
+        {JSON.stringify(value, null, 2)}
+      </pre>
     </div>
   );
 }

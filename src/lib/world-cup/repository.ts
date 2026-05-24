@@ -1,7 +1,8 @@
-import { and, eq, inArray, or, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, or, sql } from "drizzle-orm";
 import { db } from "@/db/client";
 import {
   bonusPredictions,
+  auditLog,
   leagueMembers,
   leagues,
   matchPredictions,
@@ -12,6 +13,7 @@ import {
   stagePredictions,
   teams as dbTeams,
   tournaments,
+  users,
 } from "@/db/schema";
 import {
   matches as seedMatches,
@@ -143,6 +145,17 @@ export type AdminOfficialResults = {
   stages: Record<string, string[]>;
   topScorer?: string;
   tournamentWinner?: string;
+};
+
+export type AdminAuditEntry = {
+  id: number;
+  actorName: string;
+  action: string;
+  entityType: string;
+  entityId: string;
+  beforeJson: unknown;
+  afterJson: unknown;
+  createdAt: string;
 };
 
 export async function ensureSeedTournament(): Promise<TournamentRow> {
@@ -561,6 +574,30 @@ export async function getAdminOfficialResults(): Promise<AdminOfficialResults> {
     topScorer,
     tournamentWinner: winnerTeamId ? slugByTeamId.get(winnerTeamId) : undefined,
   };
+}
+
+export async function getRecentAdminAuditEntries(limit = 20): Promise<AdminAuditEntry[]> {
+  const rows = await db
+    .select({
+      id: auditLog.id,
+      actorName: users.name,
+      action: auditLog.action,
+      entityType: auditLog.entityType,
+      entityId: auditLog.entityId,
+      beforeJson: auditLog.beforeJson,
+      afterJson: auditLog.afterJson,
+      createdAt: auditLog.createdAt,
+    })
+    .from(auditLog)
+    .leftJoin(users, eq(auditLog.actorUserId, users.id))
+    .orderBy(desc(auditLog.createdAt))
+    .limit(limit);
+
+  return rows.map((row) => ({
+    ...row,
+    actorName: row.actorName ?? "Unknown admin",
+    createdAt: row.createdAt.toISOString(),
+  }));
 }
 
 export async function getDbTeamIdForSeedTeamSlug(
