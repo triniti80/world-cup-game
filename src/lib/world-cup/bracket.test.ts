@@ -2,6 +2,14 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { buildRoundOf32Pairs, ROUND_OF_32_SLOTS, type GroupRank } from "./bracket";
 import { teams } from "./data";
+import { THIRD_PLACE_ASSIGNMENT_ROWS } from "./third-place-matrix.generated";
+
+test("third-place matrix includes every FIFA Annex C combination", () => {
+  const rows = THIRD_PLACE_ASSIGNMENT_ROWS.trim().split("\n");
+
+  assert.equal(rows.length, 495);
+  assert.equal(new Set(rows.map((row) => row.slice(0, 8))).size, 495);
+});
 
 test("round of 32 follows the official bracket slot order", () => {
   assert.deepEqual(

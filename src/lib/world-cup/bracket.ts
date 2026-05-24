@@ -1,3 +1,5 @@
+import { THIRD_PLACE_ASSIGNMENT_ROWS } from "./third-place-matrix.generated";
+
 export type GroupRank = 1 | 2 | 3;
 
 export type BracketTeam = {
@@ -42,20 +44,8 @@ export const ROUND_OF_32_SLOTS = [
   thirdPlaceSlot("M87", "K", "DEIJL"),
 ] as const satisfies readonly RoundOf32Slot[];
 
-const THIRD_PLACE_ASSIGNMENT_BY_GROUPS: Record<string, Record<string, string>> = {
-  // FIFA Annex C row for advancing third-place groups A/E/F/G/I/J/K/L.
-  // Verified against the FIFA predictor scenario in the supplied screenshots.
-  AEFGIJKL: {
-    M74: "F",
-    M77: "G",
-    M81: "I",
-    M82: "A",
-    M79: "E",
-    M80: "K",
-    M85: "J",
-    M87: "L",
-  },
-};
+const THIRD_PLACE_ASSIGNMENT_LABELS = ["M79", "M85", "M81", "M74", "M82", "M77", "M87", "M80"] as const;
+const THIRD_PLACE_ASSIGNMENT_BY_GROUPS = parseThirdPlaceAssignmentRows(THIRD_PLACE_ASSIGNMENT_ROWS);
 
 export function buildRoundOf32Pairs<T extends BracketTeam>(
   teams: readonly T[],
@@ -165,4 +155,21 @@ function teamByRank<T extends BracketTeam>(
   rank: GroupRank,
 ): T | undefined {
   return teams.find((team) => team.group === group && ranks[team.id] === rank);
+}
+
+function parseThirdPlaceAssignmentRows(rows: string): Record<string, Record<string, string>> {
+  const assignments: Record<string, Record<string, string>> = {};
+
+  for (const row of rows.trim().split("\n")) {
+    const [groupsKey, assignedGroups] = row.split(":");
+    if (!groupsKey || !assignedGroups || groupsKey.length !== 8 || assignedGroups.length !== 8) {
+      throw new Error(`Invalid third-place assignment row: ${row}`);
+    }
+
+    assignments[groupsKey] = Object.fromEntries(
+      [...assignedGroups].map((group, index) => [THIRD_PLACE_ASSIGNMENT_LABELS[index], group]),
+    );
+  }
+
+  return assignments;
 }
