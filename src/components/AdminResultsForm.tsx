@@ -4,13 +4,16 @@ import { useState } from "react";
 import {
   formatKickoff,
   getMatchName,
+  getTeam,
   type Match,
 } from "@/lib/world-cup/data";
+import { isKnockoutStage, type PredictedWinnerSide } from "@/lib/world-cup/match-predictions";
 import type { SeededMatchWithResult } from "@/lib/world-cup/repository";
 
 type DraftResult = {
   homeScore: string;
   awayScore: string;
+  winnerSide: "" | PredictedWinnerSide;
 };
 
 export function AdminResultsForm({ matches }: { matches: SeededMatchWithResult[] }) {
@@ -21,6 +24,7 @@ export function AdminResultsForm({ matches }: { matches: SeededMatchWithResult[]
         {
           homeScore: match.homeScore === undefined ? "" : String(match.homeScore),
           awayScore: match.awayScore === undefined ? "" : String(match.awayScore),
+          winnerSide: match.winnerSide ?? "",
         },
       ]),
     ),
@@ -35,7 +39,7 @@ export function AdminResultsForm({ matches }: { matches: SeededMatchWithResult[]
     setDrafts((current) => ({
       ...current,
       [matchDbId]: {
-        ...(current[matchDbId] ?? { homeScore: "", awayScore: "" }),
+        ...(current[matchDbId] ?? { homeScore: "", awayScore: "", winnerSide: "" }),
         [key]: value,
       },
     }));
@@ -50,6 +54,15 @@ export function AdminResultsForm({ matches }: { matches: SeededMatchWithResult[]
       setErrors((current) => ({ ...current, [match.dbId]: "Enter valid whole-number scores." }));
       return;
     }
+    const winnerSide =
+      draft.winnerSide === "home" || draft.winnerSide === "away" ? draft.winnerSide : null;
+    if (isKnockoutStage(match.stage) && homeScore === awayScore && winnerSide === null) {
+      setErrors((current) => ({
+        ...current,
+        [match.dbId]: "Choose who advanced for a tied knockout result.",
+      }));
+      return;
+    }
 
     setSaving(match.dbId);
     setErrors((current) => ({ ...current, [match.dbId]: "" }));
@@ -62,6 +75,7 @@ export function AdminResultsForm({ matches }: { matches: SeededMatchWithResult[]
           matchDbId: match.dbId,
           homeScore,
           awayScore,
+          winnerSide,
           status: "final",
         }),
       });
@@ -95,9 +109,16 @@ export function AdminResultsForm({ matches }: { matches: SeededMatchWithResult[]
 
       <div className="space-y-3">
         {matches.map((match) => {
-          const draft = drafts[match.dbId] ?? { homeScore: "", awayScore: "" };
+          const draft = drafts[match.dbId] ?? { homeScore: "", awayScore: "", winnerSide: "" };
           const error = errors[match.dbId];
           const status = statuses[match.dbId];
+          const homeName = getTeam(match.homeTeamId)?.name ?? match.homePlaceholder ?? "Home";
+          const awayName = getTeam(match.awayTeamId)?.name ?? match.awayPlaceholder ?? "Away";
+          const needsWinnerSide =
+            isKnockoutStage(match.stage) &&
+            draft.homeScore !== "" &&
+            draft.awayScore !== "" &&
+            Number(draft.homeScore) === Number(draft.awayScore);
           return (
             <article
               key={match.dbId}
@@ -146,6 +167,34 @@ export function AdminResultsForm({ matches }: { matches: SeededMatchWithResult[]
                   {saving === match.dbId ? "Saving..." : "Save Final"}
                 </button>
               </div>
+
+              {needsWinnerSide ? (
+                <div className="mt-4 rounded-xl border border-white/10 bg-[var(--color-panel-high)] p-3">
+                  <div className="mb-2 text-xs font-bold uppercase text-[var(--color-fg-muted)]">
+                    Winner after extra time or penalties
+                  </div>
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    {(["home", "away"] as const).map((side) => {
+                      const active = draft.winnerSide === side;
+                      return (
+                        <button
+                          key={side}
+                          type="button"
+                          onClick={() => update(match.dbId, "winnerSide", side)}
+                          className={
+                            "rounded-lg border px-3 py-2 text-left text-sm font-bold transition active:scale-95 " +
+                            (active
+                              ? "border-[var(--color-accent)] bg-[var(--color-accent)]/10 text-[var(--color-accent)]"
+                              : "border-white/10 bg-[var(--color-panel-highest)] text-[var(--color-fg-muted)]")
+                          }
+                        >
+                          {side === "home" ? homeName : awayName}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              ) : null}
 
               {(error || status) && (
                 <div

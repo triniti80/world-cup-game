@@ -47,6 +47,7 @@ export type SeededMatchWithResult = Match & {
   dbId: number;
   homeScore?: number;
   awayScore?: number;
+  winnerSide?: "home" | "away";
   status: "scheduled" | "live" | "final";
 };
 
@@ -368,6 +369,10 @@ export async function getSeededMatchesWithResults(): Promise<SeededMatchWithResu
         status: dbMatch.status,
         homeScore: dbMatch.homeScore ?? undefined,
         awayScore: dbMatch.awayScore ?? undefined,
+        winnerSide:
+          dbMatch.winnerSide === "home" || dbMatch.winnerSide === "away"
+            ? dbMatch.winnerSide
+            : undefined,
       },
     ];
   });

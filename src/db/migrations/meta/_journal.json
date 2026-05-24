@@ -43,6 +43,13 @@
       "when": 1779564000000,
       "tag": "0005_match_prediction_winner_side",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1779569000000,
+      "tag": "0006_match_winner_side",
+      "breakpoints": true
     }
   ]
 }
