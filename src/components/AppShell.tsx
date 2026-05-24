@@ -53,6 +53,9 @@ export function AppShell({
           </div>
           <div className="flex items-center gap-2">
             <AppNav />
+            <div className="md:hidden">
+              <LanguageSelector compact />
+            </div>
             <div className="hidden md:block">
               <LanguageSelector />
             </div>

@@ -5,7 +5,7 @@ import { useState } from "react";
 import { locales, type Locale } from "@/lib/i18n";
 import { useI18n } from "./I18nProvider";
 
-export function LanguageSelector() {
+export function LanguageSelector({ compact = false }: { compact?: boolean }) {
   const router = useRouter();
   const { locale, t } = useI18n();
   const [busy, setBusy] = useState(false);
@@ -33,7 +33,7 @@ export function LanguageSelector() {
     >
       {locales.map((option) => (
         <option key={option} value={option}>
-          {option === "he" ? t("locale.hebrew") : t("locale.english")}
+          {compact ? option.toUpperCase() : option === "he" ? t("locale.hebrew") : t("locale.english")}
         </option>
       ))}
     </select>
