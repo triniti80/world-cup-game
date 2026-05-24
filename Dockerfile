@@ -5,14 +5,14 @@ FROM node:22-alpine AS deps
 WORKDIR /app
 RUN apk add --no-cache libc6-compat
 COPY package.json package-lock.json* ./
-RUN --mount=type=cache,target=/root/.npm npm ci
+RUN --mount=type=cache,id=npm-deps,target=/root/.npm npm ci
 
 # ----- prod deps stage: runtime deps used by pre-deploy migrations ------------
 FROM node:22-alpine AS prod-deps
 WORKDIR /app
 RUN apk add --no-cache libc6-compat
 COPY package.json package-lock.json* ./
-RUN --mount=type=cache,target=/root/.npm npm ci --omit=dev
+RUN --mount=type=cache,id=npm-prod-deps,target=/root/.npm npm ci --omit=dev
 
 # ----- build stage: produce the Next.js standalone output ---------------------
 FROM node:22-alpine AS build
