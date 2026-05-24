@@ -8,6 +8,11 @@ export const dynamic = "force-dynamic";
 export const metadata: Metadata = {
   title: "World Cup Pool",
   description: "Private World Cup prediction game for friends.",
+  icons: {
+    icon: "/favicon.svg",
+    shortcut: "/favicon.svg",
+    apple: "/favicon.svg",
+  },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

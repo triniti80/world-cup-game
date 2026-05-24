@@ -13,6 +13,15 @@ export default async function AppLayout({
 
   return (
     <AppShell
+      user={
+        session
+          ? {
+              name: session.name,
+              email: session.email,
+              role: session.role,
+            }
+          : undefined
+      }
       activeLeagueName={currentLeague?.leagueName}
       activeLeagueMode={currentLeague?.gameMode}
     >

@@ -1,13 +1,21 @@
 import type { ReactNode } from "react";
+import Link from "next/link";
 import { AppNav } from "./AppNav";
 import { LogoutButton } from "./LogoutButton";
+import { ProfileAvatar } from "./ProfileAvatar";
 
 export function AppShell({
   children,
+  user,
   activeLeagueName,
   activeLeagueMode,
 }: {
   children: ReactNode;
+  user?: {
+    name: string;
+    email: string;
+    role: "user" | "admin";
+  };
   activeLeagueName?: string;
   activeLeagueMode?: "stage_predictions" | "match_scores";
 }) {
@@ -16,9 +24,14 @@ export function AppShell({
       <header className="sticky top-0 z-50 border-b border-white/10 bg-[var(--color-panel)]/80 backdrop-blur-md">
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-3 md:px-8">
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-full border-2 border-[var(--color-gold)] bg-[var(--color-panel-high)] font-display text-sm font-extrabold text-[var(--color-gold)]">
-              26
-            </div>
+            <Link
+              href="/profile"
+              className="rounded-full transition hover:scale-105 focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] focus:ring-offset-2 focus:ring-offset-[var(--color-bg)] active:scale-95"
+              aria-label="Open profile"
+              title="Open profile"
+            >
+              <ProfileAvatar name={user?.name} email={user?.email} size="sm" />
+            </Link>
             <div>
               <div className="font-display text-lg font-extrabold text-[var(--color-primary)]">
                 WC2026

@@ -76,6 +76,27 @@ export type UserLeague = CurrentLeague & {
   createdAt: string;
 };
 
+export type UserProfileSummary = {
+  user: {
+    id: number;
+    name: string;
+    email: string;
+    role: "user" | "admin";
+  };
+  leagues: UserProfileLeague[];
+};
+
+export type UserProfileLeague = {
+  leagueId: number;
+  leagueName: string;
+  inviteCode: string;
+  gameMode: LeagueGameMode;
+  displayName: string;
+  total: number;
+  rank: number;
+  memberCount: number;
+};
+
 export type SavedBonusPredictions = {
   topScorer?: {
     playerName: string;
@@ -329,6 +350,96 @@ export async function getUserLeagues(userId: number): Promise<UserLeague[]> {
     .orderBy(leagueMembers.joinedAt);
 
   return rows.map((row) => ({ ...row, createdAt: row.createdAt.toISOString() }));
+}
+
+export async function getUserProfileSummary(userId: number): Promise<UserProfileSummary | null> {
+  const [user] = await db
+    .select({
+      id: users.id,
+      name: users.name,
+      email: users.email,
+      role: users.role,
+    })
+    .from(users)
+    .where(eq(users.id, userId))
+    .limit(1);
+
+  if (!user) return null;
+
+  const memberships = await db
+    .select({
+      leagueId: leagues.id,
+      leagueName: leagues.name,
+      inviteCode: leagues.inviteCode,
+      gameMode: leagues.gameMode,
+      displayName: leagueMembers.displayName,
+      joinedAt: leagueMembers.joinedAt,
+    })
+    .from(leagueMembers)
+    .innerJoin(leagues, eq(leagueMembers.leagueId, leagues.id))
+    .where(eq(leagueMembers.userId, userId))
+    .orderBy(leagueMembers.joinedAt);
+
+  if (memberships.length === 0) {
+    return { user, leagues: [] };
+  }
+
+  const leagueIds = memberships.map((membership) => membership.leagueId);
+  const allMembers = await db
+    .select({
+      leagueId: leagueMembers.leagueId,
+      userId: leagueMembers.userId,
+      name: leagueMembers.displayName,
+      joinedAt: leagueMembers.joinedAt,
+    })
+    .from(leagueMembers)
+    .where(inArray(leagueMembers.leagueId, leagueIds));
+
+  const events = await db
+    .select({
+      leagueId: scoreEvents.leagueId,
+      userId: scoreEvents.userId,
+      points: sql<number>`${scoreEvents.points}::int`,
+    })
+    .from(scoreEvents)
+    .where(inArray(scoreEvents.leagueId, leagueIds));
+
+  const pointsByLeagueAndUser = new Map<string, number>();
+  for (const event of events) {
+    const key = `${event.leagueId}:${event.userId}`;
+    pointsByLeagueAndUser.set(key, (pointsByLeagueAndUser.get(key) ?? 0) + event.points);
+  }
+
+  const leaguesWithRanks = memberships.map<UserProfileLeague>((membership) => {
+    const leagueMembersForRank = allMembers.filter((member) => member.leagueId === membership.leagueId);
+    const ranked = leagueMembersForRank
+      .map((member) => ({
+        userId: member.userId,
+        name: member.name,
+        joinedAt: member.joinedAt,
+        total: pointsByLeagueAndUser.get(`${member.leagueId}:${member.userId}`) ?? 0,
+      }))
+      .sort(
+        (a, b) =>
+          b.total - a.total ||
+          a.name.localeCompare(b.name) ||
+          a.joinedAt.getTime() - b.joinedAt.getTime(),
+      );
+    const rank = ranked.findIndex((member) => member.userId === userId) + 1;
+
+    return {
+      leagueId: membership.leagueId,
+      leagueName: membership.leagueName,
+      inviteCode: membership.inviteCode,
+      gameMode: membership.gameMode,
+      displayName: membership.displayName,
+      total: pointsByLeagueAndUser.get(`${membership.leagueId}:${userId}`) ?? 0,
+      rank: rank || ranked.length,
+      memberCount: ranked.length,
+    };
+  });
+
+  return { user, leagues: leaguesWithRanks };
 }
 
 export function getSeedMatchById(matchId: string): Match | null {
