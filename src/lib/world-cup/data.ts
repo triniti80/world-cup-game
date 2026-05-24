@@ -219,7 +219,7 @@ const fixtureRows: FixtureRow[] = [
   [72, "group", "L", "Croatia", "Ghana", "2026-06-27T22:00:00.000Z", "Lincoln Financial Field"],
   [73, "r32", null, "2A", "2B", "2026-06-28T19:00:00.000Z", "SoFi Stadium"],
   [74, "r32", null, "1C", "2F", "2026-06-29T17:00:00.000Z", "NRG Stadium"],
-  [75, "r32", null, "1E", "3A/C/D/F", "2026-06-29T20:30:00.000Z", "Gillette Stadium"],
+  [75, "r32", null, "1E", "3A/B/C/D/F", "2026-06-29T20:30:00.000Z", "Gillette Stadium"],
   [76, "r32", null, "1F", "2C", "2026-06-30T00:00:00.000Z", "Estadio BBVA"],
   [77, "r32", null, "1A", "3C/E/F/H/I", "2026-06-30T01:00:00.000Z", "Estadio Banorte"],
   [78, "r32", null, "2E", "2I", "2026-06-30T17:00:00.000Z", "AT&T Stadium"],

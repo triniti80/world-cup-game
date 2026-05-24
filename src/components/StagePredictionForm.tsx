@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { useI18n } from "@/components/I18nProvider";
 import type { Locale, TranslationKey } from "@/lib/i18n";
+import { buildRoundOf32Pairs as buildOfficialRoundOf32Pairs } from "@/lib/world-cup/bracket";
 import { getTeamName, teams, type Team } from "@/lib/world-cup/data";
 import type { SavedStagePredictions } from "@/lib/world-cup/repository";
 
@@ -26,6 +27,8 @@ type Pair = {
   label: string;
   home?: Team;
   away?: Team;
+  homePlaceholder?: string;
+  awayPlaceholder?: string;
 };
 type StageCompletion = {
   picked: number;
@@ -325,6 +328,7 @@ function KnockoutStage({
               </div>
               <PairTeamButton
                 team={pair.home}
+                placeholder={pair.homePlaceholder}
                 active={Boolean(pair.home && selectedTeamIds[index] === pair.home.id)}
                 locale={locale}
                 onClick={() => pair.home && onPick(stage, index, pair.home.id)}
@@ -334,6 +338,7 @@ function KnockoutStage({
               </div>
               <PairTeamButton
                 team={pair.away}
+                placeholder={pair.awayPlaceholder}
                 active={Boolean(pair.away && selectedTeamIds[index] === pair.away.id)}
                 locale={locale}
                 onClick={() => pair.away && onPick(stage, index, pair.away.id)}
@@ -366,11 +371,13 @@ function KnockoutStage({
 
 function PairTeamButton({
   team,
+  placeholder,
   active,
   locale,
   onClick,
 }: {
   team?: Team;
+  placeholder?: string;
   active: boolean;
   locale: Locale;
   onClick: () => void;
@@ -392,6 +399,10 @@ function PairTeamButton({
           <span className="font-bold">{team.code}</span>
           <span className="ms-2">{getTeamName(team, locale)}</span>
         </>
+      ) : placeholder ? (
+        <span className="font-bold" dir="ltr">
+          {placeholder}
+        </span>
       ) : (
         locale === "he" ? "ממתין לקבוצה" : "Waiting for qualifier"
       )}
@@ -452,36 +463,7 @@ function StageFooter({
 }
 
 function buildRoundOf32Pairs(ranks: Record<string, Rank>): Pair[] {
-  const winners = groups.map((group) => teamByRank(group, 1, ranks));
-  const runners = groups.map((group) => teamByRank(group, 2, ranks));
-  const thirds = groups.map((group) => teamByRank(group, 3, ranks)).filter(Boolean);
-  const pairs: Pair[] = [];
-
-  for (let index = 0; index < 8; index += 1) {
-    pairs.push({
-      label: `R32 Match ${index + 1}`,
-      home: winners[index],
-      away: thirds[index],
-    });
-  }
-
-  for (let index = 8; index < winners.length; index += 1) {
-    pairs.push({
-      label: `R32 Match ${pairs.length + 1}`,
-      home: winners[index],
-      away: runners[index - 8],
-    });
-  }
-
-  for (let index = 4; index < runners.length; index += 2) {
-    pairs.push({
-      label: `R32 Match ${pairs.length + 1}`,
-      home: runners[index],
-      away: runners[index + 1],
-    });
-  }
-
-  return pairs;
+  return buildOfficialRoundOf32Pairs(teams, ranks);
 }
 
 function buildPairsFromTeamIds(teamIds: string[], prefix: string): Pair[] {
@@ -495,10 +477,6 @@ function buildPairsFromTeamIds(teamIds: string[], prefix: string): Pair[] {
     });
   }
   return pairs;
-}
-
-function teamByRank(group: string, rank: Rank, ranks: Record<string, Rank>): Team | undefined {
-  return teams.find((team) => team.group === group && ranks[team.id] === rank);
 }
 
 function getTeamById(teamId: string | undefined): Team | undefined {

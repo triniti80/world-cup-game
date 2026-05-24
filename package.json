@@ -11,6 +11,7 @@
     "build": "next build",
     "start": "next start",
     "test": "tsx --test src/**/*.test.ts",
+    "test:integration": "RUN_DB_INTEGRATION=1 tsx --env-file=.env --test src/lib/world-cup/integration.test.ts",
     "typecheck": "tsc --noEmit",
     "lint": "next lint",
     "db:generate": "drizzle-kit generate",
