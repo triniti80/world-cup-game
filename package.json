@@ -15,6 +15,7 @@
     "lint": "next lint",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "tsx --env-file=.env src/db/migrate.ts",
+    "db:migrate:prod": "node scripts/migrate.mjs",
     "db:studio": "drizzle-kit studio"
   },
   "dependencies": {

@@ -6,26 +6,26 @@ See [WORLD_CUP_PLAN.md](./WORLD_CUP_PLAN.md) for the product plan.
 
 ## Status
 
-Phase 1 has started:
+Current app features:
 
 - World Cup app shell and navigation.
 - Dashboard.
-- Fixture list using seed data.
+- Full 2026 fixture list.
 - League creation and invite-code joining.
 - Active league switching.
 - League game options for match score guessing or pre-tournament stage predictions.
 - Persisted match prediction inputs backed by Postgres.
 - Server-side 5-minute match prediction locks.
 - Pre-tournament bonus picks for top scorer and, in score leagues, champion.
-- Admin final-score entry for seeded fixtures.
+- Admin fixture editing, result entry, official stage/bonus results, and audit log.
 - Match score-event recalculation and DB-backed leaderboard.
 - League prediction visibility with submitted/hidden/revealed states.
-- Bracket placeholder.
+- Stage prediction brackets with knockout advancing picks.
+- Profile page and avatar menu.
 - Game Instructions page.
 - Settings page for current lock/visibility rules.
 
-The next implementation step is full fixture import, richer league prediction
-visibility for stage picks, and official bonus/stage scoring.
+See [DEPLOYMENT.md](./DEPLOYMENT.md) for Railway deployment notes.
 
 ## Quick start
 
@@ -39,6 +39,12 @@ npm run dev
 ```
 
 Then open <http://localhost:3001>.
+
+## Production
+
+Railway is the recommended first production host for this project. The repo
+includes `railway.json`, a Dockerfile, and a production migration runner for
+Railway pre-deploy migrations.
 
 ## Notes
 
