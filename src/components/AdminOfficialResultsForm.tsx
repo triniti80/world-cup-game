@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useI18n } from "@/components/I18nProvider";
+import { TopScorerInput } from "@/components/TopScorerInput";
 import { getTeamName, teams } from "@/lib/world-cup/data";
 import type { AdminOfficialResults } from "@/lib/world-cup/repository";
 
@@ -81,11 +82,10 @@ export function AdminOfficialResultsForm({
         <label className="block rounded-xl border border-white/10 bg-[var(--color-panel-low)] p-4">
           <span className="mb-2 block text-sm font-bold">{locale === "he" ? "מלך שערים רשמי" : "Official top scorer"}</span>
           <div className="flex gap-2">
-            <input
+            <TopScorerInput
               value={topScorer}
-              onChange={(event) => setTopScorer(event.target.value)}
+              onChange={setTopScorer}
               placeholder={locale === "he" ? "זוכה נעל הזהב" : "Golden Boot winner"}
-              className="min-w-0 flex-1 rounded-lg border border-white/10 bg-[var(--color-panel-highest)] px-3 py-3 outline-none focus:border-[var(--color-accent)]"
             />
             <button
               type="button"

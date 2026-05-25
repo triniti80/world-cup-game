@@ -1,14 +1,9 @@
 import Link from "next/link";
-import { t, type Locale } from "@/lib/i18n";
+import { LeaguePredictionsMatchList } from "@/components/LeaguePredictionsMatchList";
+import { t } from "@/lib/i18n";
 import { readLocale } from "@/lib/i18n-server";
 import { readActiveLeagueId, readSession } from "@/lib/session";
-import {
-  formatKickoff,
-  getMatchName,
-  getTeam,
-  getTeamName,
-  stageLabel,
-} from "@/lib/world-cup/data";
+import { getTeam, getTeamName } from "@/lib/world-cup/data";
 import { getLeaguePredictionVisibility } from "@/lib/world-cup/repository";
 
 export default async function LeaguePredictionsPage() {
@@ -103,61 +98,7 @@ export default async function LeaguePredictionsPage() {
           </section>
 
           {league.gameMode === "match_scores" ? (
-            <section className="space-y-4">
-              <div>
-                <h2 className="font-display text-xl font-bold">{t(locale, "leaguePredictions.matchScorePicks")}</h2>
-                <p className="mt-1 text-sm text-[var(--color-fg-muted)]">
-                  {t(locale, "leaguePredictions.beforeKickoff")}
-                </p>
-              </div>
-              {matches.map((match) => (
-                <article key={match.dbId} className="glass-card rounded-xl p-5">
-                  <div className="flex flex-wrap items-start justify-between gap-3">
-                    <div>
-                      <div className="text-xs font-bold uppercase text-[var(--color-fg-muted)]">
-                        {t(locale, "common.match")} {match.number} · {stageLabel(match.stage, locale)}
-                        {match.group ? ` · ${t(locale, "common.group")} ${match.group}` : ""}
-                      </div>
-                      <h3 className="mt-1 font-display text-lg font-bold">{getMatchName(match, locale)}</h3>
-                      <p className="mt-1 text-sm text-[var(--color-fg-muted)]">
-                        {formatKickoff(match.kickoffAtUtc, locale)}
-                      </p>
-                    </div>
-                    <span
-                      className={
-                        "rounded-full px-3 py-1 text-xs font-bold " +
-                        (match.revealed
-                          ? "bg-[var(--color-accent)]/15 text-[var(--color-accent)]"
-                          : "bg-[var(--color-panel-highest)] text-[var(--color-fg-muted)]")
-                      }
-                    >
-                      {match.revealed ? t(locale, "common.revealed") : t(locale, "common.hidden")}
-                    </span>
-                  </div>
-
-                  <div className="mt-4 grid gap-2 md:grid-cols-2 lg:grid-cols-3">
-                    {members.map((member) => {
-                      const prediction = match.predictions.find((row) => row.userId === member.userId);
-                      return (
-                        <div
-                          key={member.userId}
-                          className="rounded-lg border border-white/10 bg-[var(--color-panel-low)] px-3 py-2"
-                        >
-                          <div className="text-sm font-bold">{member.name}</div>
-                          <div className="mt-1 text-sm text-[var(--color-fg-muted)]">
-                            {!prediction?.submitted
-                              ? t(locale, "common.missing")
-                              : prediction.revealed
-                                ? formatRevealedScore(match, prediction, locale)
-                                : t(locale, "common.submitted")}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </article>
-              ))}
-            </section>
+            <LeaguePredictionsMatchList locale={locale} members={members} matches={matches} />
           ) : (
             <section className="glass-card rounded-xl p-5">
               <h2 className="font-display text-xl font-bold">{t(locale, "leaguePredictions.stagePicks")}</h2>
@@ -170,29 +111,6 @@ export default async function LeaguePredictionsPage() {
       ) : null}
     </div>
   );
-}
-
-function formatRevealedScore(
-  match: {
-    homeTeamId?: string;
-    awayTeamId?: string;
-    homePlaceholder?: string;
-    awayPlaceholder?: string;
-  },
-  prediction: {
-    homeScore?: number;
-    awayScore?: number;
-    predictedWinnerSide?: "home" | "away";
-  },
-  locale: Locale,
-): string {
-  const score = `${prediction.homeScore} - ${prediction.awayScore}`;
-  if (!prediction.predictedWinnerSide) return score;
-  const sideLabel =
-    prediction.predictedWinnerSide === "home"
-      ? getTeamName(getTeam(match.homeTeamId), locale) ?? match.homePlaceholder ?? "Home"
-      : getTeamName(getTeam(match.awayTeamId), locale) ?? match.awayPlaceholder ?? "Away";
-  return `${score}, ${t(locale, "leaguePredictions.advances", { team: sideLabel })}`;
 }
 
 function VisibilityRow({

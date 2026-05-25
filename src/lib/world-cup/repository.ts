@@ -282,6 +282,16 @@ export async function ensureSeedTournament(): Promise<TournamentRow> {
   return tournamentRow;
 }
 
+async function getSeedTournamentForRead(): Promise<TournamentRow> {
+  const [existingTournament] = await db
+    .select()
+    .from(tournaments)
+    .where(eq(tournaments.year, TOURNAMENT_YEAR))
+    .limit(1);
+
+  return existingTournament ?? ensureSeedTournament();
+}
+
 export async function getPrimaryLeagueMembership(userId: number) {
   const [membership] = await db
     .select()
@@ -934,7 +944,7 @@ export async function getLeaguePredictionVisibility(userId: number, activeLeague
   matches: LeaguePredictionMatch[];
   bonuses: LeagueBonusPrediction[];
 }> {
-  const tournamentRow = await ensureSeedTournament();
+  const tournamentRow = await getSeedTournamentForRead();
   const league = await getCurrentLeague(userId, activeLeagueId);
   if (!league) return { league: null, members: [], matches: [], bonuses: [] };
 

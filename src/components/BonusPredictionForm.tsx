@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useI18n } from "@/components/I18nProvider";
+import { TopScorerInput } from "@/components/TopScorerInput";
 import { getTeamName, teams } from "@/lib/world-cup/data";
 import type { LeagueGameMode, SavedBonusPredictions } from "@/lib/world-cup/repository";
 
@@ -61,11 +62,10 @@ export function BonusPredictionForm({ gameMode, initialPredictions }: BonusPredi
             {locale === "he" ? "מלך השערים" : "Top scorer"}
           </span>
           <div className="flex gap-2">
-            <input
+            <TopScorerInput
               value={topScorer}
-              onChange={(event) => setTopScorer(event.target.value)}
+              onChange={setTopScorer}
               placeholder={locale === "he" ? "שם שחקן" : "Player name"}
-              className="min-w-0 flex-1 rounded-lg border border-white/10 bg-[var(--color-panel-highest)] px-3 py-3 outline-none focus:border-[var(--color-accent)]"
             />
             <button
               type="button"
