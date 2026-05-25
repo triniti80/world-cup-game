@@ -18,6 +18,7 @@ Current app features:
 - Server-side 5-minute match prediction locks.
 - Pre-tournament bonus picks for top scorer and, in score leagues, champion.
 - Admin fixture editing, result entry, official stage/bonus results, and audit log.
+- Official FIFA result sync for completed matches.
 - Match score-event recalculation and DB-backed leaderboard.
 - League prediction visibility with submitted/hidden/revealed states.
 - Stage prediction brackets with knockout advancing picks.
@@ -39,6 +40,19 @@ npm run dev
 ```
 
 Then open <http://localhost:3001>.
+
+## Result sync
+
+Completed match results sync from FIFA's official Data Hub.
+
+```bash
+npm run results:sync:dry-run
+npm run results:sync
+```
+
+For scheduled hosting, call `/api/cron/fifa-results?secret=$CRON_SECRET` after
+matches. Running it every 10-15 minutes during match windows is also safe: it
+only writes matches FIFA marks final.
 
 ## Production
 

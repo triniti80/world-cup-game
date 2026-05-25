@@ -18,7 +18,7 @@ const content = {
       "Before the World Cup starts, pick the teams you think will reach each tournament stage. For the Round of 32, choose 1st and 2nd place in every group, plus only 8 third-place teams. Later rounds are selected from your previous saved picks.",
     scoreTitle: "Option 2: Match Score League",
     scoreBody:
-      "Enter a home and away score for each fixture before that match locks. Correct outcome earns 2 points. Exact score earns 5 points total. Knockout draws must include the team you think advances.",
+      "Enter a home and away score for each fixture before that match locks. Predictions are for the score after 90 minutes, including stoppage time, not extra time or penalties. Correct outcome earns 2 points. Exact score earns 5 points total. Knockout draws must include the team you think advances.",
     locksTitle: "Locks and Visibility",
     locksBody:
       "Pre-tournament picks lock 1 hour before Match 1. Each score prediction locks 5 minutes before kickoff. Score guesses reveal when the match starts; pre-tournament picks reveal after the first match starts.",
@@ -45,7 +45,7 @@ const content = {
       "לפני תחילת המונדיאל בוחרים אילו קבוצות יגיעו לכל שלב. ב-32 האחרונות בוחרים מקום ראשון ושני מכל בית, ועוד 8 קבוצות בלבד מהמקום השלישי. השלבים הבאים נבחרים מתוך הבחירות ששמרת בשלב הקודם.",
     scoreTitle: "אפשרות 2: ליגת ניחוש תוצאות",
     scoreBody:
-      "מזינים תוצאת בית וחוץ לכל משחק לפני שהוא ננעל. תוצאה בכיוון נכון נותנת 2 נקודות. תוצאה מדויקת נותנת 5 נקודות בסך הכל. בתיקו בנוקאאוט חייבים לבחור מי עולה.",
+      "מזינים תוצאת בית וחוץ לכל משחק לפני שהוא ננעל. הניחוש הוא לתוצאה אחרי 90 דקות, כולל תוספת זמן, ולא כולל הארכה או פנדלים. תוצאה בכיוון נכון נותנת 2 נקודות. תוצאה מדויקת נותנת 5 נקודות בסך הכל. בתיקו בנוקאאוט חייבים לבחור מי עולה.",
     locksTitle: "נעילות וחשיפה",
     locksBody:
       "ניחושי טרום-טורניר ננעלים שעה לפני משחק 1. כל ניחוש תוצאה ננעל 5 דקות לפני שריקת הפתיחה. ניחושי תוצאה נחשפים בתחילת המשחק; ניחושי טרום-טורניר נחשפים אחרי תחילת המשחק הראשון.",

@@ -14,6 +14,8 @@
     "test:integration": "RUN_DB_INTEGRATION=1 tsx --env-file=.env --test src/lib/world-cup/integration.test.ts",
     "typecheck": "tsc --noEmit",
     "lint": "next lint",
+    "results:sync": "tsx --env-file=.env scripts/sync-fifa-results.ts",
+    "results:sync:dry-run": "tsx --env-file=.env scripts/sync-fifa-results.ts --dry-run",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "tsx --env-file=.env src/db/migrate.ts",
     "db:migrate:prod": "node scripts/migrate.mjs",
