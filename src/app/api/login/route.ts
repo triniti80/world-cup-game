@@ -40,6 +40,17 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Incorrect email or password." }, { status: 401 });
   }
 
+  if (!user.isEnabled) {
+    return NextResponse.json(
+      {
+        error: user.disabledReason
+          ? `Your account is disabled: ${user.disabledReason}`
+          : "Your account is disabled. Contact the pool admin.",
+      },
+      { status: 403 },
+    );
+  }
+
   await createSession({
     id: user.id,
     email: user.email,

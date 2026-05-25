@@ -1,5 +1,8 @@
 import { SignJWT, jwtVerify } from "jose";
 import { cookies } from "next/headers";
+import { eq } from "drizzle-orm";
+import { db } from "@/db/client";
+import { users } from "@/db/schema";
 
 const COOKIE_NAME = "wc_session";
 const ACTIVE_LEAGUE_COOKIE_NAME = "wc_active_league";
@@ -67,7 +70,27 @@ export async function readSession(): Promise<SessionPayload | null> {
   try {
     const { payload } = await jwtVerify(token, getSecret());
     if (!payload.sub || typeof payload.userId !== "number") return null;
-    return payload as unknown as SessionPayload;
+    const [user] = await db
+      .select({
+        id: users.id,
+        email: users.email,
+        name: users.name,
+        role: users.role,
+        isEnabled: users.isEnabled,
+      })
+      .from(users)
+      .where(eq(users.id, payload.userId))
+      .limit(1);
+    if (!user?.isEnabled) return null;
+    return {
+      sub: String(user.id),
+      userId: user.id,
+      email: user.email,
+      name: user.name,
+      role: user.role,
+      iat: typeof payload.iat === "number" ? payload.iat : 0,
+      exp: typeof payload.exp === "number" ? payload.exp : 0,
+    };
   } catch {
     return null;
   }

@@ -179,6 +179,28 @@ export type AdminAuditEntry = {
   createdAt: string;
 };
 
+export type AdminUserRow = {
+  id: number;
+  name: string;
+  email: string;
+  role: "user" | "admin";
+  isEnabled: boolean;
+  disabledAt: string | null;
+  disabledReason: string | null;
+  createdAt: string;
+  leagueCount: number;
+};
+
+export type AdminLeagueRow = {
+  id: number;
+  name: string;
+  inviteCode: string;
+  gameMode: LeagueGameMode;
+  createdAt: string;
+  creatorName: string | null;
+  memberCount: number;
+};
+
 export async function ensureSeedTournament(): Promise<TournamentRow> {
   const [existingTournament] = await db
     .select()
@@ -1062,4 +1084,84 @@ export function getMatchLockAtUtc(match: Pick<MatchRow, "kickoffAt">): Date {
 
 export function getPreTournamentLockAt(tournamentRow: Pick<TournamentRow, "predictionLockAt">): Date {
   return tournamentRow.predictionLockAt;
+}
+
+export async function getUserAccessStatus(userId: number): Promise<{
+  isEnabled: boolean;
+  disabledReason: string | null;
+} | null> {
+  const [user] = await db
+    .select({
+      isEnabled: users.isEnabled,
+      disabledReason: users.disabledReason,
+    })
+    .from(users)
+    .where(eq(users.id, userId))
+    .limit(1);
+  return user ?? null;
+}
+
+export async function getAdminUsers(): Promise<AdminUserRow[]> {
+  const rows = await db
+    .select({
+      id: users.id,
+      name: users.name,
+      email: users.email,
+      role: users.role,
+      isEnabled: users.isEnabled,
+      disabledAt: users.disabledAt,
+      disabledReason: users.disabledReason,
+      createdAt: users.createdAt,
+      leagueCount: sql<number>`count(${leagueMembers.id})::int`,
+    })
+    .from(users)
+    .leftJoin(leagueMembers, eq(leagueMembers.userId, users.id))
+    .groupBy(
+      users.id,
+      users.name,
+      users.email,
+      users.role,
+      users.isEnabled,
+      users.disabledAt,
+      users.disabledReason,
+      users.createdAt,
+    )
+    .orderBy(desc(users.createdAt));
+
+  return rows.map((row) => ({
+    ...row,
+    disabledAt: row.disabledAt ? row.disabledAt.toISOString() : null,
+    createdAt: row.createdAt.toISOString(),
+  }));
+}
+
+export async function getAdminLeagues(): Promise<AdminLeagueRow[]> {
+  const creator = users;
+  const rows = await db
+    .select({
+      id: leagues.id,
+      name: leagues.name,
+      inviteCode: leagues.inviteCode,
+      gameMode: leagues.gameMode,
+      createdAt: leagues.createdAt,
+      creatorName: creator.name,
+      memberCount: sql<number>`count(${leagueMembers.id})::int`,
+    })
+    .from(leagues)
+    .leftJoin(creator, eq(creator.id, leagues.createdByUserId))
+    .leftJoin(leagueMembers, eq(leagueMembers.leagueId, leagues.id))
+    .groupBy(
+      leagues.id,
+      leagues.name,
+      leagues.inviteCode,
+      leagues.gameMode,
+      leagues.createdAt,
+      creator.name,
+    )
+    .orderBy(desc(leagues.createdAt));
+
+  return rows.map((row) => ({
+    ...row,
+    createdAt: row.createdAt.toISOString(),
+  }));
 }

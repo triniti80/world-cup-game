@@ -50,6 +50,13 @@
       "when": 1779569000000,
       "tag": "0006_match_winner_side",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1779749337978,
+      "tag": "0007_nappy_blur",
+      "breakpoints": true
     }
   ]
 }

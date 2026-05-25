@@ -1,22 +1,20 @@
-import { AdminFixturesForm } from "@/components/AdminFixturesForm";
-import { AdminOfficialResultsForm } from "@/components/AdminOfficialResultsForm";
-import { AdminResultsForm } from "@/components/AdminResultsForm";
+import { AdminUsersPanel } from "@/components/AdminUsersPanel";
 import { t } from "@/lib/i18n";
 import { readLocale } from "@/lib/i18n-server";
 import { readSession } from "@/lib/session";
 import { formatKickoff, tournament } from "@/lib/world-cup/data";
 import {
-  getAdminOfficialResults,
+  getAdminLeagues,
+  getAdminUsers,
   getRecentAdminAuditEntries,
-  getSeededMatchesWithResults,
   type AdminAuditEntry,
 } from "@/lib/world-cup/repository";
 
 export default async function SettingsPage() {
   const locale = await readLocale();
   const session = await readSession();
-  const matches = session?.role === "admin" ? await getSeededMatchesWithResults() : [];
-  const officialResults = session?.role === "admin" ? await getAdminOfficialResults() : null;
+  const adminUsers = session?.role === "admin" ? await getAdminUsers() : [];
+  const adminLeagues = session?.role === "admin" ? await getAdminLeagues() : [];
   const auditEntries = session?.role === "admin" ? await getRecentAdminAuditEntries() : [];
 
   return (
@@ -45,9 +43,7 @@ export default async function SettingsPage() {
 
       {session?.role === "admin" ? (
         <>
-          <AdminFixturesForm matches={matches} />
-          <AdminResultsForm matches={matches} />
-          {officialResults ? <AdminOfficialResultsForm initialResults={officialResults} /> : null}
+          <AdminUsersPanel users={adminUsers} leagues={adminLeagues} currentUserId={session.userId} />
           <AdminAuditLog entries={auditEntries} locale={locale} />
         </>
       ) : null}
@@ -55,10 +51,10 @@ export default async function SettingsPage() {
       <section className="rounded-xl border border-dashed border-[var(--color-gold)]/50 bg-[var(--color-panel-low)] p-5">
         <h2 className="font-display text-lg font-bold">{locale === "he" ? "בהמשך" : "Coming next"}</h2>
         <ul className="mt-3 space-y-2 text-sm text-[var(--color-fg-muted)]">
-          <li>Invite codes and real user accounts.</li>
-          <li>Admin fixture import and editing.</li>
-          <li>Final score entry and automatic scoring recalculation.</li>
-          <li>League-specific visibility and leaderboard permissions.</li>
+          <li>User access controls are now available above.</li>
+          <li>League management overview is now available above.</li>
+          <li>Fixture and result tools can be moved to a dedicated hidden admin route later.</li>
+          <li>Next: edit league names/game modes and assign additional admins.</li>
         </ul>
       </section>
     </div>
