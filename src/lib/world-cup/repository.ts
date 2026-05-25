@@ -473,7 +473,7 @@ export async function getDbMatchForSeedMatch(seedMatch: Match): Promise<MatchRow
 }
 
 export async function getSeededMatchesWithResults(): Promise<SeededMatchWithResult[]> {
-  const tournamentRow = await ensureSeedTournament();
+  const tournamentRow = await getSeedTournamentForRead();
   const rows = await db
     .select()
     .from(dbMatches)
@@ -516,7 +516,7 @@ export async function getSavedMatchPredictions(
   userId: number,
   activeLeagueId?: number | null,
 ): Promise<SavedPredictionMap> {
-  const tournamentRow = await ensureSeedTournament();
+  const tournamentRow = await getSeedTournamentForRead();
   const league = await getCurrentLeague(userId, activeLeagueId);
   if (!league) return {};
 
@@ -573,7 +573,7 @@ export async function getSavedBonusPredictions(
   userId: number,
   activeLeagueId?: number | null,
 ): Promise<SavedBonusPredictions> {
-  const tournamentRow = await ensureSeedTournament();
+  const tournamentRow = await getSeedTournamentForRead();
   const league = await getCurrentLeague(userId, activeLeagueId);
   if (!league) return {};
 
@@ -618,7 +618,7 @@ export async function getSavedStagePredictions(
   userId: number,
   activeLeagueId?: number | null,
 ): Promise<SavedStagePredictions> {
-  const tournamentRow = await ensureSeedTournament();
+  const tournamentRow = await getSeedTournamentForRead();
   const league = await getCurrentLeague(userId, activeLeagueId);
   if (!league) return { teams: {}, r32Ranks: {} };
 

@@ -18,16 +18,18 @@ export default async function PredictionsPage() {
   const session = await readSession();
   const activeLeagueId = await readActiveLeagueId();
   const currentLeague = session ? await getCurrentLeague(session.userId, activeLeagueId) : null;
-  const savedPredictions = session
-    ? await getSavedMatchPredictions(session.userId, activeLeagueId)
-    : {};
-  const savedBonusPredictions = session
-    ? await getSavedBonusPredictions(session.userId, activeLeagueId)
-    : {};
-  const savedStagePredictions = session
-    ? await getSavedStagePredictions(session.userId, activeLeagueId)
-    : { teams: {}, r32Ranks: {} };
-  const matches = await getSeededMatchesWithResults();
+  const shouldLoadMatchScores = Boolean(session && currentLeague?.gameMode === "match_scores");
+  const shouldLoadStages = Boolean(session && currentLeague?.gameMode === "stage_predictions");
+  const shouldLoadBonus = Boolean(session && currentLeague);
+  const [savedPredictions, savedBonusPredictions, savedStagePredictions, matches] =
+    await Promise.all([
+      shouldLoadMatchScores ? getSavedMatchPredictions(session!.userId, activeLeagueId) : {},
+      shouldLoadBonus ? getSavedBonusPredictions(session!.userId, activeLeagueId) : {},
+      shouldLoadStages
+        ? getSavedStagePredictions(session!.userId, activeLeagueId)
+        : { teams: {}, r32Ranks: {} },
+      shouldLoadMatchScores ? getSeededMatchesWithResults() : [],
+    ]);
 
   return (
     <div className="space-y-6">

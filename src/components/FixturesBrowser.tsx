@@ -24,6 +24,8 @@ const filters: { id: FixtureFilter; labelKey: TranslationKey }[] = [
   { id: "knockout", labelKey: "common.knockout" },
 ];
 
+const PAGE_SIZE = 24;
+
 export function FixturesBrowser({
   matches,
   savedPredictions,
@@ -34,6 +36,7 @@ export function FixturesBrowser({
   const { locale, t } = useI18n();
   const [activeDate, setActiveDate] = useState("all");
   const [activeFilter, setActiveFilter] = useState<FixtureFilter>("all");
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
 
   const dateTabs = useMemo(() => buildDateTabs(matches, locale), [locale, matches]);
   const visibleMatches = useMemo(
@@ -58,14 +61,30 @@ export function FixturesBrowser({
     [activeDate, activeFilter, matches, savedPredictions],
   );
 
-  const sections = useMemo(() => buildSections(visibleMatches, locale), [locale, visibleMatches]);
+  const pagedMatches = useMemo(
+    () => visibleMatches.slice(0, visibleCount),
+    [visibleCount, visibleMatches],
+  );
+  const sections = useMemo(() => buildSections(pagedMatches, locale), [locale, pagedMatches]);
+  const hasMore = visibleCount < visibleMatches.length;
+  const shownCount = Math.min(visibleCount, visibleMatches.length);
+
+  function chooseDate(dateKey: string) {
+    setActiveDate(dateKey);
+    setVisibleCount(PAGE_SIZE);
+  }
+
+  function chooseFilter(filter: FixtureFilter) {
+    setActiveFilter(filter);
+    setVisibleCount(PAGE_SIZE);
+  }
 
   return (
     <div className="space-y-6">
       <section className="hide-scrollbar -mx-4 flex gap-3 overflow-x-auto px-4 pb-1">
         <button
           type="button"
-          onClick={() => setActiveDate("all")}
+          onClick={() => chooseDate("all")}
           className={dateButtonClass(activeDate === "all")}
           aria-pressed={activeDate === "all"}
         >
@@ -76,7 +95,7 @@ export function FixturesBrowser({
           <button
             key={date.key}
             type="button"
-            onClick={() => setActiveDate(date.key)}
+            onClick={() => chooseDate(date.key)}
             className={dateButtonClass(activeDate === date.key)}
             aria-pressed={activeDate === date.key}
             title={date.label}
@@ -94,7 +113,7 @@ export function FixturesBrowser({
             <button
               key={filter.id}
               type="button"
-              onClick={() => setActiveFilter(filter.id)}
+              onClick={() => chooseFilter(filter.id)}
               className={
                 "rounded-full px-5 py-2 text-sm font-bold transition active:scale-95 " +
                 (active
@@ -136,6 +155,25 @@ export function FixturesBrowser({
               </div>
             </section>
           ))}
+          {hasMore ? (
+            <div className="flex flex-col items-center gap-3 rounded-xl border border-white/10 bg-[var(--color-panel-low)] p-4 text-center">
+              <p className="text-sm font-bold text-[var(--color-fg-muted)]">
+                {t("fixtures.showing")
+                  .replace("{shown}", String(shownCount))
+                  .replace("{total}", String(visibleMatches.length))}
+              </p>
+              <button
+                type="button"
+                onClick={() => setVisibleCount((count) => count + PAGE_SIZE)}
+                className="rounded-full bg-[var(--color-accent)] px-5 py-2 text-sm font-bold text-[#102000] transition active:scale-95"
+              >
+                {t("fixtures.showMore").replace(
+                  "{count}",
+                  String(Math.min(PAGE_SIZE, visibleMatches.length - shownCount)),
+                )}
+              </button>
+            </div>
+          ) : null}
         </div>
       ) : (
         <div className="glass-card rounded-xl p-6">

@@ -27,8 +27,8 @@ export function AppShell({
   return (
     <div className="min-h-screen bg-[var(--color-bg)] pb-24 md:pb-0">
       <header className="sticky top-0 z-50 border-b border-white/10 bg-[var(--color-panel)]/80 backdrop-blur-md">
-        <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-3 md:px-8">
-          <div className="flex items-center gap-3">
+        <div className="mx-auto flex max-w-7xl items-center justify-between gap-2 px-4 py-3 md:gap-4 md:px-8">
+          <div className="flex min-w-0 items-center gap-3">
             <Link
               href="/profile"
               className="rounded-full transition hover:scale-105 focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] focus:ring-offset-2 focus:ring-offset-[var(--color-bg)] active:scale-95"
@@ -37,11 +37,11 @@ export function AppShell({
             >
               <ProfileAvatar name={user?.name} email={user?.email} size="sm" />
             </Link>
-            <div>
+            <div className="min-w-0">
               <div className="font-display text-lg font-extrabold text-[var(--color-primary)]">
                 WC2026
               </div>
-              <div className="text-xs font-semibold uppercase text-[var(--color-fg-muted)]">
+              <div className="max-w-32 truncate text-xs font-semibold uppercase text-[var(--color-fg-muted)] sm:max-w-48 md:max-w-none">
                 {activeLeagueName ?? t("app.noActiveLeague")}
               </div>
               {activeLeagueMode ? (
@@ -51,7 +51,7 @@ export function AppShell({
               ) : null}
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex shrink-0 items-center gap-2">
             <AppNav />
             <div className="md:hidden">
               <LanguageSelector compact />
