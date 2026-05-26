@@ -197,6 +197,12 @@ export type AdminUserRow = {
   disabledReason: string | null;
   createdAt: string;
   leagueCount: number;
+  leagues: {
+    id: number;
+    name: string;
+    inviteCode: string;
+    gameMode: LeagueGameMode;
+  }[];
 };
 
 export type AdminLeagueRow = {
@@ -1172,10 +1178,43 @@ export async function getAdminUsers(): Promise<AdminUserRow[]> {
     )
     .orderBy(desc(users.createdAt));
 
+  const userIds = rows.map((row) => row.id);
+  const membershipRows =
+    userIds.length > 0
+      ? await db
+          .select({
+            userId: leagueMembers.userId,
+            leagueId: leagues.id,
+            leagueName: leagues.name,
+            inviteCode: leagues.inviteCode,
+            gameMode: leagues.gameMode,
+          })
+          .from(leagueMembers)
+          .innerJoin(leagues, eq(leagues.id, leagueMembers.leagueId))
+          .where(inArray(leagueMembers.userId, userIds))
+          .orderBy(leagues.name)
+      : [];
+
+  const leaguesByUserId = membershipRows.reduce<Map<number, AdminUserRow["leagues"]>>(
+    (acc, membership) => {
+      const userLeagues = acc.get(membership.userId) ?? [];
+      userLeagues.push({
+        id: membership.leagueId,
+        name: membership.leagueName,
+        inviteCode: membership.inviteCode,
+        gameMode: membership.gameMode,
+      });
+      acc.set(membership.userId, userLeagues);
+      return acc;
+    },
+    new Map(),
+  );
+
   return rows.map((row) => ({
     ...row,
     disabledAt: row.disabledAt ? row.disabledAt.toISOString() : null,
     createdAt: row.createdAt.toISOString(),
+    leagues: leaguesByUserId.get(row.id) ?? [],
   }));
 }
 

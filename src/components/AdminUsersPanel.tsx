@@ -125,6 +125,21 @@ export function AdminUsersPanel({
                   <span>joined {formatDate(user.createdAt)}</span>
                   {user.disabledReason ? <span>reason: {user.disabledReason}</span> : null}
                 </div>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {user.leagues.length > 0 ? (
+                    user.leagues.map((league) => (
+                      <span
+                        key={league.id}
+                        className="rounded-lg border border-white/10 bg-[var(--color-panel-highest)] px-3 py-1.5 text-xs text-[var(--color-fg-muted)]"
+                      >
+                        <span className="font-bold text-[var(--color-fg)]">{league.name}</span>
+                        <span className="ms-2 text-[var(--color-gold)]">{league.inviteCode}</span>
+                      </span>
+                    ))
+                  ) : (
+                    <span className="text-xs text-[var(--color-fg-muted)]">No leagues joined</span>
+                  )}
+                </div>
               </div>
 
               <div className="flex items-center gap-2 md:justify-end">
