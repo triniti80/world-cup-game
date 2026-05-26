@@ -1,0 +1,23 @@
+{
+  "expo": {
+    "name": "WC2026 Friends Pool",
+    "slug": "world-cup-game",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "dark",
+    "scheme": "worldcupgame",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.triniti80.worldcupgame"
+    },
+    "android": {
+      "package": "com.triniti80.worldcupgame",
+      "adaptiveIcon": {
+        "backgroundColor": "#071525"
+      }
+    },
+    "extra": {
+      "apiBaseUrl": "$EXPO_PUBLIC_API_BASE_URL"
+    }
+  }
+}

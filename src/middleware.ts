@@ -10,6 +10,7 @@ const PUBLIC_PREFIXES = [
   "/api/session",
   "/api/locale",
   "/api/cron",
+  "/api/mobile",
   "/_next",
   "/favicon",
 ];

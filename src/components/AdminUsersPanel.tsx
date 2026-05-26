@@ -16,6 +16,8 @@ export function AdminUsersPanel({
   const router = useRouter();
   const [busyUserId, setBusyUserId] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [resetUserId, setResetUserId] = useState<number | null>(null);
+  const [resetPassword, setResetPassword] = useState("");
 
   async function setAccess(user: AdminUserRow, isEnabled: boolean) {
     const disabledReason =
@@ -29,7 +31,7 @@ export function AdminUsersPanel({
     const res = await fetch("/api/admin/users", {
       method: "PATCH",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ userId: user.id, isEnabled, disabledReason }),
+      body: JSON.stringify({ action: "set_access", userId: user.id, isEnabled, disabledReason }),
     });
     if (!res.ok) {
       const body = await res.json().catch(() => ({ error: "Could not update user." }));
@@ -37,6 +39,35 @@ export function AdminUsersPanel({
       setBusyUserId(null);
       return;
     }
+    router.refresh();
+    setBusyUserId(null);
+  }
+
+  async function resetUserPassword(user: AdminUserRow) {
+    if (resetPassword.length < 8) {
+      setError("New password must be at least 8 characters.");
+      return;
+    }
+
+    setBusyUserId(user.id);
+    setError(null);
+    const res = await fetch("/api/admin/users", {
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        action: "reset_password",
+        userId: user.id,
+        password: resetPassword,
+      }),
+    });
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({ error: "Could not reset password." }));
+      setError(body.error ?? "Could not reset password.");
+      setBusyUserId(null);
+      return;
+    }
+    setResetUserId(null);
+    setResetPassword("");
     router.refresh();
     setBusyUserId(null);
   }
@@ -99,6 +130,18 @@ export function AdminUsersPanel({
               <div className="flex items-center gap-2 md:justify-end">
                 <button
                   type="button"
+                  disabled={busyUserId !== null}
+                  onClick={() => {
+                    setError(null);
+                    setResetPassword("");
+                    setResetUserId(resetUserId === user.id ? null : user.id);
+                  }}
+                  className="rounded-lg border border-white/15 px-3 py-2 text-sm font-bold text-[var(--color-gold)] disabled:opacity-40"
+                >
+                  Reset password
+                </button>
+                <button
+                  type="button"
                   disabled={busyUserId !== null || user.id === currentUserId || !user.isEnabled}
                   onClick={() => setAccess(user, false)}
                   className="rounded-lg border border-[var(--color-danger)]/40 px-3 py-2 text-sm font-bold text-[var(--color-danger)] disabled:opacity-40"
@@ -114,6 +157,45 @@ export function AdminUsersPanel({
                   Enable
                 </button>
               </div>
+
+              {resetUserId === user.id ? (
+                <div className="rounded-xl border border-[var(--color-gold)]/30 bg-[var(--color-panel-highest)] p-4 md:col-span-2">
+                  <label className="block">
+                    <span className="mb-1 block text-sm font-bold">
+                      New password for {user.name}
+                    </span>
+                    <input
+                      type="password"
+                      minLength={8}
+                      value={resetPassword}
+                      onChange={(event) => setResetPassword(event.target.value)}
+                      className="w-full rounded-lg border border-white/10 bg-[var(--color-panel-low)] px-3 py-3 outline-none focus:border-[var(--color-accent)]"
+                      placeholder="At least 8 characters"
+                    />
+                  </label>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      disabled={busyUserId !== null || resetPassword.length < 8}
+                      onClick={() => void resetUserPassword(user)}
+                      className="rounded-lg bg-[var(--color-accent)] px-3 py-2 text-sm font-bold text-[#102000] disabled:opacity-40"
+                    >
+                      Save new password
+                    </button>
+                    <button
+                      type="button"
+                      disabled={busyUserId !== null}
+                      onClick={() => {
+                        setResetUserId(null);
+                        setResetPassword("");
+                      }}
+                      className="rounded-lg border border-white/15 px-3 py-2 text-sm font-bold disabled:opacity-40"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              ) : null}
             </article>
           ))}
         </div>

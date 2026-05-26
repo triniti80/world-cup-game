@@ -3,13 +3,23 @@ import { eq } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/db/client";
 import { auditLog, users } from "@/db/schema";
+import { hashPassword } from "@/lib/password";
 import { readSession } from "@/lib/session";
 
-const bodySchema = z.object({
+const accessBodySchema = z.object({
+  action: z.literal("set_access").default("set_access"),
   userId: z.number().int().positive(),
   isEnabled: z.boolean(),
   disabledReason: z.string().max(240).optional().nullable(),
 });
+
+const resetPasswordBodySchema = z.object({
+  action: z.literal("reset_password"),
+  userId: z.number().int().positive(),
+  password: z.string().min(8).max(256),
+});
+
+const bodySchema = z.union([accessBodySchema, resetPasswordBodySchema]);
 
 export async function PATCH(req: Request) {
   const session = await readSession();
@@ -29,7 +39,34 @@ export async function PATCH(req: Request) {
 
   const parsed = bodySchema.safeParse(body);
   if (!parsed.success) {
-    return NextResponse.json({ error: "Invalid user access payload." }, { status: 400 });
+    return NextResponse.json({ error: "Invalid user admin payload." }, { status: 400 });
+  }
+
+  if (parsed.data.action === "reset_password") {
+    const [before] = await db.select().from(users).where(eq(users.id, parsed.data.userId)).limit(1);
+    if (!before) {
+      return NextResponse.json({ error: "User not found." }, { status: 404 });
+    }
+
+    const [after] = await db
+      .update(users)
+      .set({
+        passwordHash: await hashPassword(parsed.data.password),
+        updatedAt: new Date(),
+      })
+      .where(eq(users.id, parsed.data.userId))
+      .returning();
+
+    await db.insert(auditLog).values({
+      actorUserId: session.userId,
+      action: "user.password_reset",
+      entityType: "user",
+      entityId: String(parsed.data.userId),
+      beforeJson: normalizeUserAudit(before),
+      afterJson: after ? normalizeUserAudit(after) : null,
+    });
+
+    return NextResponse.json({ ok: true });
   }
 
   if (parsed.data.userId === session.userId && !parsed.data.isEnabled) {
