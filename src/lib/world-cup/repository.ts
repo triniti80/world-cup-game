@@ -70,10 +70,18 @@ export type CurrentLeague = {
   inviteCode: string;
   gameMode: LeagueGameMode;
   displayName: string;
+  createdByUserId: number | null;
 };
 
 export type UserLeague = CurrentLeague & {
   createdAt: string;
+  isOwner: boolean;
+  members: {
+    membershipId: number;
+    userId: number;
+    displayName: string;
+    joinedAt: string;
+  }[];
 };
 
 export type UserProfileSummary = {
@@ -336,6 +344,7 @@ export async function getCurrentLeague(
       inviteCode: leagues.inviteCode,
       gameMode: leagues.gameMode,
       displayName: leagueMembers.displayName,
+      createdByUserId: leagues.createdByUserId,
     })
     .from(leagueMembers)
     .innerJoin(leagues, eq(leagueMembers.leagueId, leagues.id));
@@ -355,6 +364,7 @@ export async function getCurrentLeague(
       inviteCode: leagues.inviteCode,
       gameMode: leagues.gameMode,
       displayName: leagueMembers.displayName,
+      createdByUserId: leagues.createdByUserId,
     })
     .from(leagueMembers)
     .innerJoin(leagues, eq(leagueMembers.leagueId, leagues.id))
@@ -374,6 +384,7 @@ export async function getUserLeagues(userId: number): Promise<UserLeague[]> {
       inviteCode: leagues.inviteCode,
       gameMode: leagues.gameMode,
       displayName: leagueMembers.displayName,
+      createdByUserId: leagues.createdByUserId,
       createdAt: leagues.createdAt,
     })
     .from(leagueMembers)
@@ -381,7 +392,40 @@ export async function getUserLeagues(userId: number): Promise<UserLeague[]> {
     .where(eq(leagueMembers.userId, userId))
     .orderBy(leagueMembers.joinedAt);
 
-  return rows.map((row) => ({ ...row, createdAt: row.createdAt.toISOString() }));
+  const leagueIds = rows.map((row) => row.leagueId);
+  const memberRows =
+    leagueIds.length > 0
+      ? await db
+          .select({
+            membershipId: leagueMembers.id,
+            leagueId: leagueMembers.leagueId,
+            userId: leagueMembers.userId,
+            displayName: leagueMembers.displayName,
+            joinedAt: leagueMembers.joinedAt,
+          })
+          .from(leagueMembers)
+          .where(inArray(leagueMembers.leagueId, leagueIds))
+          .orderBy(leagueMembers.joinedAt)
+      : [];
+
+  const membersByLeagueId = memberRows.reduce<Map<number, UserLeague["members"]>>((acc, member) => {
+    const members = acc.get(member.leagueId) ?? [];
+    members.push({
+      membershipId: member.membershipId,
+      userId: member.userId,
+      displayName: member.displayName,
+      joinedAt: member.joinedAt.toISOString(),
+    });
+    acc.set(member.leagueId, members);
+    return acc;
+  }, new Map());
+
+  return rows.map((row) => ({
+    ...row,
+    createdAt: row.createdAt.toISOString(),
+    isOwner: row.createdByUserId === userId,
+    members: membersByLeagueId.get(row.leagueId) ?? [],
+  }));
 }
 
 export async function getUserProfileSummary(userId: number): Promise<UserProfileSummary | null> {

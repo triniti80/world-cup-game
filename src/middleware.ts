@@ -7,6 +7,7 @@ const PUBLIC_PREFIXES = [
   "/api/register",
   "/api/login",
   "/api/health",
+  "/invite",
   "/api/session",
   "/api/locale",
   "/api/cron",

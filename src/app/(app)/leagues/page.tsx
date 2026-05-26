@@ -34,7 +34,12 @@ export default async function LeaguesPage() {
 
       <section className="space-y-3">
         <h2 className="font-display text-xl font-bold">{t(locale, "leagues.yourLeagues")}</h2>
-        <LeagueList leagues={leagues} activeLeagueId={currentLeague?.leagueId ?? null} />
+        <LeagueList
+          leagues={leagues}
+          activeLeagueId={currentLeague?.leagueId ?? null}
+          currentUserId={session?.userId ?? 0}
+          canAdminManage={session?.role === "admin"}
+        />
       </section>
     </div>
   );
