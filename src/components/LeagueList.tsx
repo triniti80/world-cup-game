@@ -195,46 +195,51 @@ export function LeagueList({
                 {t("leagues.inviteCode")}:{" "}
                 <span className="font-bold text-[var(--color-gold)]">{league.inviteCode}</span>
               </div>
-              {canManage ? (
-                <details className="mt-3 rounded-lg border border-white/10 bg-[var(--color-panel-low)] p-3">
-                  <summary className="cursor-pointer list-none text-sm font-bold [&::-webkit-details-marker]:hidden">
-                    Members ({league.members.length})
-                  </summary>
-                  <div className="mt-3 space-y-2">
-                    {league.members.map((member) => {
-                      const isSelf = member.userId === currentUserId;
-                      return (
-                        <div
-                          key={member.membershipId}
-                          className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-[var(--color-panel-highest)] px-3 py-2 text-sm"
-                        >
-                          <div>
-                            <span className="font-bold">{member.displayName}</span>
-                            {member.userId === league.createdByUserId ? (
-                              <span className="ms-2 text-xs font-bold text-[var(--color-gold)]">
-                                manager
-                              </span>
-                            ) : null}
-                            {isSelf ? (
-                              <span className="ms-2 text-xs text-[var(--color-fg-muted)]">
-                                you
-                              </span>
-                            ) : null}
-                          </div>
-                          <button
-                            type="button"
-                            disabled={busyLeagueId !== null || isSelf}
-                            onClick={() => void removeMember(league, member)}
-                            className="rounded-lg border border-[var(--color-danger)]/50 px-3 py-1.5 text-xs font-bold text-[var(--color-danger)] disabled:opacity-40"
-                          >
-                            Remove
-                          </button>
+              <details className="mt-3 rounded-lg border border-white/10 bg-[var(--color-panel-low)] p-3">
+                <summary className="cursor-pointer list-none text-sm font-bold [&::-webkit-details-marker]:hidden">
+                  Members ({league.members.length})
+                </summary>
+                <div className="mt-3 space-y-2">
+                  {league.members.map((member) => {
+                    const isSelf = member.userId === currentUserId;
+                    return (
+                      <div
+                        key={member.membershipId}
+                        className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-[var(--color-panel-highest)] px-3 py-2 text-sm"
+                      >
+                        <div className="min-w-0">
+                          <span className="font-bold">{member.displayName}</span>
+                          {member.userId === league.createdByUserId ? (
+                            <span className="ms-2 text-xs font-bold text-[var(--color-gold)]">
+                              manager
+                            </span>
+                          ) : null}
+                          {isSelf ? (
+                            <span className="ms-2 text-xs text-[var(--color-fg-muted)]">
+                              you
+                            </span>
+                          ) : null}
                         </div>
-                      );
-                    })}
-                  </div>
-                </details>
-              ) : null}
+                        <div className="flex items-center gap-2">
+                          <span className="rounded-full bg-[var(--color-accent)]/15 px-3 py-1 text-xs font-bold text-[var(--color-accent)]">
+                            {member.total} {t("common.pts")}
+                          </span>
+                          {canManage ? (
+                            <button
+                              type="button"
+                              disabled={busyLeagueId !== null || isSelf}
+                              onClick={() => void removeMember(league, member)}
+                              className="rounded-lg border border-[var(--color-danger)]/50 px-3 py-1.5 text-xs font-bold text-[var(--color-danger)] disabled:opacity-40"
+                            >
+                              Remove
+                            </button>
+                          ) : null}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </details>
               <div className="mt-3 flex flex-wrap gap-2">
                 <button
                   type="button"

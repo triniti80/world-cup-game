@@ -81,6 +81,7 @@ export type UserLeague = CurrentLeague & {
     userId: number;
     displayName: string;
     joinedAt: string;
+    total: number;
   }[];
 };
 
@@ -414,6 +415,24 @@ export async function getUserLeagues(userId: number): Promise<UserLeague[]> {
           .orderBy(leagueMembers.joinedAt)
       : [];
 
+  const events =
+    leagueIds.length > 0
+      ? await db
+          .select({
+            leagueId: scoreEvents.leagueId,
+            userId: scoreEvents.userId,
+            points: sql<number>`${scoreEvents.points}::int`,
+          })
+          .from(scoreEvents)
+          .where(inArray(scoreEvents.leagueId, leagueIds))
+      : [];
+
+  const pointsByLeagueAndUser = new Map<string, number>();
+  for (const event of events) {
+    const key = `${event.leagueId}:${event.userId}`;
+    pointsByLeagueAndUser.set(key, (pointsByLeagueAndUser.get(key) ?? 0) + event.points);
+  }
+
   const membersByLeagueId = memberRows.reduce<Map<number, UserLeague["members"]>>((acc, member) => {
     const members = acc.get(member.leagueId) ?? [];
     members.push({
@@ -421,10 +440,20 @@ export async function getUserLeagues(userId: number): Promise<UserLeague[]> {
       userId: member.userId,
       displayName: member.displayName,
       joinedAt: member.joinedAt.toISOString(),
+      total: pointsByLeagueAndUser.get(`${member.leagueId}:${member.userId}`) ?? 0,
     });
     acc.set(member.leagueId, members);
     return acc;
   }, new Map());
+
+  for (const members of membersByLeagueId.values()) {
+    members.sort(
+      (a, b) =>
+        b.total - a.total ||
+        a.displayName.localeCompare(b.displayName) ||
+        new Date(a.joinedAt).getTime() - new Date(b.joinedAt).getTime(),
+    );
+  }
 
   return rows.map((row) => ({
     ...row,
