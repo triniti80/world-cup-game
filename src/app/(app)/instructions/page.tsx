@@ -24,7 +24,7 @@ const content = {
       "Group qualifier picks lock 1 hour before Match 1. Knockout stage picks lock 1 hour before the first Round of 32 match. Each score prediction locks 5 minutes before kickoff. Score guesses reveal when the match starts; qualifier picks reveal after the first match starts; knockout picks reveal after the knockout deadline.",
     correctionsTitle: "Leaderboard and Corrections",
     correctionsBody:
-      "The leaderboard is recalculated from saved scoring events after admins enter official results. If a fixture or result looks wrong, ask an admin to correct it in Settings.",
+      "Match results are synced automatically from the official FIFA source after games finish, and the leaderboard is recalculated from saved scoring events. If a fixture or synced result looks wrong, ask an admin to correct it in Settings.",
     usefulPages: "Useful Pages",
     scoring: "Scoring",
     matchScores: "Match scores",
@@ -51,7 +51,7 @@ const content = {
       "ניחושי העולות משלב הבתים ננעלים שעה לפני משחק 1. ניחושי הנוקאאוט ננעלים שעה לפני המשחק הראשון בשלב 32 האחרונות. כל ניחוש תוצאה ננעל 5 דקות לפני שריקת הפתיחה. ניחושי תוצאה נחשפים בתחילת המשחק; ניחושי העולות נחשפים אחרי תחילת המשחק הראשון; ניחושי הנוקאאוט נחשפים אחרי דדליין הנוקאאוט.",
     correctionsTitle: "טבלה ותיקונים",
     correctionsBody:
-      "הטבלה מחושבת מחדש מאירועי ניקוד שמורים אחרי שמנהלים מזינים תוצאות רשמיות. אם משחק או תוצאה נראים לא נכונים, בקש ממנהל לתקן בהגדרות.",
+      "תוצאות המשחקים מסתנכרנות אוטומטית מהמקור הרשמי של FIFA אחרי שהמשחקים מסתיימים, והטבלה מחושבת מחדש מאירועי ניקוד שמורים. אם משחק או תוצאה מסונכרנת נראים לא נכונים, בקש ממנהל לתקן בהגדרות.",
     usefulPages: "עמודים שימושיים",
     scoring: "ניקוד",
     matchScores: "ניחושי תוצאה",
