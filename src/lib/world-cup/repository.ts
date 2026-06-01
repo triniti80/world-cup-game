@@ -1165,6 +1165,21 @@ export function getPreTournamentLockAt(tournamentRow: Pick<TournamentRow, "predi
   return tournamentRow.predictionLockAt;
 }
 
+export async function getKnockoutStageLockAt(tournamentId: number): Promise<Date> {
+  const [firstKnockoutMatch] = await db
+    .select({ kickoffAt: dbMatches.kickoffAt })
+    .from(dbMatches)
+    .where(and(eq(dbMatches.tournamentId, tournamentId), eq(dbMatches.stage, "r32")))
+    .orderBy(dbMatches.kickoffAt)
+    .limit(1);
+
+  if (!firstKnockoutMatch) {
+    return new Date(seedTournament.knockoutLockAtUtc);
+  }
+
+  return new Date(firstKnockoutMatch.kickoffAt.getTime() - 60 * 60 * 1000);
+}
+
 export async function getUserAccessStatus(userId: number): Promise<{
   isEnabled: boolean;
   disabledReason: string | null;

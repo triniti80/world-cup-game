@@ -35,6 +35,10 @@ export default async function SettingsPage() {
             label={t(locale, "settings.qualifierLock")}
             value={formatKickoff(tournament.qualifierLockAtUtc, locale)}
           />
+          <SettingRow
+            label={t(locale, "settings.knockoutLock")}
+            value={formatKickoff(tournament.knockoutLockAtUtc, locale)}
+          />
           <SettingRow label={t(locale, "settings.scoreLock")} value={t(locale, "settings.scoreLockValue")} />
           <SettingRow label={t(locale, "settings.qualifierVisibility")} value={t(locale, "settings.qualifierVisibilityValue")} />
           <SettingRow label={t(locale, "settings.scoreVisibility")} value={t(locale, "settings.scoreVisibilityValue")} />

@@ -39,8 +39,9 @@ export default async function DashboardPage() {
         </div>
       </section>
 
-      <section className="grid gap-4 md:grid-cols-3">
+      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <SummaryCard label={t(locale, "dashboard.qualifierLock")} value={formatKickoff(tournament.qualifierLockAtUtc, locale)} />
+        <SummaryCard label={t(locale, "dashboard.knockoutLock")} value={formatKickoff(tournament.knockoutLockAtUtc, locale)} />
         <SummaryCard label={t(locale, "dashboard.scoreLock")} value={t(locale, "dashboard.scoreLockValue")} />
         <SummaryCard label={t(locale, "dashboard.visibility")} value={t(locale, "dashboard.visibilityValue")} />
       </section>

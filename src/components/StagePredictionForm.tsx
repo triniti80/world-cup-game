@@ -256,7 +256,7 @@ export function StagePredictionForm({
           savedLabel={locale === "he" ? "נשמר" : "Saved"}
           saveLabel={locale === "he" ? "שמירה" : "Save"}
           savingLabel={locale === "he" ? "שומר..." : "Saving..."}
-          defaultHelper={locale === "he" ? "ננעל שעה לפני משחק 1" : "Locks 1 hour before Match 1"}
+          defaultHelper={t("predictions.lockKnockout")}
           error={errors[stage.id]}
           onPick={setPairWinner}
           onSave={() => void saveStage(stage.id)}
@@ -524,7 +524,7 @@ function getKnockoutCompletion(
     picked,
     complete,
     message: complete
-      ? t("predictions.lockMatch1")
+      ? t("predictions.lockKnockout")
       : playablePairs.length < expected
         ? t("predictions.completePrevious")
         : t("predictions.chooseExpected", { expected }),

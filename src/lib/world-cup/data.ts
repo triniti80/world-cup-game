@@ -30,6 +30,8 @@ export const tournament = {
   name: "FIFA World Cup 2026",
   firstMatchAtUtc: "2026-06-11T20:00:00.000Z",
   qualifierLockAtUtc: "2026-06-11T19:00:00.000Z",
+  firstKnockoutMatchAtUtc: "2026-06-28T19:00:00.000Z",
+  knockoutLockAtUtc: "2026-06-28T18:00:00.000Z",
 };
 
 export const teams: Team[] = [

@@ -8,6 +8,7 @@ import {
   ensureSeedTournament,
   getCurrentLeague,
   getDbTeamIdForSeedTeamSlug,
+  getKnockoutStageLockAt,
   getPreTournamentLockAt,
 } from "@/lib/world-cup/repository";
 import { teams } from "@/lib/world-cup/data";
@@ -76,10 +77,18 @@ export async function POST(req: Request) {
   }
 
   const tournament = await ensureSeedTournament();
-  const lockAt = getPreTournamentLockAt(tournament);
+  const lockAt =
+    parsed.data.stage === "r32"
+      ? getPreTournamentLockAt(tournament)
+      : await getKnockoutStageLockAt(tournament.id);
   if (Date.now() >= lockAt.getTime()) {
     return NextResponse.json(
-      { error: "Pre-tournament stage picks are locked." },
+      {
+        error:
+          parsed.data.stage === "r32"
+            ? "Group qualifier picks are locked."
+            : "Knockout stage picks are locked.",
+      },
       { status: 423 },
     );
   }

@@ -15,13 +15,13 @@ const content = {
     ],
     stageTitle: "Option 1: Stage Prediction League",
     stageBody:
-      "Before the World Cup starts, pick the teams you think will reach each tournament stage. For the Round of 32, choose 1st and 2nd place in every group, plus only 8 third-place teams. Later rounds are selected from your previous saved picks.",
+      "This game has two prediction stages. First, before the World Cup starts, pick the teams you think will qualify from the group stage: 1st and 2nd place in every group, plus only 8 third-place teams. Second, before the knockout stage starts, pick the teams you think will advance through the Round of 16, quarter-finals, semi-finals, final, and champion. Later rounds are selected from your previous saved picks.",
     scoreTitle: "Option 2: Match Score League",
     scoreBody:
       "Enter a home and away score for each fixture before that match locks. Predictions are for the score after 90 minutes, including stoppage time, not extra time or penalties. Correct outcome earns 2 points. Exact score earns 5 points total. Knockout draws must include the team you think advances.",
     locksTitle: "Locks and Visibility",
     locksBody:
-      "Pre-tournament picks lock 1 hour before Match 1. Each score prediction locks 5 minutes before kickoff. Score guesses reveal when the match starts; pre-tournament picks reveal after the first match starts.",
+      "Group qualifier picks lock 1 hour before Match 1. Knockout stage picks lock 1 hour before the first Round of 32 match. Each score prediction locks 5 minutes before kickoff. Score guesses reveal when the match starts; qualifier picks reveal after the first match starts; knockout picks reveal after the knockout deadline.",
     correctionsTitle: "Leaderboard and Corrections",
     correctionsBody:
       "The leaderboard is recalculated from saved scoring events after admins enter official results. If a fixture or result looks wrong, ask an admin to correct it in Settings.",
@@ -42,13 +42,13 @@ const content = {
     ],
     stageTitle: "אפשרות 1: ליגת ניחושי שלבים",
     stageBody:
-      "לפני תחילת המונדיאל בוחרים אילו קבוצות יגיעו לכל שלב. ב-32 האחרונות בוחרים מקום ראשון ושני מכל בית, ועוד 8 קבוצות בלבד מהמקום השלישי. השלבים הבאים נבחרים מתוך הבחירות ששמרת בשלב הקודם.",
+      "המשחק מחולק לשני שלבי ניחוש. בשלב הראשון, לפני תחילת המונדיאל, בוחרים אילו קבוצות יעלו משלב הבתים: מקום ראשון ושני מכל בית, ועוד 8 קבוצות בלבד מהמקום השלישי. בשלב השני, לפני תחילת הנוקאאוט, בוחרים מי תעלה לשמינית הגמר, רבע הגמר, חצי הגמר, הגמר והזכייה. השלבים הבאים נבחרים מתוך הבחירות ששמרת בשלב הקודם.",
     scoreTitle: "אפשרות 2: ליגת ניחוש תוצאות",
     scoreBody:
       "מזינים תוצאת בית וחוץ לכל משחק לפני שהוא ננעל. הניחוש הוא לתוצאה אחרי 90 דקות, כולל תוספת זמן, ולא כולל הארכה או פנדלים. תוצאה בכיוון נכון נותנת 2 נקודות. תוצאה מדויקת נותנת 5 נקודות בסך הכל. בתיקו בנוקאאוט חייבים לבחור מי עולה.",
     locksTitle: "נעילות וחשיפה",
     locksBody:
-      "ניחושי טרום-טורניר ננעלים שעה לפני משחק 1. כל ניחוש תוצאה ננעל 5 דקות לפני שריקת הפתיחה. ניחושי תוצאה נחשפים בתחילת המשחק; ניחושי טרום-טורניר נחשפים אחרי תחילת המשחק הראשון.",
+      "ניחושי העולות משלב הבתים ננעלים שעה לפני משחק 1. ניחושי הנוקאאוט ננעלים שעה לפני המשחק הראשון בשלב 32 האחרונות. כל ניחוש תוצאה ננעל 5 דקות לפני שריקת הפתיחה. ניחושי תוצאה נחשפים בתחילת המשחק; ניחושי העולות נחשפים אחרי תחילת המשחק הראשון; ניחושי הנוקאאוט נחשפים אחרי דדליין הנוקאאוט.",
     correctionsTitle: "טבלה ותיקונים",
     correctionsBody:
       "הטבלה מחושבת מחדש מאירועי ניקוד שמורים אחרי שמנהלים מזינים תוצאות רשמיות. אם משחק או תוצאה נראים לא נכונים, בקש ממנהל לתקן בהגדרות.",
