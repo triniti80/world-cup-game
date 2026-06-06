@@ -6,7 +6,10 @@ import { t } from "@/lib/i18n";
 import { readLocale } from "@/lib/i18n-server";
 import { readActiveLeagueId, readSession } from "@/lib/session";
 import {
+  ensureSeedTournament,
   getCurrentLeague,
+  getKnockoutStageLockAt,
+  getPreTournamentLockAt,
   getSavedBonusPredictions,
   getSavedMatchPredictions,
   getSavedStagePredictions,
@@ -21,7 +24,7 @@ export default async function PredictionsPage() {
   const shouldLoadMatchScores = Boolean(session && currentLeague?.gameMode === "match_scores");
   const shouldLoadStages = Boolean(session && currentLeague?.gameMode === "stage_predictions");
   const shouldLoadBonus = Boolean(session && currentLeague);
-  const [savedPredictions, savedBonusPredictions, savedStagePredictions, matches] =
+  const [savedPredictions, savedBonusPredictions, savedStagePredictions, matches, stageLockState] =
     await Promise.all([
       shouldLoadMatchScores ? getSavedMatchPredictions(session!.userId, activeLeagueId) : {},
       shouldLoadBonus ? getSavedBonusPredictions(session!.userId, activeLeagueId) : {},
@@ -29,6 +32,7 @@ export default async function PredictionsPage() {
         ? getSavedStagePredictions(session!.userId, activeLeagueId)
         : { teams: {}, r32Ranks: {} },
       shouldLoadMatchScores ? getSeededMatchesWithResults() : [],
+      shouldLoadStages ? getStageLockState() : { r32: false, knockout: false },
     ]);
 
   return (
@@ -75,10 +79,22 @@ export default async function PredictionsPage() {
           {currentLeague.gameMode === "match_scores" ? (
             <PredictionsTabs matches={matches} initialPredictions={savedPredictions} />
           ) : (
-            <StagePredictionForm initialPredictions={savedStagePredictions} />
+            <StagePredictionForm
+              initialPredictions={savedStagePredictions}
+              lockedStages={stageLockState}
+            />
           )}
         </>
       )}
     </div>
   );
+}
+
+async function getStageLockState(): Promise<{ r32: boolean; knockout: boolean }> {
+  const tournament = await ensureSeedTournament();
+  const now = Date.now();
+  return {
+    r32: now >= getPreTournamentLockAt(tournament).getTime(),
+    knockout: now >= (await getKnockoutStageLockAt(tournament.id)).getTime(),
+  };
 }

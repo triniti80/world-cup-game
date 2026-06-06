@@ -22,6 +22,23 @@ const knockoutStages = [
 ] as const;
 
 type StageId = "r32" | (typeof knockoutStages)[number]["id"];
+const stageIds = ["r32", "r16", "qf", "sf", "final", "champion"] as const satisfies readonly StageId[];
+const stageExpectedCounts = {
+  r32: 32,
+  r16: 16,
+  qf: 8,
+  sf: 4,
+  final: 2,
+  champion: 1,
+} as const satisfies Record<StageId, number>;
+const downstreamStagesByStage = {
+  r32: ["r16", "qf", "sf", "final", "champion"],
+  r16: ["qf", "sf", "final", "champion"],
+  qf: ["sf", "final", "champion"],
+  sf: ["final", "champion"],
+  final: ["champion"],
+  champion: [],
+} as const satisfies Record<StageId, readonly StageId[]>;
 type Rank = 1 | 2 | 3;
 type Pair = {
   label: string;
@@ -39,8 +56,10 @@ type Translate = (key: TranslationKey, params?: Record<string, string | number>)
 
 export function StagePredictionForm({
   initialPredictions,
+  lockedStages,
 }: {
   initialPredictions: SavedStagePredictions;
+  lockedStages: { r32: boolean; knockout: boolean };
 }) {
   const { locale, t } = useI18n();
   const [selected, setSelected] = useState<Record<string, string[]>>(initialPredictions.teams);
@@ -48,6 +67,12 @@ export function StagePredictionForm({
   const [saving, setSaving] = useState<string | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [savedStage, setSavedStage] = useState<string | null>(null);
+  const [submittedStages, setSubmittedStages] = useState<Record<StageId, boolean>>(() =>
+    getSubmittedStages(initialPredictions),
+  );
+  const [editingStages, setEditingStages] = useState<Record<StageId, boolean>>(() =>
+    Object.fromEntries(stageIds.map((stage) => [stage, false])) as Record<StageId, boolean>,
+  );
 
   const r32Pairs = useMemo(() => buildRoundOf32Pairs(r32Ranks), [r32Ranks]);
   const r16Pairs = useMemo(() => buildPairsFromTeamIds(selected.r16 ?? [], "R16"), [selected.r16]);
@@ -77,6 +102,7 @@ export function StagePredictionForm({
   function setRank(team: Team, rank: Rank) {
     setErrors((current) => ({ ...current, r32: "" }));
     setSavedStage(null);
+    setSubmittedStages((current) => markStageAndDownstreamUnsubmitted(current, "r32"));
     setR32Ranks((current) => {
       const existing = current[team.id];
       const next = { ...current };
@@ -113,6 +139,7 @@ export function StagePredictionForm({
   function setPairWinner(stage: Exclude<StageId, "r32">, pairIndex: number, teamId: string) {
     setErrors((current) => ({ ...current, [stage]: "" }));
     setSavedStage(null);
+    setSubmittedStages((current) => markStageAndDownstreamUnsubmitted(current, stage));
     setSelected((current) => {
       const nextStage = [...(current[stage] ?? [])];
       nextStage[pairIndex] = nextStage[pairIndex] === teamId ? "" : teamId;
@@ -156,6 +183,11 @@ export function StagePredictionForm({
         return;
       }
       setSavedStage(stage);
+      setSubmittedStages((current) => ({
+        ...markDownstreamUnsubmitted(current, stage),
+        [stage]: true,
+      }));
+      setEditingStages((current) => ({ ...current, [stage]: false }));
     } catch (err) {
       setErrors((current) => ({
         ...current,
@@ -165,6 +197,16 @@ export function StagePredictionForm({
       setSaving(null);
     }
   }
+
+  function editStage(stage: StageId) {
+    if (isStageLocked(stage, lockedStages)) return;
+    setSavedStage(null);
+    setErrors((current) => ({ ...current, [stage]: "" }));
+    setEditingStages((current) => ({ ...current, [stage]: true }));
+  }
+
+  const r32ControlsDisabled =
+    isStageLocked("r32", lockedStages) || (submittedStages.r32 && !editingStages.r32);
 
   return (
     <div className="space-y-4">
@@ -204,9 +246,10 @@ export function StagePredictionForm({
                           <button
                             key={rank}
                             type="button"
+                            disabled={r32ControlsDisabled}
                             onClick={() => setRank(team, rank as Rank)}
                             className={
-                              "rounded-md px-3 py-1.5 text-xs font-bold transition active:scale-95 " +
+                              "rounded-md px-3 py-1.5 text-xs font-bold transition active:scale-95 disabled:cursor-not-allowed disabled:opacity-50 " +
                               (active
                                 ? "bg-[var(--color-accent)] text-[#102000]"
                                 : "bg-[var(--color-panel-highest)] text-[var(--color-fg-muted)] hover:text-[var(--color-fg)]")
@@ -235,6 +278,14 @@ export function StagePredictionForm({
           error={errors.r32}
           helper={completionMap.r32.message}
           disabled={!completionMap.r32.complete}
+          submitted={submittedStages.r32}
+          editing={editingStages.r32}
+          locked={isStageLocked("r32", lockedStages)}
+          editLabel={t("common.edit")}
+          submittedMessage={t("predictions.submittedMessage")}
+          submittedEditHint={t("predictions.submittedEditHint")}
+          submittedLockedHint={t("predictions.submittedLockedHint")}
+          onEdit={() => editStage("r32")}
           onSave={() => void saveStage("r32")}
         />
       </section>
@@ -258,7 +309,19 @@ export function StagePredictionForm({
           savingLabel={locale === "he" ? "שומר..." : "Saving..."}
           defaultHelper={t("predictions.lockKnockout")}
           error={errors[stage.id]}
+          submitted={submittedStages[stage.id]}
+          editing={editingStages[stage.id]}
+          locked={isStageLocked(stage.id, lockedStages)}
+          controlsDisabled={
+            isStageLocked(stage.id, lockedStages) ||
+            (submittedStages[stage.id] && !editingStages[stage.id])
+          }
+          editLabel={t("common.edit")}
+          submittedMessage={t("predictions.submittedMessage")}
+          submittedEditHint={t("predictions.submittedEditHint")}
+          submittedLockedHint={t("predictions.submittedLockedHint")}
           onPick={setPairWinner}
+          onEdit={() => editStage(stage.id)}
           onSave={() => void saveStage(stage.id)}
         />
       ))}
@@ -283,7 +346,16 @@ function KnockoutStage({
   savingLabel,
   defaultHelper,
   error,
+  submitted,
+  editing,
+  locked,
+  controlsDisabled,
+  editLabel,
+  submittedMessage,
+  submittedEditHint,
+  submittedLockedHint,
   onPick,
+  onEdit,
   onSave,
 }: {
   stage: Exclude<StageId, "r32">;
@@ -302,7 +374,16 @@ function KnockoutStage({
   savingLabel: string;
   defaultHelper: string;
   error?: string;
+  submitted: boolean;
+  editing: boolean;
+  locked: boolean;
+  controlsDisabled: boolean;
+  editLabel: string;
+  submittedMessage: string;
+  submittedEditHint: string;
+  submittedLockedHint: string;
   onPick: (stage: Exclude<StageId, "r32">, pairIndex: number, teamId: string) => void;
+  onEdit: () => void;
   onSave: () => void;
 }) {
   return (
@@ -331,6 +412,7 @@ function KnockoutStage({
                 placeholder={pair.homePlaceholder}
                 active={Boolean(pair.home && selectedTeamIds[index] === pair.home.id)}
                 locale={locale}
+                disabled={controlsDisabled}
                 onClick={() => pair.home && onPick(stage, index, pair.home.id)}
               />
               <div className="my-2 text-center text-xs font-bold uppercase text-[var(--color-fg-muted)]">
@@ -341,6 +423,7 @@ function KnockoutStage({
                 placeholder={pair.awayPlaceholder}
                 active={Boolean(pair.away && selectedTeamIds[index] === pair.away.id)}
                 locale={locale}
+                disabled={controlsDisabled}
                 onClick={() => pair.away && onPick(stage, index, pair.away.id)}
               />
             </div>
@@ -363,6 +446,14 @@ function KnockoutStage({
         error={error}
         helper={completion.message}
         disabled={!completion.complete}
+        submitted={submitted}
+        editing={editing}
+        locked={locked}
+        editLabel={editLabel}
+        submittedMessage={submittedMessage}
+        submittedEditHint={submittedEditHint}
+        submittedLockedHint={submittedLockedHint}
+        onEdit={onEdit}
         onSave={onSave}
       />
     </section>
@@ -374,18 +465,20 @@ function PairTeamButton({
   placeholder,
   active,
   locale,
+  disabled = false,
   onClick,
 }: {
   team?: Team;
   placeholder?: string;
   active: boolean;
   locale: Locale;
+  disabled?: boolean;
   onClick: () => void;
 }) {
   return (
     <button
       type="button"
-      disabled={!team}
+      disabled={!team || disabled}
       onClick={onClick}
       className={
         "w-full rounded-lg border px-3 py-2 text-start text-sm transition active:scale-95 disabled:cursor-not-allowed disabled:opacity-50 " +
@@ -421,6 +514,14 @@ function StageFooter({
   error,
   helper,
   disabled = false,
+  submitted,
+  editing,
+  locked,
+  editLabel,
+  submittedMessage,
+  submittedEditHint,
+  submittedLockedHint,
+  onEdit,
   onSave,
 }: {
   stage: StageId;
@@ -433,8 +534,19 @@ function StageFooter({
   error?: string;
   helper?: string;
   disabled?: boolean;
+  submitted: boolean;
+  editing: boolean;
+  locked: boolean;
+  editLabel: string;
+  submittedMessage: string;
+  submittedEditHint: string;
+  submittedLockedHint: string;
+  onEdit: () => void;
   onSave: () => void;
 }) {
+  const submittedReadOnly = submitted && !editing;
+  const saveDisabled = saving !== null || disabled || locked || submittedReadOnly;
+
   return (
     <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-white/10 pt-3">
       <div className="text-sm">
@@ -442,7 +554,11 @@ function StageFooter({
           <span className="font-semibold text-[var(--color-danger)]">{error}</span>
         ) : savedStage === stage ? (
           <span className="font-semibold text-[var(--color-accent)]">
-            {savedLabel}
+            {submittedMessage}
+          </span>
+        ) : submittedReadOnly ? (
+          <span className="font-semibold text-[var(--color-accent)]">
+            {locked ? submittedLockedHint : submittedEditHint}
           </span>
         ) : helper ? (
           <span className="text-[var(--color-fg-muted)]">{helper}</span>
@@ -450,14 +566,26 @@ function StageFooter({
           <span className="text-[var(--color-fg-muted)]">{defaultHelper}</span>
         )}
       </div>
-      <button
-        type="button"
-        disabled={saving !== null || disabled}
-        onClick={onSave}
-        className="rounded-lg bg-[var(--color-accent)] px-4 py-2 text-sm font-bold text-[#102000] disabled:opacity-60"
-      >
-        {saving === stage ? savingLabel : saveLabel}
-      </button>
+      <div className="flex flex-wrap gap-2">
+        <button
+          type="button"
+          disabled={saveDisabled}
+          onClick={onSave}
+          className="rounded-lg bg-[var(--color-accent)] px-4 py-2 text-sm font-bold text-[#102000] disabled:cursor-not-allowed disabled:opacity-40"
+        >
+          {saving === stage ? savingLabel : submittedReadOnly ? savedLabel : saveLabel}
+        </button>
+        {submitted ? (
+          <button
+            type="button"
+            disabled={saving !== null || locked || editing}
+            onClick={onEdit}
+            className="rounded-lg border border-white/15 px-4 py-2 text-sm font-bold text-[var(--color-gold)] disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            {editLabel}
+          </button>
+        ) : null}
+      </div>
     </div>
   );
 }
@@ -486,6 +614,59 @@ function getTeamById(teamId: string | undefined): Team | undefined {
 
 function thirdPlaceCount(ranks: Record<string, Rank>): number {
   return Object.values(ranks).filter((rank) => rank === 3).length;
+}
+
+function getSubmittedStages(predictions: SavedStagePredictions): Record<StageId, boolean> {
+  return {
+    r32: isCompleteR32Prediction(predictions.r32Ranks),
+    r16: (predictions.teams.r16 ?? []).filter(Boolean).length === stageExpectedCounts.r16,
+    qf: (predictions.teams.qf ?? []).filter(Boolean).length === stageExpectedCounts.qf,
+    sf: (predictions.teams.sf ?? []).filter(Boolean).length === stageExpectedCounts.sf,
+    final: (predictions.teams.final ?? []).filter(Boolean).length === stageExpectedCounts.final,
+    champion:
+      (predictions.teams.champion ?? []).filter(Boolean).length === stageExpectedCounts.champion,
+  };
+}
+
+function isCompleteR32Prediction(ranks: Record<string, Rank>): boolean {
+  const picked = Object.keys(ranks).length;
+  const firsts = Object.values(ranks).filter((rank) => rank === 1).length;
+  const seconds = Object.values(ranks).filter((rank) => rank === 2).length;
+  const thirds = Object.values(ranks).filter((rank) => rank === 3).length;
+  return (
+    picked === stageExpectedCounts.r32 &&
+    firsts === 12 &&
+    seconds === 12 &&
+    thirds === 8
+  );
+}
+
+function markStageAndDownstreamUnsubmitted(
+  current: Record<StageId, boolean>,
+  stage: StageId,
+): Record<StageId, boolean> {
+  return {
+    ...markDownstreamUnsubmitted(current, stage),
+    [stage]: false,
+  };
+}
+
+function markDownstreamUnsubmitted(
+  current: Record<StageId, boolean>,
+  stage: StageId,
+): Record<StageId, boolean> {
+  const next = { ...current };
+  for (const downstreamStage of downstreamStagesByStage[stage]) {
+    next[downstreamStage] = false;
+  }
+  return next;
+}
+
+function isStageLocked(
+  stage: StageId,
+  lockedStages: { r32: boolean; knockout: boolean },
+): boolean {
+  return stage === "r32" ? lockedStages.r32 : lockedStages.knockout;
 }
 
 function getR32Completion(ranks: Record<string, Rank>, t: Translate): StageCompletion {
