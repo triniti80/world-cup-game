@@ -294,8 +294,8 @@ export function StagePredictionForm({
         <KnockoutStage
           key={stage.id}
           stage={stage.id}
-          label={stageLabelForForm(stage.id, locale)}
-          previousLabel={previousStageLabelForForm(stage.id, locale)}
+          label={matchStageLabelForForm(stage.id, locale)}
+          qualifyingStageLabel={qualifyingStageLabelForForm(stage.id, locale)}
           translate={t}
           expected={stage.expected}
           pairs={pairMap[stage.id]}
@@ -332,7 +332,7 @@ export function StagePredictionForm({
 function KnockoutStage({
   stage,
   label,
-  previousLabel,
+  qualifyingStageLabel,
   translate,
   expected,
   pairs,
@@ -360,7 +360,7 @@ function KnockoutStage({
 }: {
   stage: Exclude<StageId, "r32">;
   label: string;
-  previousLabel: string;
+  qualifyingStageLabel: string;
   translate: Translate;
   expected: number;
   pairs: Pair[];
@@ -392,7 +392,10 @@ function KnockoutStage({
         <div>
           <h2 className="font-display text-xl font-bold">{label}</h2>
           <p className="mt-1 text-sm text-[var(--color-fg-muted)]">
-            {translate("predictions.chooseWinners", { stage: previousLabel })}
+            {translate("predictions.chooseWinners", {
+              count: expected,
+              stage: qualifyingStageLabel,
+            })}
           </p>
         </div>
         <span className="rounded-full bg-[var(--color-panel-high)] px-3 py-1 text-xs font-bold">
@@ -779,24 +782,24 @@ function rankOrdinal(rank: Rank, locale: Locale): string {
   return "3rd";
 }
 
-function stageLabelForForm(stage: Exclude<StageId, "r32">, locale: Locale): string {
-  const labels: Record<Exclude<StageId, "r32">, { en: string; he: string }> = {
-    r16: { en: "Round of 16", he: "שמינית גמר" },
-    qf: { en: "Quarter-finals", he: "רבע גמר" },
-    sf: { en: "Semi-finals", he: "חצי גמר" },
-    final: { en: "Final", he: "גמר" },
-    champion: { en: "Champion", he: "אלופה" },
-  };
-  return labels[stage][locale];
-}
-
-function previousStageLabelForForm(stage: Exclude<StageId, "r32">, locale: Locale): string {
+function matchStageLabelForForm(stage: Exclude<StageId, "r32">, locale: Locale): string {
   const labels: Record<Exclude<StageId, "r32">, { en: string; he: string }> = {
     r16: { en: "Round of 32", he: "שלב 32 האחרונות" },
     qf: { en: "Round of 16", he: "שמינית גמר" },
     sf: { en: "Quarter-finals", he: "רבע גמר" },
     final: { en: "Semi-finals", he: "חצי גמר" },
     champion: { en: "Final", he: "גמר" },
+  };
+  return labels[stage][locale];
+}
+
+function qualifyingStageLabelForForm(stage: Exclude<StageId, "r32">, locale: Locale): string {
+  const labels: Record<Exclude<StageId, "r32">, { en: string; he: string }> = {
+    r16: { en: "Round of 16", he: "שמינית הגמר" },
+    qf: { en: "Quarter-finals", he: "רבע הגמר" },
+    sf: { en: "Semi-finals", he: "חצי הגמר" },
+    final: { en: "Final", he: "הגמר" },
+    champion: { en: "Champion", he: "הזכייה" },
   };
   return labels[stage][locale];
 }
