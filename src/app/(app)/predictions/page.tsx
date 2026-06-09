@@ -24,7 +24,14 @@ export default async function PredictionsPage() {
   const shouldLoadMatchScores = Boolean(session && currentLeague?.gameMode === "match_scores");
   const shouldLoadStages = Boolean(session && currentLeague?.gameMode === "stage_predictions");
   const shouldLoadBonus = Boolean(session && currentLeague);
-  const [savedPredictions, savedBonusPredictions, savedStagePredictions, matches, stageLockState] =
+  const [
+    savedPredictions,
+    savedBonusPredictions,
+    savedStagePredictions,
+    matches,
+    stageLockState,
+    bonusLocked,
+  ] =
     await Promise.all([
       shouldLoadMatchScores ? getSavedMatchPredictions(session!.userId, activeLeagueId) : {},
       shouldLoadBonus ? getSavedBonusPredictions(session!.userId, activeLeagueId) : {},
@@ -33,6 +40,7 @@ export default async function PredictionsPage() {
         : { teams: {}, r32Ranks: {} },
       shouldLoadMatchScores ? getSeededMatchesWithResults() : [],
       shouldLoadStages ? getStageLockState() : { r32: false, knockout: false },
+      shouldLoadBonus ? getBonusLockState() : false,
     ]);
 
   return (
@@ -74,6 +82,7 @@ export default async function PredictionsPage() {
           <BonusPredictionForm
             gameMode={currentLeague.gameMode}
             initialPredictions={savedBonusPredictions}
+            locked={bonusLocked}
           />
 
           {currentLeague.gameMode === "match_scores" ? (
@@ -97,4 +106,9 @@ async function getStageLockState(): Promise<{ r32: boolean; knockout: boolean }>
     r32: now >= getPreTournamentLockAt(tournament).getTime(),
     knockout: now >= (await getKnockoutStageLockAt(tournament.id)).getTime(),
   };
+}
+
+async function getBonusLockState(): Promise<boolean> {
+  const tournament = await ensureSeedTournament();
+  return Date.now() >= getPreTournamentLockAt(tournament).getTime();
 }

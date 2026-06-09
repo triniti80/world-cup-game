@@ -9,17 +9,26 @@ import type { LeagueGameMode, SavedBonusPredictions } from "@/lib/world-cup/repo
 type BonusPredictionFormProps = {
   gameMode: LeagueGameMode;
   initialPredictions: SavedBonusPredictions;
+  locked: boolean;
 };
 
-export function BonusPredictionForm({ gameMode, initialPredictions }: BonusPredictionFormProps) {
+export function BonusPredictionForm({ gameMode, initialPredictions, locked }: BonusPredictionFormProps) {
   const { locale, t } = useI18n();
   const [topScorer, setTopScorer] = useState(initialPredictions.topScorer?.playerName ?? "");
   const [winner, setWinner] = useState(initialPredictions.tournamentWinner?.teamId ?? "");
+  const [submitted, setSubmitted] = useState({
+    top_scorer: Boolean(initialPredictions.topScorer),
+    winner: Boolean(initialPredictions.tournamentWinner),
+  });
+  const [editing, setEditing] = useState({
+    top_scorer: false,
+    winner: false,
+  });
   const [saving, setSaving] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  async function save(payload: unknown, key: string) {
+  async function save(payload: unknown, key: "top_scorer" | "winner") {
     setSaving(key);
     setMessage(null);
     setError(null);
@@ -34,13 +43,25 @@ export function BonusPredictionForm({ gameMode, initialPredictions }: BonusPredi
         setError(body?.error ?? `Server responded ${res.status}.`);
         return;
       }
-      setMessage(t("predictions.bonusSaved"));
+      setSubmitted((current) => ({ ...current, [key]: true }));
+      setEditing((current) => ({ ...current, [key]: false }));
+      setMessage(t("predictions.submittedMessage"));
     } catch (err) {
       setError(err instanceof Error ? err.message : t("auth.networkError"));
     } finally {
       setSaving(null);
     }
   }
+
+  function edit(key: "top_scorer" | "winner") {
+    if (locked) return;
+    setMessage(null);
+    setError(null);
+    setEditing((current) => ({ ...current, [key]: true }));
+  }
+
+  const topScorerReadOnly = submitted.top_scorer && !editing.top_scorer;
+  const winnerReadOnly = submitted.winner && !editing.winner;
 
   return (
     <section className="glass-card rounded-xl p-5">
@@ -66,16 +87,31 @@ export function BonusPredictionForm({ gameMode, initialPredictions }: BonusPredi
               value={topScorer}
               onChange={setTopScorer}
               placeholder={locale === "he" ? "שם שחקן" : "Player name"}
+              disabled={locked || topScorerReadOnly}
             />
-            <button
-              type="button"
-              disabled={saving !== null || topScorer.trim().length < 2}
-              onClick={() => void save({ type: "top_scorer", playerName: topScorer }, "top_scorer")}
-              className="rounded-lg bg-[var(--color-accent)] px-4 py-3 text-sm font-bold text-[#102000] disabled:opacity-60"
-            >
-              {saving === "top_scorer" ? t("common.saving") : t("common.save")}
-            </button>
+            <BonusActionButtons
+              saving={saving}
+              saveKey="top_scorer"
+              submitted={submitted.top_scorer}
+              readOnly={topScorerReadOnly}
+              editing={editing.top_scorer}
+              locked={locked}
+              disabled={topScorer.trim().length < 2}
+              saveLabel={t("common.save")}
+              savedLabel={t("common.saved")}
+              savingLabel={t("common.saving")}
+              editLabel={t("common.edit")}
+              onSave={() => void save({ type: "top_scorer", playerName: topScorer }, "top_scorer")}
+              onEdit={() => edit("top_scorer")}
+            />
           </div>
+          <BonusSubmittedHint
+            submitted={submitted.top_scorer}
+            readOnly={topScorerReadOnly}
+            locked={locked}
+            submittedEditHint={t("predictions.submittedEditHint")}
+            submittedLockedHint={t("predictions.submittedLockedHint")}
+          />
         </label>
 
         {gameMode === "match_scores" ? (
@@ -87,7 +123,8 @@ export function BonusPredictionForm({ gameMode, initialPredictions }: BonusPredi
               <select
                 value={winner}
                 onChange={(event) => setWinner(event.target.value)}
-                className="min-w-0 flex-1 rounded-lg border border-white/10 bg-[var(--color-panel-highest)] px-3 py-3 outline-none focus:border-[var(--color-accent)]"
+                disabled={locked || winnerReadOnly}
+                className="min-w-0 flex-1 rounded-lg border border-white/10 bg-[var(--color-panel-highest)] px-3 py-3 outline-none focus:border-[var(--color-accent)] disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <option value="">{locale === "he" ? "בחר קבוצה" : "Choose team"}</option>
                 {teams.map((team) => (
@@ -96,15 +133,29 @@ export function BonusPredictionForm({ gameMode, initialPredictions }: BonusPredi
                   </option>
                 ))}
               </select>
-              <button
-                type="button"
-                disabled={saving !== null || !winner}
-                onClick={() => void save({ type: "tournament_winner", teamId: winner }, "winner")}
-                className="rounded-lg bg-[var(--color-accent)] px-4 py-3 text-sm font-bold text-[#102000] disabled:opacity-60"
-              >
-                {saving === "winner" ? t("common.saving") : t("common.save")}
-              </button>
+              <BonusActionButtons
+                saving={saving}
+                saveKey="winner"
+                submitted={submitted.winner}
+                readOnly={winnerReadOnly}
+                editing={editing.winner}
+                locked={locked}
+                disabled={!winner}
+                saveLabel={t("common.save")}
+                savedLabel={t("common.saved")}
+                savingLabel={t("common.saving")}
+                editLabel={t("common.edit")}
+                onSave={() => void save({ type: "tournament_winner", teamId: winner }, "winner")}
+                onEdit={() => edit("winner")}
+              />
             </div>
+            <BonusSubmittedHint
+              submitted={submitted.winner}
+              readOnly={winnerReadOnly}
+              locked={locked}
+              submittedEditHint={t("predictions.submittedEditHint")}
+              submittedLockedHint={t("predictions.submittedLockedHint")}
+            />
           </label>
         ) : null}
       </div>
@@ -122,5 +173,79 @@ export function BonusPredictionForm({ gameMode, initialPredictions }: BonusPredi
         </div>
       )}
     </section>
+  );
+}
+
+function BonusActionButtons({
+  saving,
+  saveKey,
+  submitted,
+  readOnly,
+  editing,
+  locked,
+  disabled,
+  saveLabel,
+  savedLabel,
+  savingLabel,
+  editLabel,
+  onSave,
+  onEdit,
+}: {
+  saving: string | null;
+  saveKey: "top_scorer" | "winner";
+  submitted: boolean;
+  readOnly: boolean;
+  editing: boolean;
+  locked: boolean;
+  disabled: boolean;
+  saveLabel: string;
+  savedLabel: string;
+  savingLabel: string;
+  editLabel: string;
+  onSave: () => void;
+  onEdit: () => void;
+}) {
+  return (
+    <div className="flex gap-2">
+      <button
+        type="button"
+        disabled={saving !== null || disabled || locked || readOnly}
+        onClick={onSave}
+        className="rounded-lg bg-[var(--color-accent)] px-4 py-3 text-sm font-bold text-[#102000] disabled:cursor-not-allowed disabled:opacity-40"
+      >
+        {saving === saveKey ? savingLabel : readOnly ? savedLabel : saveLabel}
+      </button>
+      {submitted ? (
+        <button
+          type="button"
+          disabled={saving !== null || locked || editing}
+          onClick={onEdit}
+          className="rounded-lg border border-white/15 px-4 py-3 text-sm font-bold text-[var(--color-gold)] disabled:cursor-not-allowed disabled:opacity-40"
+        >
+          {editLabel}
+        </button>
+      ) : null}
+    </div>
+  );
+}
+
+function BonusSubmittedHint({
+  submitted,
+  readOnly,
+  locked,
+  submittedEditHint,
+  submittedLockedHint,
+}: {
+  submitted: boolean;
+  readOnly: boolean;
+  locked: boolean;
+  submittedEditHint: string;
+  submittedLockedHint: string;
+}) {
+  if (!submitted || !readOnly) return null;
+  return (
+    <p className="mt-2 text-xs font-semibold text-[var(--color-accent)]">
+      {locked ? submittedLockedHint : submittedEditHint}
+    </p>
   );
 }
