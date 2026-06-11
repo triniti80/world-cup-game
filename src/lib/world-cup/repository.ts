@@ -181,6 +181,33 @@ export type LeagueR32Prediction = {
   }[];
 };
 
+export type MobileLeagueStagePick = {
+  teamId: string;
+  teamName: string;
+  teamCode: string;
+  group: string | null;
+  groupRank: 1 | 2 | 3 | null;
+};
+
+export type MobileLeagueStagePrediction = {
+  userId: number;
+  submitted: boolean;
+  picks: MobileLeagueStagePick[];
+};
+
+export type MobileLeaguePredictionStage = {
+  stage: "r32" | "r16" | "qf" | "sf" | "final" | "champion";
+  expected: number;
+  locked: boolean;
+  predictions: MobileLeagueStagePrediction[];
+};
+
+export type MobileLeaguePredictionVisibility = {
+  league: CurrentLeague | null;
+  members: LeaguePredictionMember[];
+  stages: MobileLeaguePredictionStage[];
+};
+
 export type AdminOfficialResults = {
   stages: Record<string, string[]>;
   topScorer?: string;
@@ -1065,6 +1092,129 @@ function sortStagePredictionPicks(
 function normalizeGroupRank(rank: number | null): 1 | 2 | 3 | null {
   if (rank === 1 || rank === 2 || rank === 3) return rank;
   return null;
+}
+
+const mobileStageOrder = ["r32", "r16", "qf", "sf", "final", "champion"] as const;
+const mobileStageExpectedCounts = {
+  r32: 32,
+  r16: 16,
+  qf: 8,
+  sf: 4,
+  final: 2,
+  champion: 1,
+} as const satisfies Record<(typeof mobileStageOrder)[number], number>;
+
+export async function getMobileLeaguePredictionVisibility(
+  userId: number,
+  activeLeagueId?: number | null,
+): Promise<MobileLeaguePredictionVisibility> {
+  const tournamentRow = await getSeedTournamentForRead();
+  const league = await getCurrentLeague(userId, activeLeagueId);
+  if (!league) return { league: null, members: [], stages: [] };
+
+  const members = await db
+    .select({
+      userId: leagueMembers.userId,
+      name: leagueMembers.displayName,
+    })
+    .from(leagueMembers)
+    .where(eq(leagueMembers.leagueId, league.leagueId))
+    .orderBy(leagueMembers.joinedAt);
+
+  if (league.gameMode !== "stage_predictions") {
+    return { league, members, stages: [] };
+  }
+
+  const now = Date.now();
+  const knockoutLockAt = await getKnockoutStageLockAt(tournamentRow.id);
+  const lockedStages = new Set(
+    mobileStageOrder.filter((stage) =>
+      stage === "r32"
+        ? now >= tournamentRow.predictionLockAt.getTime()
+        : now >= knockoutLockAt.getTime(),
+    ),
+  );
+
+  const visibleStageRows = [...mobileStageOrder];
+
+  const seededTeams = await db
+    .select({
+      id: dbTeams.id,
+      slug: dbTeams.slug,
+      name: dbTeams.name,
+      fifaCode: dbTeams.fifaCode,
+      groupCode: dbTeams.groupCode,
+    })
+    .from(dbTeams)
+    .where(eq(dbTeams.tournamentId, tournamentRow.id));
+  const teamByDbId = new Map(seededTeams.map((team) => [team.id, team]));
+
+  const rows = await db
+    .select({
+      id: stagePredictions.id,
+      userId: stagePredictions.userId,
+      stage: stagePredictions.stage,
+      teamId: stagePredictions.teamId,
+      groupRank: stagePredictions.groupRank,
+    })
+    .from(stagePredictions)
+    .where(
+      and(
+        eq(stagePredictions.leagueId, league.leagueId),
+        eq(stagePredictions.tournamentId, tournamentRow.id),
+        inArray(stagePredictions.stage, [...visibleStageRows]),
+      ),
+    )
+    .orderBy(stagePredictions.id);
+
+  const rowsByUserAndStage = new Map<string, typeof rows>();
+  for (const row of rows) {
+    const key = `${row.userId}:${row.stage}`;
+    const stageRows = rowsByUserAndStage.get(key) ?? [];
+    stageRows.push(row);
+    rowsByUserAndStage.set(key, stageRows);
+  }
+
+  const stages = visibleStageRows.map<MobileLeaguePredictionStage>((stage) => ({
+    stage,
+    expected: mobileStageExpectedCounts[stage],
+    locked: lockedStages.has(stage),
+    predictions: members.map<MobileLeagueStagePrediction>((member) => {
+      const canRevealForMember = lockedStages.has(stage) || member.userId === userId;
+      const stageRows = canRevealForMember
+        ? (rowsByUserAndStage.get(`${member.userId}:${stage}`) ?? [])
+        : [];
+      const picks = stageRows.flatMap<MobileLeagueStagePick>((row) => {
+        const team = teamByDbId.get(row.teamId);
+        if (!team) return [];
+        return [
+          {
+            teamId: team.slug,
+            teamName: team.name,
+            teamCode: team.fifaCode,
+            group: team.groupCode,
+            groupRank: stage === "r32" ? normalizeGroupRank(row.groupRank) : null,
+          },
+        ];
+      });
+
+      return {
+        userId: member.userId,
+        submitted: stageRows.length === mobileStageExpectedCounts[stage],
+        picks: stage === "r32" ? picks.sort(sortMobileStagePicks) : picks,
+      };
+    }),
+  }));
+
+  return { league, members, stages };
+}
+
+function sortMobileStagePicks(a: MobileLeagueStagePick, b: MobileLeagueStagePick): number {
+  return (
+    (a.group ?? "").localeCompare(b.group ?? "") ||
+    (a.groupRank ?? 99) - (b.groupRank ?? 99) ||
+    a.teamName.localeCompare(b.teamName)
+  );
 }
 
 export async function getLeaguePredictionVisibility(userId: number, activeLeagueId?: number | null): Promise<{

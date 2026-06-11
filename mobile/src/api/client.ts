@@ -25,6 +25,40 @@ export type Fixture = {
   awayScore: number | null;
 };
 
+export type LeaguePredictionMember = {
+  userId: number;
+  name: string;
+};
+
+export type LeaguePredictionPick = {
+  teamId: string;
+  teamName: string;
+  teamCode: string;
+  group: string | null;
+  groupRank: 1 | 2 | 3 | null;
+};
+
+export type LeaguePredictionStage = {
+  stage: "r32" | "r16" | "qf" | "sf" | "final" | "champion";
+  expected: number;
+  locked: boolean;
+  predictions: {
+    userId: number;
+    submitted: boolean;
+    picks: LeaguePredictionPick[];
+  }[];
+};
+
+export type LeaguePredictionsResponse = {
+  league: {
+    leagueId: number;
+    leagueName: string;
+    gameMode: "stage_predictions" | "match_scores";
+  } | null;
+  members: LeaguePredictionMember[];
+  stages: LeaguePredictionStage[];
+};
+
 const DEFAULT_API_BASE_URL = "http://localhost:3001";
 
 export const API_BASE_URL = (
@@ -83,4 +117,8 @@ export function logout() {
 
 export function getFixtures() {
   return request<{ matches: Fixture[] }>("/api/mobile/fixtures");
+}
+
+export function getLeaguePredictions() {
+  return request<LeaguePredictionsResponse>("/api/mobile/league-predictions");
 }

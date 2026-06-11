@@ -4,6 +4,7 @@ import {
   KeyboardAvoidingView,
   Linking,
   Platform,
+  Pressable,
   ScrollView,
   StyleSheet,
   Text,
@@ -15,17 +16,22 @@ import { StatusBar } from "expo-status-bar";
 import {
   API_BASE_URL,
   getFixtures,
+  getLeaguePredictions,
   getSession,
   login,
   logout,
   register,
   type Fixture,
+  type LeaguePredictionMember,
+  type LeaguePredictionPick,
+  type LeaguePredictionsResponse,
+  type LeaguePredictionStage,
   type SessionUser,
 } from "./src/api/client";
 import { PrimaryButton } from "./src/components/PrimaryButton";
 
 type AuthMode = "login" | "register";
-type Screen = "home" | "fixtures";
+type Screen = "home" | "fixtures" | "leaguePicks";
 
 export default function App() {
   const [user, setUser] = useState<SessionUser | null>(null);
@@ -186,6 +192,9 @@ function HomeScreen({
   if (screen === "fixtures") {
     return <FixturesScreen onBack={() => setScreen("home")} />;
   }
+  if (screen === "leaguePicks") {
+    return <LeaguePicksScreen user={user} onBack={() => setScreen("home")} />;
+  }
 
   return (
     <ScrollView contentContainerStyle={styles.homeContent}>
@@ -208,6 +217,9 @@ function HomeScreen({
         </Text>
         <PrimaryButton variant="secondary" onPress={() => setScreen("fixtures")}>
           View Fixtures
+        </PrimaryButton>
+        <PrimaryButton variant="secondary" onPress={() => setScreen("leaguePicks")}>
+          View League Picks
         </PrimaryButton>
         {appLinks.map(([label, path]) => (
           <PrimaryButton key={path} variant="secondary" onPress={() => void Linking.openURL(`${API_BASE_URL}${path}`)}>
@@ -263,6 +275,220 @@ function FixturesScreen({ onBack }: { onBack: () => void }) {
   );
 }
 
+function LeaguePicksScreen({ user, onBack }: { user: SessionUser; onBack: () => void }) {
+  const [data, setData] = useState<LeaguePredictionsResponse | null>(null);
+  const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    getLeaguePredictions()
+      .then((response) => {
+        setData(response);
+        setSelectedUserId(
+          response.members.some((member) => member.userId === user.id)
+            ? user.id
+            : (response.members[0]?.userId ?? null),
+        );
+        setError(null);
+      })
+      .catch((err) => setError(err instanceof Error ? err.message : "Could not load league picks."))
+      .finally(() => setLoading(false));
+  }, []);
+
+  const selectedMember = data?.members.find((member) => member.userId === selectedUserId) ?? null;
+  const selectedIsSelf = selectedUserId === user.id;
+  const visibleStages = selectedIsSelf
+    ? (data?.stages ?? [])
+    : (data?.stages.filter((stage) => stage.locked) ?? []);
+
+  return (
+    <ScrollView contentContainerStyle={styles.homeContent}>
+      <PrimaryButton variant="secondary" onPress={onBack}>
+        Back
+      </PrimaryButton>
+      <View>
+        <Text style={styles.eyebrow}>LEAGUE PICKS</Text>
+        <Text style={styles.title}>Predictions</Text>
+        {data?.league ? <Text style={styles.muted}>{data.league.leagueName}</Text> : null}
+      </View>
+
+      {loading ? (
+        <View style={styles.panel}>
+          <ActivityIndicator color="#8ee620" />
+          <Text style={styles.muted}>Loading league picks...</Text>
+        </View>
+      ) : error ? (
+        <Text style={styles.error}>{error}</Text>
+      ) : !data?.league ? (
+        <View style={styles.panel}>
+          <Text style={styles.sectionTitle}>No active league</Text>
+          <Text style={styles.bodyText}>Join or activate a league to view member predictions.</Text>
+        </View>
+      ) : data.league.gameMode !== "stage_predictions" ? (
+        <View style={styles.panel}>
+          <Text style={styles.sectionTitle}>Stage predictions only</Text>
+          <Text style={styles.bodyText}>
+            This native view shows pre-tournament stage picks. Your active league is a match score league.
+          </Text>
+        </View>
+      ) : data.stages.length === 0 ? (
+        <View style={styles.panel}>
+          <Text style={styles.sectionTitle}>No locked stages yet</Text>
+          <Text style={styles.bodyText}>
+            Member predictions will appear here after a stage prediction window locks.
+          </Text>
+        </View>
+      ) : (
+        <>
+          <View style={styles.panel}>
+            <Text style={styles.label}>Member</Text>
+            <Pressable
+              style={styles.dropdownButton}
+              onPress={() => setDropdownOpen((open) => !open)}
+            >
+              <Text style={styles.dropdownButtonText}>
+                {selectedMember?.name ?? "Choose member"}
+              </Text>
+              <Text style={styles.dropdownChevron}>{dropdownOpen ? "^" : "v"}</Text>
+            </Pressable>
+            {dropdownOpen ? (
+              <View style={styles.dropdownMenu}>
+                {data.members.map((member) => (
+                  <Pressable
+                    key={member.userId}
+                    style={[
+                      styles.dropdownItem,
+                      member.userId === selectedUserId ? styles.dropdownItemActive : null,
+                    ]}
+                    onPress={() => {
+                      setSelectedUserId(member.userId);
+                      setDropdownOpen(false);
+                    }}
+                  >
+                    <Text style={styles.dropdownItemText}>{member.name}</Text>
+                  </Pressable>
+                ))}
+              </View>
+            ) : null}
+          </View>
+
+          {selectedMember && visibleStages.length > 0 ? (
+            <MemberPredictionList
+              member={selectedMember}
+              stages={visibleStages}
+              isSelf={selectedIsSelf}
+            />
+          ) : selectedMember ? (
+            <View style={styles.panel}>
+              <Text style={styles.sectionTitle}>No locked stages yet</Text>
+              <Text style={styles.bodyText}>
+                Other members' predictions will appear after the relevant stage locks.
+              </Text>
+            </View>
+          ) : null}
+        </>
+      )}
+    </ScrollView>
+  );
+}
+
+function MemberPredictionList({
+  member,
+  stages,
+  isSelf,
+}: {
+  member: LeaguePredictionMember;
+  stages: LeaguePredictionStage[];
+  isSelf: boolean;
+}) {
+  return (
+    <View style={styles.panel}>
+      <Text style={styles.sectionTitle}>{member.name}</Text>
+      <Text style={styles.muted}>
+        {isSelf ? "Your saved predictions are shown, including unlocked stages." : "Only locked stages are shown."}
+      </Text>
+      {isSelf ? (
+        <PrimaryButton variant="secondary" onPress={() => void Linking.openURL(`${API_BASE_URL}/predictions`)}>
+          Edit My Predictions
+        </PrimaryButton>
+      ) : null}
+      {stages.map((stage) => {
+        const prediction = stage.predictions.find((row) => row.userId === member.userId);
+        return (
+          <StagePredictionCard
+            key={stage.stage}
+            stage={stage}
+            prediction={prediction}
+          />
+        );
+      })}
+    </View>
+  );
+}
+
+function StagePredictionCard({
+  stage,
+  prediction,
+}: {
+  stage: LeaguePredictionStage;
+  prediction: LeaguePredictionStage["predictions"][number] | undefined;
+}) {
+  return (
+    <View style={styles.predictionStageCard}>
+      <View style={styles.fixtureMetaRow}>
+        <Text style={styles.fixtureMeta}>{stageLabel(stage.stage)}</Text>
+        <Text style={styles.fixtureMeta}>
+          {prediction?.submitted ? `${prediction.picks.length}/${stage.expected}` : "Missing"}
+        </Text>
+      </View>
+      {!prediction?.submitted ? (
+        <Text style={styles.muted}>No complete prediction submitted.</Text>
+      ) : stage.stage === "r32" ? (
+        <RoundOf32Picks picks={prediction.picks} />
+      ) : (
+        <View style={styles.pickList}>
+          {prediction.picks.map((pick) => (
+            <PickRow key={`${stage.stage}-${pick.teamId}`} pick={pick} />
+          ))}
+        </View>
+      )}
+    </View>
+  );
+}
+
+function RoundOf32Picks({ picks }: { picks: LeaguePredictionPick[] }) {
+  const groups = Array.from(new Set(picks.map((pick) => pick.group).filter(Boolean))).sort();
+  return (
+    <View style={styles.pickList}>
+      {groups.map((group) => {
+        const groupPicks = picks
+          .filter((pick) => pick.group === group)
+          .sort((a, b) => (a.groupRank ?? 99) - (b.groupRank ?? 99) || a.teamName.localeCompare(b.teamName));
+        return (
+          <View key={group} style={styles.groupPickBlock}>
+            <Text style={styles.fixtureMeta}>Group {group}</Text>
+            {groupPicks.map((pick) => (
+              <PickRow key={`${group}-${pick.teamId}`} pick={pick} />
+            ))}
+          </View>
+        );
+      })}
+    </View>
+  );
+}
+
+function PickRow({ pick }: { pick: LeaguePredictionPick }) {
+  return (
+    <View style={styles.pickRow}>
+      <Text style={styles.pickRank}>{pick.groupRank ? `${pick.groupRank}.` : "-"}</Text>
+      <Text style={styles.pickCode}>{pick.teamCode}</Text>
+      <Text style={styles.pickName}>{pick.teamName}</Text>
+    </View>
+  );
+}
+
 function FixtureCard({ fixture }: { fixture: Fixture }) {
   const kickoff = new Intl.DateTimeFormat(undefined, {
     dateStyle: "medium",
@@ -290,6 +516,23 @@ function FixtureCard({ fixture }: { fixture: Fixture }) {
       <Text style={styles.muted}>{fixture.venue}</Text>
     </View>
   );
+}
+
+function stageLabel(stage: LeaguePredictionStage["stage"]): string {
+  switch (stage) {
+    case "r32":
+      return "Round of 32 qualifiers";
+    case "r16":
+      return "Round of 16 qualifiers";
+    case "qf":
+      return "Quarter-finalists";
+    case "sf":
+      return "Semi-finalists";
+    case "final":
+      return "Finalists";
+    case "champion":
+      return "Champion";
+  }
 }
 
 function Field({
@@ -379,6 +622,49 @@ const styles = StyleSheet.create({
     gap: 14,
     padding: 16,
   },
+  dropdownButton: {
+    alignItems: "center",
+    backgroundColor: "#223149",
+    borderColor: "rgba(255,255,255,0.12)",
+    borderRadius: 12,
+    borderWidth: 1,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    minHeight: 50,
+    paddingHorizontal: 14,
+  },
+  dropdownButtonText: {
+    color: "#e8f0ff",
+    flex: 1,
+    fontSize: 16,
+    fontWeight: "800",
+  },
+  dropdownChevron: {
+    color: "#f7b23b",
+    fontSize: 16,
+    fontWeight: "900",
+  },
+  dropdownMenu: {
+    backgroundColor: "#0d1a2a",
+    borderColor: "rgba(255,255,255,0.1)",
+    borderRadius: 12,
+    borderWidth: 1,
+    overflow: "hidden",
+  },
+  dropdownItem: {
+    borderBottomColor: "rgba(255,255,255,0.08)",
+    borderBottomWidth: 1,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+  },
+  dropdownItemActive: {
+    backgroundColor: "rgba(142, 230, 32, 0.14)",
+  },
+  dropdownItemText: {
+    color: "#e8f0ff",
+    fontSize: 15,
+    fontWeight: "800",
+  },
   field: {
     gap: 7,
   },
@@ -434,6 +720,45 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     gap: 10,
     padding: 16,
+  },
+  predictionStageCard: {
+    backgroundColor: "#0f1d2f",
+    borderColor: "rgba(255,255,255,0.1)",
+    borderRadius: 16,
+    borderWidth: 1,
+    gap: 12,
+    padding: 14,
+  },
+  pickList: {
+    gap: 10,
+  },
+  groupPickBlock: {
+    backgroundColor: "#132235",
+    borderRadius: 12,
+    gap: 7,
+    padding: 10,
+  },
+  pickRow: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: 8,
+  },
+  pickRank: {
+    color: "#8ee620",
+    fontSize: 13,
+    fontWeight: "900",
+    width: 22,
+  },
+  pickCode: {
+    color: "#e8f0ff",
+    fontSize: 14,
+    fontWeight: "900",
+    width: 42,
+  },
+  pickName: {
+    color: "#b9c3d4",
+    flex: 1,
+    fontSize: 14,
   },
   fixtureMetaRow: {
     flexDirection: "row",
