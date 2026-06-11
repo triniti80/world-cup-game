@@ -176,6 +176,7 @@ export type LeagueR32Prediction = {
   userId: number;
   submitted: boolean;
   revealed: boolean;
+  randomPick: boolean;
   picks: {
     teamId: string;
     groupRank: 1 | 2 | 3;
@@ -193,6 +194,7 @@ export type MobileLeagueStagePick = {
 export type MobileLeagueStagePrediction = {
   userId: number;
   submitted: boolean;
+  randomPick: boolean;
   picks: MobileLeagueStagePick[];
 };
 
@@ -1197,6 +1199,7 @@ export async function getMobileLeaguePredictionVisibility(
       stage: stagePredictions.stage,
       teamId: stagePredictions.teamId,
       groupRank: stagePredictions.groupRank,
+      source: stagePredictions.source,
     })
     .from(stagePredictions)
     .where(
@@ -1242,6 +1245,9 @@ export async function getMobileLeaguePredictionVisibility(
       return {
         userId: member.userId,
         submitted: stageRows.length === stagePredictionExpectedCounts[stage],
+        randomPick:
+          stageRows.length === stagePredictionExpectedCounts[stage] &&
+          stageRows.every((row) => row.source === "calculated"),
         picks: stage === "r32" ? picks.sort(sortMobileStagePicks) : picks,
       };
     }),
@@ -1649,6 +1655,7 @@ export async function getLeaguePredictionVisibility(userId: number, activeLeague
       userId: stagePredictions.userId,
       teamId: stagePredictions.teamId,
       groupRank: stagePredictions.groupRank,
+      source: stagePredictions.source,
     })
     .from(stagePredictions)
     .where(
@@ -1672,6 +1679,7 @@ export async function getLeaguePredictionVisibility(userId: number, activeLeague
       userId: member.userId,
       submitted: rows.length === 32,
       revealed: r32Revealed,
+      randomPick: rows.length === 32 && rows.every((row) => row.source === "calculated"),
       picks: r32Revealed
         ? rows
             .flatMap((row) => {

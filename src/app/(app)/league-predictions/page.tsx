@@ -164,7 +164,10 @@ function RoundOf32PredictionsTable({
               return (
                 <tr key={member.userId} className="bg-[var(--color-panel-low)] align-top">
                   <th className="sticky start-0 z-10 bg-[var(--color-panel-low)] px-3 py-3 text-start font-display text-sm font-bold">
-                    {member.name}
+                    <span className="flex flex-wrap items-center gap-2">
+                      <span>{member.name}</span>
+                      {prediction?.randomPick ? <RandomPickBadge locale={locale} /> : null}
+                    </span>
                   </th>
                   <td className="px-3 py-3">
                     <StatusPill prediction={prediction} locale={locale} />
@@ -185,6 +188,14 @@ function RoundOf32PredictionsTable({
         </table>
       </div>
     </section>
+  );
+}
+
+function RandomPickBadge({ locale }: { locale: "en" | "he" }) {
+  return (
+    <span className="rounded-full bg-[var(--color-gold)]/15 px-2 py-0.5 text-[10px] font-black uppercase text-[var(--color-gold)]">
+      {locale === "he" ? "בחירה אקראית" : "Random pick"}
+    </span>
   );
 }
 

@@ -45,6 +45,7 @@ export type LeaguePredictionStage = {
   predictions: {
     userId: number;
     submitted: boolean;
+    randomPick: boolean;
     picks: LeaguePredictionPick[];
   }[];
 };

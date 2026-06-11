@@ -403,9 +403,16 @@ function MemberPredictionList({
   stages: LeaguePredictionStage[];
   isSelf: boolean;
 }) {
+  const hasRandomPick = stages.some((stage) =>
+    stage.predictions.some((prediction) => prediction.userId === member.userId && prediction.randomPick),
+  );
+
   return (
     <View style={styles.panel}>
-      <Text style={styles.sectionTitle}>{member.name}</Text>
+      <View style={styles.memberTitleRow}>
+        <Text style={styles.sectionTitle}>{member.name}</Text>
+        {hasRandomPick ? <RandomPickPill /> : null}
+      </View>
       <Text style={styles.muted}>
         {isSelf ? "Your saved predictions are shown, including unlocked stages." : "Only locked stages are shown."}
       </Text>
@@ -440,7 +447,11 @@ function StagePredictionCard({
       <View style={styles.fixtureMetaRow}>
         <Text style={styles.fixtureMeta}>{stageLabel(stage.stage)}</Text>
         <Text style={styles.fixtureMeta}>
-          {prediction?.submitted ? `${prediction.picks.length}/${stage.expected}` : "Missing"}
+          {prediction?.randomPick
+            ? `Random pick · ${prediction.picks.length}/${stage.expected}`
+            : prediction?.submitted
+              ? `${prediction.picks.length}/${stage.expected}`
+              : "Missing"}
         </Text>
       </View>
       {!prediction?.submitted ? (
@@ -454,6 +465,14 @@ function StagePredictionCard({
           ))}
         </View>
       )}
+    </View>
+  );
+}
+
+function RandomPickPill() {
+  return (
+    <View style={styles.randomPickPill}>
+      <Text style={styles.randomPickPillText}>Random pick</Text>
     </View>
   );
 }
@@ -604,6 +623,24 @@ const styles = StyleSheet.create({
     color: "#e8f0ff",
     fontSize: 22,
     fontWeight: "900",
+  },
+  memberTitleRow: {
+    alignItems: "center",
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+  },
+  randomPickPill: {
+    backgroundColor: "rgba(247, 178, 59, 0.16)",
+    borderRadius: 999,
+    paddingHorizontal: 9,
+    paddingVertical: 4,
+  },
+  randomPickPillText: {
+    color: "#f7b23b",
+    fontSize: 11,
+    fontWeight: "900",
+    textTransform: "uppercase",
   },
   bodyText: {
     color: "#b9c3d4",
