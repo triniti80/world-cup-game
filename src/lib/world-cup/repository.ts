@@ -171,6 +171,16 @@ export type LeagueBonusPrediction = {
   winnerTeamId?: string;
 };
 
+export type LeagueR32Prediction = {
+  userId: number;
+  submitted: boolean;
+  revealed: boolean;
+  picks: {
+    teamId: string;
+    groupRank: 1 | 2 | 3;
+  }[];
+};
+
 export type AdminOfficialResults = {
   stages: Record<string, string[]>;
   topScorer?: string;
@@ -1039,15 +1049,34 @@ function stagePredictionLabel(stage: "r32" | "r16" | "qf" | "sf" | "final" | "ch
   }
 }
 
+function sortStagePredictionPicks(
+  a: LeagueR32Prediction["picks"][number],
+  b: LeagueR32Prediction["picks"][number],
+): number {
+  const teamA = seedTeams.find((team) => team.id === a.teamId);
+  const teamB = seedTeams.find((team) => team.id === b.teamId);
+  return (
+    (teamA?.group ?? "").localeCompare(teamB?.group ?? "") ||
+    a.groupRank - b.groupRank ||
+    (teamA?.name ?? "").localeCompare(teamB?.name ?? "")
+  );
+}
+
+function normalizeGroupRank(rank: number | null): 1 | 2 | 3 | null {
+  if (rank === 1 || rank === 2 || rank === 3) return rank;
+  return null;
+}
+
 export async function getLeaguePredictionVisibility(userId: number, activeLeagueId?: number | null): Promise<{
   league: CurrentLeague | null;
   members: LeaguePredictionMember[];
   matches: LeaguePredictionMatch[];
   bonuses: LeagueBonusPrediction[];
+  stagePredictions: LeagueR32Prediction[];
 }> {
   const tournamentRow = await getSeedTournamentForRead();
   const league = await getCurrentLeague(userId, activeLeagueId);
-  if (!league) return { league: null, members: [], matches: [], bonuses: [] };
+  if (!league) return { league: null, members: [], matches: [], bonuses: [], stagePredictions: [] };
 
   const members = await db
     .select({
@@ -1139,6 +1168,7 @@ export async function getLeaguePredictionVisibility(userId: number, activeLeague
     bonusRows.map((bonus) => [`${bonus.userId}:${bonus.type}`, bonus]),
   );
   const bonusRevealed = now >= tournamentRow.firstMatchAt.getTime();
+  const r32Revealed = now >= tournamentRow.predictionLockAt.getTime();
 
   const bonuses = members.map<LeagueBonusPrediction>((member) => {
     const topScorer = bonusByUserAndType.get(`${member.userId}:top_scorer`);
@@ -1154,7 +1184,50 @@ export async function getLeaguePredictionVisibility(userId: number, activeLeague
     };
   });
 
-  return { league, members, matches: visibleMatches, bonuses };
+  const r32Rows = await db
+    .select({
+      userId: stagePredictions.userId,
+      teamId: stagePredictions.teamId,
+      groupRank: stagePredictions.groupRank,
+    })
+    .from(stagePredictions)
+    .where(
+      and(
+        eq(stagePredictions.leagueId, league.leagueId),
+        eq(stagePredictions.tournamentId, tournamentRow.id),
+        eq(stagePredictions.stage, "r32"),
+      ),
+    );
+
+  const r32RowsByUserId = new Map<number, typeof r32Rows>();
+  for (const row of r32Rows) {
+    const rows = r32RowsByUserId.get(row.userId) ?? [];
+    rows.push(row);
+    r32RowsByUserId.set(row.userId, rows);
+  }
+
+  const stagePredictionsByMember = members.map<LeagueR32Prediction>((member) => {
+    const rows = r32RowsByUserId.get(member.userId) ?? [];
+    return {
+      userId: member.userId,
+      submitted: rows.length === 32,
+      revealed: r32Revealed,
+      picks: r32Revealed
+        ? rows
+            .flatMap((row) => {
+              const slug = slugByTeamId.get(row.teamId);
+              const groupRank = normalizeGroupRank(row.groupRank);
+              if (!slug || !groupRank) {
+                return [];
+              }
+              return [{ teamId: slug, groupRank }];
+            })
+            .sort((a, b) => sortStagePredictionPicks(a, b))
+        : [],
+    };
+  });
+
+  return { league, members, matches: visibleMatches, bonuses, stagePredictions: stagePredictionsByMember };
 }
 
 export function getMatchLockAtUtc(match: Pick<MatchRow, "kickoffAt">): Date {
