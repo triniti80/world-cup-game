@@ -54,6 +54,14 @@ For scheduled hosting, call `/api/cron/fifa-results?secret=$CRON_SECRET` after
 matches. Running it every 10-15 minutes during match windows is also safe: it
 only writes matches FIFA marks final.
 
+The same cron also fills random picks for members who did not complete a locked
+stage. To run that backfill manually:
+
+```bash
+npm run predictions:backfill-random:dry-run
+npm run predictions:backfill-random
+```
+
 ## Production
 
 Railway is the recommended first production host for this project. The repo

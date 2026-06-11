@@ -16,6 +16,8 @@
     "lint": "next lint",
     "results:sync": "tsx --env-file=.env scripts/sync-fifa-results.ts",
     "results:sync:dry-run": "tsx --env-file=.env scripts/sync-fifa-results.ts --dry-run",
+    "predictions:backfill-random": "tsx --env-file=.env scripts/backfill-random-stage-picks.ts",
+    "predictions:backfill-random:dry-run": "tsx --env-file=.env scripts/backfill-random-stage-picks.ts --dry-run",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "tsx --env-file=.env src/db/migrate.ts",
     "db:migrate:prod": "node scripts/migrate.mjs",

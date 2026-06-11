@@ -1,3 +1,4 @@
+import { randomInt } from "crypto";
 import { and, desc, eq, inArray, or, sql } from "drizzle-orm";
 import { db } from "@/db/client";
 import {
@@ -206,6 +207,32 @@ export type MobileLeaguePredictionVisibility = {
   league: CurrentLeague | null;
   members: LeaguePredictionMember[];
   stages: MobileLeaguePredictionStage[];
+};
+
+export type RandomStageBackfillEntry = {
+  leagueId: number;
+  leagueName: string;
+  userId: number;
+  displayName: string;
+  stage: StagePredictionStage;
+  previousCount: number;
+  generatedCount: number;
+  teamIds: string[];
+};
+
+export type RandomStageBackfillSummary = {
+  dryRun: boolean;
+  lockedStages: StagePredictionStage[];
+  checkedMembers: number;
+  generatedStages: number;
+  skippedCompleteStages: number;
+  skippedStages: {
+    leagueId: number;
+    userId: number;
+    stage: StagePredictionStage;
+    reason: string;
+  }[];
+  entries: RandomStageBackfillEntry[];
 };
 
 export type AdminOfficialResults = {
@@ -1094,15 +1121,36 @@ function normalizeGroupRank(rank: number | null): 1 | 2 | 3 | null {
   return null;
 }
 
-const mobileStageOrder = ["r32", "r16", "qf", "sf", "final", "champion"] as const;
-const mobileStageExpectedCounts = {
+const stagePredictionOrder = ["r32", "r16", "qf", "sf", "final", "champion"] as const;
+type StagePredictionStage = (typeof stagePredictionOrder)[number];
+const stagePredictionExpectedCounts = {
   r32: 32,
   r16: 16,
   qf: 8,
   sf: 4,
   final: 2,
   champion: 1,
-} as const satisfies Record<(typeof mobileStageOrder)[number], number>;
+} as const satisfies Record<StagePredictionStage, number>;
+const previousStageByStage = {
+  r16: "r32",
+  qf: "r16",
+  sf: "qf",
+  final: "sf",
+  champion: "final",
+} as const satisfies Partial<Record<StagePredictionStage, StagePredictionStage>>;
+
+type RandomBackfillTeam = {
+  id: number;
+  slug: string;
+  name: string;
+  groupCode: string | null;
+};
+
+type RandomBackfillPick = {
+  teamId: number;
+  teamSlug: string;
+  groupRank: 1 | 2 | 3 | null;
+};
 
 export async function getMobileLeaguePredictionVisibility(
   userId: number,
@@ -1126,16 +1174,9 @@ export async function getMobileLeaguePredictionVisibility(
   }
 
   const now = Date.now();
-  const knockoutLockAt = await getKnockoutStageLockAt(tournamentRow.id);
-  const lockedStages = new Set(
-    mobileStageOrder.filter((stage) =>
-      stage === "r32"
-        ? now >= tournamentRow.predictionLockAt.getTime()
-        : now >= knockoutLockAt.getTime(),
-    ),
-  );
+  const lockedStages = new Set(await getLockedStagePredictionStages(tournamentRow, new Date(now)));
 
-  const visibleStageRows = [...mobileStageOrder];
+  const visibleStageRows = [...stagePredictionOrder];
 
   const seededTeams = await db
     .select({
@@ -1177,7 +1218,7 @@ export async function getMobileLeaguePredictionVisibility(
 
   const stages = visibleStageRows.map<MobileLeaguePredictionStage>((stage) => ({
     stage,
-    expected: mobileStageExpectedCounts[stage],
+    expected: stagePredictionExpectedCounts[stage],
     locked: lockedStages.has(stage),
     predictions: members.map<MobileLeagueStagePrediction>((member) => {
       const canRevealForMember = lockedStages.has(stage) || member.userId === userId;
@@ -1200,7 +1241,7 @@ export async function getMobileLeaguePredictionVisibility(
 
       return {
         userId: member.userId,
-        submitted: stageRows.length === mobileStageExpectedCounts[stage],
+        submitted: stageRows.length === stagePredictionExpectedCounts[stage],
         picks: stage === "r32" ? picks.sort(sortMobileStagePicks) : picks,
       };
     }),
@@ -1215,6 +1256,275 @@ function sortMobileStagePicks(a: MobileLeagueStagePick, b: MobileLeagueStagePick
     (a.groupRank ?? 99) - (b.groupRank ?? 99) ||
     a.teamName.localeCompare(b.teamName)
   );
+}
+
+export async function backfillRandomLockedStagePredictions(options: {
+  dryRun?: boolean;
+  now?: Date;
+} = {}): Promise<RandomStageBackfillSummary> {
+  const dryRun = options.dryRun ?? false;
+  const now = options.now ?? new Date();
+  const tournamentRow = await ensureSeedTournament();
+  const lockedStages = await getLockedStagePredictionStages(tournamentRow, now);
+
+  const summary: RandomStageBackfillSummary = {
+    dryRun,
+    lockedStages,
+    checkedMembers: 0,
+    generatedStages: 0,
+    skippedCompleteStages: 0,
+    skippedStages: [],
+    entries: [],
+  };
+
+  if (lockedStages.length === 0) {
+    return summary;
+  }
+
+  const members = await db
+    .select({
+      leagueId: leagues.id,
+      leagueName: leagues.name,
+      userId: leagueMembers.userId,
+      displayName: leagueMembers.displayName,
+    })
+    .from(leagueMembers)
+    .innerJoin(leagues, eq(leagueMembers.leagueId, leagues.id))
+    .where(eq(leagues.gameMode, "stage_predictions"))
+    .orderBy(leagues.id, leagueMembers.joinedAt);
+
+  summary.checkedMembers = members.length;
+  if (members.length === 0) {
+    return summary;
+  }
+
+  const tournamentTeams = await db
+    .select({
+      id: dbTeams.id,
+      slug: dbTeams.slug,
+      name: dbTeams.name,
+      groupCode: dbTeams.groupCode,
+    })
+    .from(dbTeams)
+    .where(eq(dbTeams.tournamentId, tournamentRow.id));
+  const teamsByDbId = new Map(tournamentTeams.map((team) => [team.id, team]));
+  const teamsByGroup = groupTeamsForRandomBackfill(tournamentTeams);
+
+  const existingRows = await db
+    .select({
+      leagueId: stagePredictions.leagueId,
+      userId: stagePredictions.userId,
+      stage: stagePredictions.stage,
+      teamId: stagePredictions.teamId,
+      groupRank: stagePredictions.groupRank,
+      teamSlug: dbTeams.slug,
+    })
+    .from(stagePredictions)
+    .innerJoin(dbTeams, eq(stagePredictions.teamId, dbTeams.id))
+    .where(
+      and(
+        eq(stagePredictions.tournamentId, tournamentRow.id),
+        inArray(stagePredictions.stage, lockedStages),
+      ),
+    )
+    .orderBy(stagePredictions.id);
+
+  const rowsByMemberAndStage = new Map<string, typeof existingRows>();
+  for (const row of existingRows) {
+    const key = `${row.leagueId}:${row.userId}:${row.stage}`;
+    const rows = rowsByMemberAndStage.get(key) ?? [];
+    rows.push(row);
+    rowsByMemberAndStage.set(key, rows);
+  }
+
+  for (const member of members) {
+    const picksByStage = new Map<StagePredictionStage, RandomBackfillPick[]>();
+
+    for (const stage of lockedStages) {
+      const expectedCount = stagePredictionExpectedCounts[stage];
+      const existing = rowsByMemberAndStage.get(`${member.leagueId}:${member.userId}:${stage}`) ?? [];
+      const existingPicks = existing.flatMap<RandomBackfillPick>((row) => {
+        const team = teamsByDbId.get(row.teamId);
+        if (!team) return [];
+        return [
+          {
+            teamId: row.teamId,
+            teamSlug: team.slug,
+            groupRank: stage === "r32" ? normalizeGroupRank(row.groupRank) : null,
+          },
+        ];
+      });
+
+      if (existingPicks.length === expectedCount) {
+        picksByStage.set(stage, existingPicks);
+        summary.skippedCompleteStages += 1;
+        continue;
+      }
+
+      const generated =
+        stage === "r32"
+          ? buildRandomR32Picks(teamsByGroup)
+          : buildRandomKnockoutStagePicks(stage, picksByStage);
+
+      if (!generated) {
+        summary.skippedStages.push({
+          leagueId: member.leagueId,
+          userId: member.userId,
+          stage,
+          reason: "Previous stage does not have enough picks to generate this stage.",
+        });
+        continue;
+      }
+
+      const entry: RandomStageBackfillEntry = {
+        leagueId: member.leagueId,
+        leagueName: member.leagueName,
+        userId: member.userId,
+        displayName: member.displayName,
+        stage,
+        previousCount: existingPicks.length,
+        generatedCount: generated.length,
+        teamIds: generated.map((pick) => pick.teamSlug),
+      };
+
+      if (!dryRun) {
+        await db.transaction(async (tx) => {
+          await tx
+            .delete(stagePredictions)
+            .where(
+              and(
+                eq(stagePredictions.userId, member.userId),
+                eq(stagePredictions.leagueId, member.leagueId),
+                eq(stagePredictions.tournamentId, tournamentRow.id),
+                eq(stagePredictions.stage, stage),
+              ),
+            );
+
+          await tx.insert(stagePredictions).values(
+            generated.map((pick) => ({
+              userId: member.userId,
+              leagueId: member.leagueId,
+              tournamentId: tournamentRow.id,
+              stage,
+              teamId: pick.teamId,
+              groupRank: pick.groupRank,
+              source: "calculated" as const,
+              submittedAt: now,
+              updatedAt: now,
+            })),
+          );
+
+          await tx.insert(auditLog).values({
+            actorUserId: null,
+            action: "stage_prediction.random_backfill",
+            entityType: "stage_prediction",
+            entityId: `${member.leagueId}:${member.userId}:${stage}`,
+            beforeJson: {
+              leagueId: member.leagueId,
+              userId: member.userId,
+              stage,
+              pickCount: existingPicks.length,
+              teamIds: existingPicks.map((pick) => pick.teamSlug),
+            },
+            afterJson: entry,
+          });
+        });
+      }
+
+      picksByStage.set(stage, generated);
+      summary.generatedStages += 1;
+      summary.entries.push(entry);
+    }
+  }
+
+  return summary;
+}
+
+async function getLockedStagePredictionStages(
+  tournamentRow: Pick<TournamentRow, "id" | "predictionLockAt">,
+  now: Date,
+): Promise<StagePredictionStage[]> {
+  const nowMs = now.getTime();
+  const knockoutLockAt = await getKnockoutStageLockAt(tournamentRow.id);
+
+  return stagePredictionOrder.filter((stage) =>
+    stage === "r32"
+      ? nowMs >= tournamentRow.predictionLockAt.getTime()
+      : nowMs >= knockoutLockAt.getTime(),
+  );
+}
+
+function groupTeamsForRandomBackfill(teams: RandomBackfillTeam[]) {
+  const teamsByGroup = new Map<string, RandomBackfillTeam[]>();
+  for (const team of teams) {
+    if (!team.groupCode) {
+      throw new Error(`Team ${team.slug} is missing a group code.`);
+    }
+    const groupTeams = teamsByGroup.get(team.groupCode) ?? [];
+    groupTeams.push(team);
+    teamsByGroup.set(team.groupCode, groupTeams);
+  }
+
+  if (teamsByGroup.size !== 12) {
+    throw new Error(`Expected 12 World Cup groups, found ${teamsByGroup.size}.`);
+  }
+
+  for (const [group, groupTeams] of teamsByGroup) {
+    if (groupTeams.length < 3) {
+      throw new Error(`Group ${group} needs at least 3 teams for random qualifier picks.`);
+    }
+  }
+
+  return teamsByGroup;
+}
+
+function buildRandomR32Picks(teamsByGroup: Map<string, RandomBackfillTeam[]>): RandomBackfillPick[] {
+  const groups = [...teamsByGroup.keys()].sort();
+  const thirdPlaceGroups = new Set(shuffle(groups).slice(0, 8));
+  const picks: RandomBackfillPick[] = [];
+
+  for (const group of groups) {
+    const groupTeams = shuffle(teamsByGroup.get(group) ?? []);
+    const first = groupTeams[0]!;
+    const second = groupTeams[1]!;
+    const third = groupTeams[2]!;
+
+    picks.push({ teamId: first.id, teamSlug: first.slug, groupRank: 1 });
+    picks.push({ teamId: second.id, teamSlug: second.slug, groupRank: 2 });
+    if (thirdPlaceGroups.has(group)) {
+      picks.push({ teamId: third.id, teamSlug: third.slug, groupRank: 3 });
+    }
+  }
+
+  return picks;
+}
+
+function buildRandomKnockoutStagePicks(
+  stage: Exclude<StagePredictionStage, "r32">,
+  picksByStage: Map<StagePredictionStage, RandomBackfillPick[]>,
+): RandomBackfillPick[] | null {
+  const previousStage = previousStageByStage[stage];
+  const previousPicks = previousStage ? (picksByStage.get(previousStage) ?? []) : [];
+  const expectedCount = stagePredictionExpectedCounts[stage];
+
+  if (previousPicks.length < expectedCount) {
+    return null;
+  }
+
+  return shuffle(previousPicks)
+    .slice(0, expectedCount)
+    .map((pick) => ({ ...pick, groupRank: null }));
+}
+
+function shuffle<T>(items: readonly T[]): T[] {
+  const result = [...items];
+  for (let index = result.length - 1; index > 0; index -= 1) {
+    const swapIndex = randomInt(index + 1);
+    const current = result[index]!;
+    result[index] = result[swapIndex]!;
+    result[swapIndex] = current;
+  }
+  return result;
 }
 
 export async function getLeaguePredictionVisibility(userId: number, activeLeagueId?: number | null): Promise<{
