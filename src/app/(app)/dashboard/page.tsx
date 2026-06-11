@@ -1,4 +1,6 @@
 import Link from "next/link";
+import type { ReactNode } from "react";
+import { LockCountdown } from "@/components/LockCountdown";
 import { t } from "@/lib/i18n";
 import { readLocale } from "@/lib/i18n-server";
 import { formatKickoff, tournament } from "@/lib/world-cup/data";
@@ -9,6 +11,7 @@ export default async function DashboardPage() {
   const locale = await readLocale();
   const matches = await getSeededMatchesWithResults();
   const nextMatches = matches.slice(0, 4);
+  const serverNowUtc = new Date().toISOString();
 
   return (
     <div className="space-y-6">
@@ -40,8 +43,12 @@ export default async function DashboardPage() {
       </section>
 
       <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <SummaryCard label={t(locale, "dashboard.qualifierLock")} value={formatKickoff(tournament.qualifierLockAtUtc, locale)} />
-        <SummaryCard label={t(locale, "dashboard.knockoutLock")} value={formatKickoff(tournament.knockoutLockAtUtc, locale)} />
+        <SummaryCard label={t(locale, "dashboard.qualifierLock")} value={formatKickoff(tournament.qualifierLockAtUtc, locale)}>
+          <LockCountdown targetAtUtc={tournament.qualifierLockAtUtc} serverNowUtc={serverNowUtc} />
+        </SummaryCard>
+        <SummaryCard label={t(locale, "dashboard.knockoutLock")} value={formatKickoff(tournament.knockoutLockAtUtc, locale)}>
+          <LockCountdown targetAtUtc={tournament.knockoutLockAtUtc} serverNowUtc={serverNowUtc} />
+        </SummaryCard>
         <SummaryCard label={t(locale, "dashboard.scoreLock")} value={t(locale, "dashboard.scoreLockValue")} />
         <SummaryCard label={t(locale, "dashboard.visibility")} value={t(locale, "dashboard.visibilityValue")} />
       </section>
@@ -68,13 +75,22 @@ export default async function DashboardPage() {
   );
 }
 
-function SummaryCard({ label, value }: { label: string; value: string }) {
+function SummaryCard({
+  label,
+  value,
+  children,
+}: {
+  label: string;
+  value: string;
+  children?: ReactNode;
+}) {
   return (
     <div className="glass-card rounded-xl p-4">
       <div className="text-xs font-bold uppercase text-[var(--color-fg-muted)]">{label}</div>
       <div className="mt-2 font-display text-lg font-extrabold text-[var(--color-accent)]">
         {value}
       </div>
+      {children}
     </div>
   );
 }
