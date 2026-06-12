@@ -1,12 +1,11 @@
 import Link from "next/link";
 import { LeaguePredictionsMatchList } from "@/components/LeaguePredictionsMatchList";
+import { RoundOf32PredictionsView } from "@/components/RoundOf32PredictionsView";
 import { t } from "@/lib/i18n";
 import { readLocale } from "@/lib/i18n-server";
 import { readActiveLeagueId, readSession } from "@/lib/session";
-import { getTeam, getTeamName, teams, type Team } from "@/lib/world-cup/data";
-import { getLeaguePredictionVisibility, type LeagueR32Prediction } from "@/lib/world-cup/repository";
-
-const groups = Array.from(new Set(teams.map((team) => team.group))).sort();
+import { getTeam, getTeamName } from "@/lib/world-cup/data";
+import { getLeaguePredictionVisibility } from "@/lib/world-cup/repository";
 
 export default async function LeaguePredictionsPage() {
   const locale = await readLocale();
@@ -102,7 +101,7 @@ export default async function LeaguePredictionsPage() {
           {league.gameMode === "match_scores" ? (
             <LeaguePredictionsMatchList locale={locale} members={members} matches={matches} />
           ) : (
-            <RoundOf32PredictionsTable
+            <RoundOf32PredictionsView
               locale={locale}
               members={members}
               predictions={stagePredictions}
@@ -111,151 +110,6 @@ export default async function LeaguePredictionsPage() {
         </>
       ) : null}
     </div>
-  );
-}
-
-function RoundOf32PredictionsTable({
-  locale,
-  members,
-  predictions,
-}: {
-  locale: "en" | "he";
-  members: { userId: number; name: string }[];
-  predictions: LeagueR32Prediction[];
-}) {
-  const predictionByUserId = new Map(predictions.map((prediction) => [prediction.userId, prediction]));
-  const revealed = predictions.some((prediction) => prediction.revealed);
-
-  return (
-    <section className="glass-card rounded-xl p-5">
-      <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h2 className="font-display text-xl font-bold">
-            {t(locale, "leaguePredictions.r32Title")}
-          </h2>
-          <p className="mt-2 max-w-3xl text-sm text-[var(--color-fg-muted)]">
-            {revealed ? t(locale, "leaguePredictions.r32Body") : t(locale, "leaguePredictions.r32Hidden")}
-          </p>
-        </div>
-        <span className="rounded-full bg-[var(--color-accent)]/15 px-3 py-1 text-xs font-bold text-[var(--color-accent)]">
-          {t(locale, "stage.r32")}
-        </span>
-      </div>
-
-      <div className="overflow-x-auto rounded-xl border border-white/10">
-        <table className="w-full min-w-[1180px] border-collapse text-sm">
-          <thead className="bg-[var(--color-panel-highest)] text-xs uppercase text-[var(--color-fg-muted)]">
-            <tr>
-              <th className="sticky start-0 z-10 bg-[var(--color-panel-highest)] px-3 py-3 text-start">
-                {locale === "he" ? "משתתף" : "Member"}
-              </th>
-              <th className="px-3 py-3 text-start">{locale === "he" ? "סטטוס" : "Status"}</th>
-              {groups.map((group) => (
-                <th key={group} className="px-3 py-3 text-start">
-                  {t(locale, "common.group")} {group}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-white/10">
-            {members.map((member) => {
-              const prediction = predictionByUserId.get(member.userId);
-              const memberPicks = prediction?.revealed ? prediction.picks : [];
-              return (
-                <tr key={member.userId} className="bg-[var(--color-panel-low)] align-top">
-                  <th className="sticky start-0 z-10 bg-[var(--color-panel-low)] px-3 py-3 text-start font-display text-sm font-bold">
-                    <span className="flex flex-wrap items-center gap-2">
-                      <span>{member.name}</span>
-                      {prediction?.randomPick ? <RandomPickBadge locale={locale} /> : null}
-                    </span>
-                  </th>
-                  <td className="px-3 py-3">
-                    <StatusPill prediction={prediction} locale={locale} />
-                  </td>
-                  {groups.map((group) => (
-                    <td key={`${member.userId}-${group}`} className="min-w-36 px-3 py-3">
-                      {prediction?.revealed ? (
-                        <GroupPickList group={group} picks={memberPicks} locale={locale} />
-                      ) : (
-                        <span className="text-[var(--color-fg-muted)]">-</span>
-                      )}
-                    </td>
-                  ))}
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
-    </section>
-  );
-}
-
-function RandomPickBadge({ locale }: { locale: "en" | "he" }) {
-  return (
-    <span className="rounded-full bg-[var(--color-gold)]/15 px-2 py-0.5 text-[10px] font-black uppercase text-[var(--color-gold)]">
-      {locale === "he" ? "בחירה אקראית" : "Random pick"}
-    </span>
-  );
-}
-
-function StatusPill({
-  prediction,
-  locale,
-}: {
-  prediction: LeagueR32Prediction | undefined;
-  locale: "en" | "he";
-}) {
-  const label = !prediction?.submitted
-    ? t(locale, "common.missing")
-    : prediction.revealed
-      ? t(locale, "common.revealed")
-      : t(locale, "common.submitted");
-
-  return (
-    <span className="rounded-full bg-[var(--color-panel-highest)] px-3 py-1 text-xs font-bold text-[var(--color-gold)]">
-      {label}
-      {prediction?.revealed ? ` · ${prediction.picks.length}/32` : ""}
-    </span>
-  );
-}
-
-function GroupPickList({
-  group,
-  picks,
-  locale,
-}: {
-  group: string;
-  picks: LeagueR32Prediction["picks"];
-  locale: "en" | "he";
-}) {
-  const groupPicks = picks
-    .map((pick) => ({ ...pick, team: getTeam(pick.teamId) }))
-    .filter((pick): pick is LeagueR32Prediction["picks"][number] & { team: Team } =>
-      Boolean(pick.team && pick.team.group === group),
-    )
-    .sort(
-      (a, b) =>
-        a.groupRank - b.groupRank ||
-        (getTeamName(a.team, locale) ?? "").localeCompare(getTeamName(b.team, locale) ?? ""),
-    );
-
-  if (groupPicks.length === 0) {
-    return <span className="text-[var(--color-fg-muted)]">-</span>;
-  }
-
-  return (
-    <ol className="space-y-1">
-      {groupPicks.map((pick) => (
-        <li key={`${pick.teamId}-${pick.groupRank}`} className="whitespace-nowrap">
-          <span className="me-1 font-bold text-[var(--color-accent)]">{pick.groupRank}.</span>
-          <span className="font-bold">{pick.team.code}</span>
-          <span className="ms-1 text-xs text-[var(--color-fg-muted)]">
-            {getTeamName(pick.team, locale)}
-          </span>
-        </li>
-      ))}
-    </ol>
   );
 }
 
