@@ -6,10 +6,10 @@ import { useI18n } from "./I18nProvider";
 
 const TABS = [
   { href: "/dashboard", labelKey: "nav.dashboard", shortKey: "nav.dashboardShort" },
-  { href: "/leagues", labelKey: "nav.leagues", shortKey: "nav.leaguesShort", alsoActive: ["/league-predictions"] },
+  { href: "/leagues", labelKey: "nav.leagues", shortKey: "nav.leaguesShort" },
   { href: "/fixtures", labelKey: "nav.fixtures", shortKey: "nav.fixturesShort" },
   { href: "/predictions", labelKey: "nav.predictions", shortKey: "nav.predictionsShort" },
-  { href: "/league-predictions", labelKey: "nav.leaguePredictions", shortKey: "nav.leaguePredictions", mobileHidden: true },
+  { href: "/league-predictions", labelKey: "nav.leaguePredictions", shortKey: "nav.leaguePredictions" },
   { href: "/bracket", labelKey: "nav.bracket", shortKey: "nav.bracket" },
   { href: "/leaderboard", labelKey: "nav.leaderboard", shortKey: "nav.leaderboardShort" },
   { href: "/instructions", labelKey: "nav.instructions", shortKey: "nav.instructionsShort", mobileHidden: true },
@@ -22,9 +22,7 @@ export function AppNav() {
   return (
     <nav className="hide-scrollbar fixed inset-x-3 bottom-3 z-50 flex items-center justify-start gap-1 overflow-x-auto rounded-xl border border-white/10 bg-[var(--color-panel)]/95 p-1 text-xs backdrop-blur-md md:static md:inset-auto md:justify-end md:overflow-visible md:border-0 md:bg-transparent md:p-0 md:text-sm md:backdrop-blur-0">
       {TABS.map((tab) => {
-        const active =
-          pathname.startsWith(tab.href) ||
-          ("alsoActive" in tab && tab.alsoActive.some((prefix) => pathname.startsWith(prefix)));
+        const active = pathname.startsWith(tab.href);
         return (
           <Link
             key={tab.href}
