@@ -24,6 +24,7 @@ import {
 } from "@/lib/world-cup/data";
 
 const TOURNAMENT_YEAR = 2026;
+const TOP_SCORER_CHANGE_WINDOW_LOCK_AT = new Date("2026-06-13T09:00:00.000Z");
 const LEGACY_SEED_VENUES = [
   "Mexico City Stadium",
   "Estadio Guadalajara",
@@ -46,6 +47,7 @@ const LEGACY_SEED_VENUES = [
 type TournamentRow = typeof tournaments.$inferSelect;
 type MatchRow = typeof dbMatches.$inferSelect;
 export type LeagueGameMode = "stage_predictions" | "match_scores";
+export type BonusPredictionType = "top_scorer" | "tournament_winner";
 export type SeededMatchWithResult = Match & {
   dbId: number;
   homeScore?: number;
@@ -1634,6 +1636,7 @@ export async function getLeaguePredictionVisibility(userId: number, activeLeague
     bonusRows.map((bonus) => [`${bonus.userId}:${bonus.type}`, bonus]),
   );
   const bonusRevealed = now >= tournamentRow.firstMatchAt.getTime();
+  const topScorerRevealed = now >= getBonusPredictionLockAt(tournamentRow, "top_scorer").getTime();
   const r32Revealed = now >= tournamentRow.predictionLockAt.getTime();
 
   const bonuses = members.map<LeagueBonusPrediction>((member) => {
@@ -1642,8 +1645,8 @@ export async function getLeaguePredictionVisibility(userId: number, activeLeague
     return {
       userId: member.userId,
       topScorerSubmitted: Boolean(topScorer),
-      topScorerRevealed: bonusRevealed,
-      topScorer: bonusRevealed ? topScorer?.playerName ?? undefined : undefined,
+      topScorerRevealed,
+      topScorer: topScorerRevealed ? topScorer?.playerName ?? undefined : undefined,
       winnerSubmitted: Boolean(winner),
       winnerRevealed: bonusRevealed,
       winnerTeamId: bonusRevealed && winner?.teamId ? slugByTeamId.get(winner.teamId) : undefined,
@@ -1704,6 +1707,15 @@ export function getMatchLockAtUtc(match: Pick<MatchRow, "kickoffAt">): Date {
 
 export function getPreTournamentLockAt(tournamentRow: Pick<TournamentRow, "predictionLockAt">): Date {
   return tournamentRow.predictionLockAt;
+}
+
+export function getBonusPredictionLockAt(
+  tournamentRow: Pick<TournamentRow, "predictionLockAt">,
+  type: BonusPredictionType,
+): Date {
+  return type === "top_scorer"
+    ? TOP_SCORER_CHANGE_WINDOW_LOCK_AT
+    : getPreTournamentLockAt(tournamentRow);
 }
 
 export async function getKnockoutStageLockAt(tournamentId: number): Promise<Date> {

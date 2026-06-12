@@ -7,6 +7,7 @@ import { readLocale } from "@/lib/i18n-server";
 import { readActiveLeagueId, readSession } from "@/lib/session";
 import {
   ensureSeedTournament,
+  getBonusPredictionLockAt,
   getCurrentLeague,
   getKnockoutStageLockAt,
   getPreTournamentLockAt,
@@ -30,7 +31,7 @@ export default async function PredictionsPage() {
     savedStagePredictions,
     matches,
     stageLockState,
-    bonusLocked,
+    bonusLockState,
   ] =
     await Promise.all([
       shouldLoadMatchScores ? getSavedMatchPredictions(session!.userId, activeLeagueId) : {},
@@ -40,7 +41,7 @@ export default async function PredictionsPage() {
         : { teams: {}, r32Ranks: {} },
       shouldLoadMatchScores ? getSeededMatchesWithResults() : [],
       shouldLoadStages ? getStageLockState() : { r32: false, knockout: false },
-      shouldLoadBonus ? getBonusLockState() : false,
+      shouldLoadBonus ? getBonusLockState() : { top_scorer: false, winner: false },
     ]);
 
   return (
@@ -82,7 +83,7 @@ export default async function PredictionsPage() {
           <BonusPredictionForm
             gameMode={currentLeague.gameMode}
             initialPredictions={savedBonusPredictions}
-            locked={bonusLocked}
+            locked={bonusLockState}
           />
 
           {currentLeague.gameMode === "match_scores" ? (
@@ -108,7 +109,11 @@ async function getStageLockState(): Promise<{ r32: boolean; knockout: boolean }>
   };
 }
 
-async function getBonusLockState(): Promise<boolean> {
+async function getBonusLockState(): Promise<{ top_scorer: boolean; winner: boolean }> {
   const tournament = await ensureSeedTournament();
-  return Date.now() >= getPreTournamentLockAt(tournament).getTime();
+  const now = Date.now();
+  return {
+    top_scorer: now >= getBonusPredictionLockAt(tournament, "top_scorer").getTime(),
+    winner: now >= getBonusPredictionLockAt(tournament, "tournament_winner").getTime(),
+  };
 }

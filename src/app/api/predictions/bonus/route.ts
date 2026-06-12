@@ -5,9 +5,9 @@ import { bonusPredictions } from "@/db/schema";
 import { readActiveLeagueId, readSession } from "@/lib/session";
 import {
   ensureSeedTournament,
+  getBonusPredictionLockAt,
   getCurrentLeague,
   getDbTeamIdForSeedTeamSlug,
-  getPreTournamentLockAt,
 } from "@/lib/world-cup/repository";
 
 const topScorerSchema = z.object({
@@ -54,10 +54,15 @@ export async function POST(req: Request) {
   }
 
   const tournament = await ensureSeedTournament();
-  const lockAt = getPreTournamentLockAt(tournament);
+  const lockAt = getBonusPredictionLockAt(tournament, parsed.data.type);
   if (Date.now() >= lockAt.getTime()) {
     return NextResponse.json(
-      { error: "Pre-tournament bonus picks are locked." },
+      {
+        error:
+          parsed.data.type === "top_scorer"
+            ? "Top scorer picks are locked."
+            : "Pre-tournament bonus picks are locked.",
+      },
       { status: 423 },
     );
   }

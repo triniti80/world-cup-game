@@ -9,7 +9,10 @@ import type { LeagueGameMode, SavedBonusPredictions } from "@/lib/world-cup/repo
 type BonusPredictionFormProps = {
   gameMode: LeagueGameMode;
   initialPredictions: SavedBonusPredictions;
-  locked: boolean;
+  locked: {
+    top_scorer: boolean;
+    winner: boolean;
+  };
 };
 
 export function BonusPredictionForm({ gameMode, initialPredictions, locked }: BonusPredictionFormProps) {
@@ -54,7 +57,7 @@ export function BonusPredictionForm({ gameMode, initialPredictions, locked }: Bo
   }
 
   function edit(key: "top_scorer" | "winner") {
-    if (locked) return;
+    if (locked[key]) return;
     setMessage(null);
     setError(null);
     setEditing((current) => ({ ...current, [key]: true }));
@@ -62,6 +65,8 @@ export function BonusPredictionForm({ gameMode, initialPredictions, locked }: Bo
 
   const topScorerReadOnly = submitted.top_scorer && !editing.top_scorer;
   const winnerReadOnly = submitted.winner && !editing.winner;
+  const topScorerLocked = locked.top_scorer;
+  const winnerLocked = locked.winner;
 
   return (
     <section className="glass-card rounded-xl p-5">
@@ -87,7 +92,7 @@ export function BonusPredictionForm({ gameMode, initialPredictions, locked }: Bo
               value={topScorer}
               onChange={setTopScorer}
               placeholder={locale === "he" ? "שם שחקן" : "Player name"}
-              disabled={locked || topScorerReadOnly}
+              disabled={topScorerLocked || topScorerReadOnly}
             />
             <BonusActionButtons
               saving={saving}
@@ -95,7 +100,7 @@ export function BonusPredictionForm({ gameMode, initialPredictions, locked }: Bo
               submitted={submitted.top_scorer}
               readOnly={topScorerReadOnly}
               editing={editing.top_scorer}
-              locked={locked}
+              locked={topScorerLocked}
               disabled={topScorer.trim().length < 2}
               saveLabel={t("common.save")}
               savedLabel={t("common.saved")}
@@ -108,7 +113,7 @@ export function BonusPredictionForm({ gameMode, initialPredictions, locked }: Bo
           <BonusSubmittedHint
             submitted={submitted.top_scorer}
             readOnly={topScorerReadOnly}
-            locked={locked}
+            locked={topScorerLocked}
             submittedEditHint={t("predictions.submittedEditHint")}
             submittedLockedHint={t("predictions.submittedLockedHint")}
           />
@@ -123,7 +128,7 @@ export function BonusPredictionForm({ gameMode, initialPredictions, locked }: Bo
               <select
                 value={winner}
                 onChange={(event) => setWinner(event.target.value)}
-                disabled={locked || winnerReadOnly}
+                disabled={winnerLocked || winnerReadOnly}
                 className="min-w-0 flex-1 rounded-lg border border-white/10 bg-[var(--color-panel-highest)] px-3 py-3 outline-none focus:border-[var(--color-accent)] disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <option value="">{locale === "he" ? "בחר קבוצה" : "Choose team"}</option>
@@ -139,7 +144,7 @@ export function BonusPredictionForm({ gameMode, initialPredictions, locked }: Bo
                 submitted={submitted.winner}
                 readOnly={winnerReadOnly}
                 editing={editing.winner}
-                locked={locked}
+                locked={winnerLocked}
                 disabled={!winner}
                 saveLabel={t("common.save")}
                 savedLabel={t("common.saved")}
@@ -152,7 +157,7 @@ export function BonusPredictionForm({ gameMode, initialPredictions, locked }: Bo
             <BonusSubmittedHint
               submitted={submitted.winner}
               readOnly={winnerReadOnly}
-              locked={locked}
+              locked={winnerLocked}
               submittedEditHint={t("predictions.submittedEditHint")}
               submittedLockedHint={t("predictions.submittedLockedHint")}
             />

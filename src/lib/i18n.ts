@@ -192,7 +192,8 @@ const en = {
   "predictions.body": "Predictions shown here follow your active league's game option.",
   "predictions.noLeagueBody": "Create or join a league before making predictions.",
   "predictions.bonusTitle": "Pre-tournament Bonus Picks",
-  "predictions.bonusBody": "These picks lock 1 hour before the first World Cup match.",
+  "predictions.bonusBody":
+    "Winner picks remain locked. Top scorer changes are open until 10:00 Dublin time on 13 June 2026.",
   "predictions.pointsEach": "100 pts each",
   "predictions.bonusSaved": "Bonus pick saved.",
   "predictions.enterScores": "Enter whole-number scores first.",
@@ -401,7 +402,8 @@ const he: Record<keyof typeof en, string> = {
   "predictions.body": "הניחושים כאן מותאמים לסוג המשחק של הליגה הפעילה.",
   "predictions.noLeagueBody": "צריך ליצור או להצטרף לליגה לפני שמנחשים.",
   "predictions.bonusTitle": "ניחושי בונוס לפני הטורניר",
-  "predictions.bonusBody": "הניחושים האלה ננעלים שעה לפני המשחק הראשון במונדיאל.",
+  "predictions.bonusBody":
+    "ניחושי הזוכה נשארים נעולים. אפשר לשנות את מלך השערים עד 10:00 שעון דבלין ב-13 ביוני 2026.",
   "predictions.pointsEach": "100 נק' כל אחד",
   "predictions.bonusSaved": "ניחוש הבונוס נשמר.",
   "predictions.enterScores": "צריך להזין תוצאות במספרים שלמים.",
