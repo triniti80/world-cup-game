@@ -142,6 +142,12 @@ export type LeaderboardDetail = {
   points: number;
   label: string;
   detail: string;
+  leagueName?: string;
+};
+
+export type LeaderboardTable = {
+  gameMode: LeagueGameMode;
+  rows: LeaderboardRow[];
 };
 
 export type LeaguePredictionMember = {
@@ -928,53 +934,130 @@ export async function getLeaderboardRows(
       sourceId: scoreEvents.sourceId,
       reason: scoreEvents.reason,
       points: sql<number>`${scoreEvents.points}::int`,
+      leagueName: leagues.name,
     })
     .from(scoreEvents)
+    .innerJoin(leagues, eq(scoreEvents.leagueId, leagues.id))
     .where(eq(scoreEvents.leagueId, league.leagueId));
 
-  const detailBySource = await getLeaderboardDetailMap(events);
-
-  const rows = members.map<LeaderboardRow>((member) => {
-    const userEvents = events.filter((event) => event.userId === member.userId);
-    const exactScores = userEvents
-      .filter((event) => event.sourceType === "match_prediction" && event.reason === "Exact score")
-      .reduce((sum, event) => sum + event.points, 0);
-    const results = userEvents
-      .filter((event) => event.sourceType === "match_prediction" && event.reason === "Correct outcome")
-      .reduce((sum, event) => sum + event.points, 0);
-    const stages = userEvents
-      .filter((event) => event.sourceType === "stage_prediction")
-      .reduce((sum, event) => sum + event.points, 0);
-    const bonuses = userEvents
-      .filter((event) => event.sourceType === "bonus_prediction")
-      .reduce((sum, event) => sum + event.points, 0);
-
-    return {
-      userId: member.userId,
-      name: member.name,
-      exactScores,
-      results,
-      stages,
-      bonuses,
-      total: exactScores + results + stages + bonuses,
-      details: userEvents
-        .map((event) => ({
-          sourceType: event.sourceType,
-          reason: event.reason,
-          points: event.points,
-          ...(detailBySource.get(`${event.sourceType}:${event.sourceId}`) ?? {
-            label: event.reason,
-            detail: "Scoring event",
-          }),
-        }))
-        .sort((a, b) => b.points - a.points || a.label.localeCompare(b.label)),
-    };
-  });
+  const rows = await buildLeaderboardRows(members, events);
 
   return {
     league,
-    rows: rows.sort((a, b) => b.total - a.total || a.name.localeCompare(b.name)),
+    rows,
   };
+}
+
+export async function getAllLeaderboardTables(userId: number): Promise<LeaderboardTable[]> {
+  const userLeagueRows = await db
+    .select({
+      leagueId: leagues.id,
+      gameMode: leagues.gameMode,
+    })
+    .from(leagueMembers)
+    .innerJoin(leagues, eq(leagueMembers.leagueId, leagues.id))
+    .where(eq(leagueMembers.userId, userId));
+
+  const leagueIdsByMode = userLeagueRows.reduce<Record<LeagueGameMode, number[]>>(
+    (acc, league) => {
+      acc[league.gameMode].push(league.leagueId);
+      return acc;
+    },
+    { match_scores: [], stage_predictions: [] },
+  );
+
+  const tables: LeaderboardTable[] = [];
+  for (const gameMode of ["match_scores", "stage_predictions"] as const) {
+    const leagueIds = leagueIdsByMode[gameMode];
+    if (leagueIds.length === 0) {
+      tables.push({ gameMode, rows: [] });
+      continue;
+    }
+
+    const members = await db
+      .select({
+        userId: leagueMembers.userId,
+        name: users.name,
+      })
+      .from(leagueMembers)
+      .innerJoin(users, eq(leagueMembers.userId, users.id))
+      .where(inArray(leagueMembers.leagueId, leagueIds));
+
+    const events = await db
+      .select({
+        userId: scoreEvents.userId,
+        sourceType: scoreEvents.sourceType,
+        sourceId: scoreEvents.sourceId,
+        reason: scoreEvents.reason,
+        points: sql<number>`${scoreEvents.points}::int`,
+        leagueName: leagues.name,
+      })
+      .from(scoreEvents)
+      .innerJoin(leagues, eq(scoreEvents.leagueId, leagues.id))
+      .where(inArray(scoreEvents.leagueId, leagueIds));
+
+    tables.push({ gameMode, rows: await buildLeaderboardRows(dedupeMembers(members), events) });
+  }
+
+  return tables;
+}
+
+async function buildLeaderboardRows(
+  members: { userId: number; name: string }[],
+  events: {
+    userId: number;
+    sourceType: "match_prediction" | "stage_prediction" | "bonus_prediction";
+    sourceId: number;
+    reason: string;
+    points: number;
+    leagueName?: string;
+  }[],
+): Promise<LeaderboardRow[]> {
+  const detailBySource = await getLeaderboardDetailMap(events);
+
+  return members
+    .map<LeaderboardRow>((member) => {
+      const userEvents = events.filter((event) => event.userId === member.userId);
+      const exactScores = userEvents
+        .filter((event) => event.sourceType === "match_prediction" && event.reason === "Exact score")
+        .reduce((sum, event) => sum + event.points, 0);
+      const results = userEvents
+        .filter((event) => event.sourceType === "match_prediction" && event.reason === "Correct outcome")
+        .reduce((sum, event) => sum + event.points, 0);
+      const stages = userEvents
+        .filter((event) => event.sourceType === "stage_prediction")
+        .reduce((sum, event) => sum + event.points, 0);
+      const bonuses = userEvents
+        .filter((event) => event.sourceType === "bonus_prediction")
+        .reduce((sum, event) => sum + event.points, 0);
+
+      return {
+        userId: member.userId,
+        name: member.name,
+        exactScores,
+        results,
+        stages,
+        bonuses,
+        total: exactScores + results + stages + bonuses,
+        details: userEvents
+          .map((event) => ({
+            sourceType: event.sourceType,
+            reason: event.reason,
+            points: event.points,
+            leagueName: event.leagueName,
+            ...(detailBySource.get(`${event.sourceType}:${event.sourceId}`) ?? {
+              label: event.reason,
+              detail: "Scoring event",
+            }),
+          }))
+          .sort((a, b) => b.points - a.points || a.label.localeCompare(b.label)),
+      };
+    })
+    .sort((a, b) => b.total - a.total || a.name.localeCompare(b.name));
+}
+
+function dedupeMembers(members: { userId: number; name: string }[]) {
+  return Array.from(new Map(members.map((member) => [member.userId, member])).values());
 }
 
 async function getLeaderboardDetailMap(

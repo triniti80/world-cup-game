@@ -3,7 +3,7 @@ import { db } from "../../db/client";
 import { auditLog, matches } from "../../db/schema";
 import { resolvePredictedWinnerSide, type PredictedWinnerSide } from "./match-predictions";
 import { ensureSeedTournament } from "./repository";
-import { recalculateMatchById } from "./scoring";
+import { recalculateTournamentMatchScoreEvents } from "./scoring";
 
 export const FIFA_WORLD_CUP_2026_RESULTS_URL =
   "https://api.fifa.com/api/v3/calendar/matches?language=en&count=500&idCompetition=17&from=2026-06-01T00:00:00Z&to=2026-07-31T23:59:59Z";
@@ -182,10 +182,13 @@ export async function syncFifaResults(options: {
         });
       });
 
-      await recalculateMatchById(existing.id);
     }
 
     summary.updated += 1;
+  }
+
+  if (!dryRun) {
+    await recalculateTournamentMatchScoreEvents(tournament.id);
   }
 
   return summary;

@@ -117,9 +117,7 @@ export async function POST(req: Request) {
     return updatedRows;
   });
 
-  if (parsed.data.status === "final") {
-    await recalculateMatchById(parsed.data.matchDbId);
-  }
+  await recalculateMatchById(parsed.data.matchDbId);
 
   return NextResponse.json({ ok: true, match: updated ?? null });
 }

@@ -15,6 +15,7 @@ import {
 type FinalMatch = {
   id: number;
   tournamentId: number;
+  status: "scheduled" | "live" | "final";
   homeScore: number | null;
   awayScore: number | null;
 };
@@ -70,8 +71,6 @@ export function scoreMatchPrediction(input: {
 }
 
 export async function recalculateMatchScoreEvents(match: FinalMatch): Promise<void> {
-  if (match.homeScore === null || match.awayScore === null) return;
-
   const predictions = await db
     .select({
       id: matchPredictions.id,
@@ -90,6 +89,8 @@ export async function recalculateMatchScoreEvents(match: FinalMatch): Promise<vo
     .where(and(eq(matchPredictions.matchId, match.id), eq(leagues.gameMode, "match_scores")));
 
   const predictionIds = predictions.map((prediction) => prediction.id);
+  const shouldScore =
+    match.status === "final" && match.homeScore !== null && match.awayScore !== null;
 
   await db.transaction(async (tx) => {
     if (predictionIds.length > 0) {
@@ -102,6 +103,8 @@ export async function recalculateMatchScoreEvents(match: FinalMatch): Promise<vo
           ),
         );
     }
+
+    if (!shouldScore) return;
 
     const events = predictions.flatMap((prediction) => {
       const result = scoreMatchPrediction({
@@ -137,6 +140,7 @@ export async function recalculateMatchById(matchId: number): Promise<void> {
     .select({
       id: matches.id,
       tournamentId: matches.tournamentId,
+      status: matches.status,
       homeScore: matches.homeScore,
       awayScore: matches.awayScore,
     })
@@ -146,6 +150,17 @@ export async function recalculateMatchById(matchId: number): Promise<void> {
 
   if (match) {
     await recalculateMatchScoreEvents(match);
+  }
+}
+
+export async function recalculateTournamentMatchScoreEvents(tournamentId: number): Promise<void> {
+  const matchRows = await db
+    .select({ id: matches.id })
+    .from(matches)
+    .where(eq(matches.tournamentId, tournamentId));
+
+  for (const match of matchRows) {
+    await recalculateMatchById(match.id);
   }
 }
 

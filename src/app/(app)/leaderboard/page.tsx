@@ -1,16 +1,46 @@
 import Link from "next/link";
-import { t } from "@/lib/i18n";
+import { LeaderboardSelector } from "@/components/LeaderboardSelector";
+import { t, type Locale } from "@/lib/i18n";
 import { readLocale } from "@/lib/i18n-server";
 import { readActiveLeagueId, readSession } from "@/lib/session";
-import { getLeaderboardRows } from "@/lib/world-cup/repository";
+import {
+  getAllLeaderboardTables,
+  getLeaderboardRows,
+  getUserLeagues,
+  type LeaderboardRow,
+  type LeagueGameMode,
+} from "@/lib/world-cup/repository";
 
-export default async function LeaderboardPage() {
+type LeaderboardPageProps = {
+  searchParams?: Promise<{ league?: string }>;
+};
+
+export default async function LeaderboardPage({ searchParams }: LeaderboardPageProps) {
   const locale = await readLocale();
   const session = await readSession();
   const activeLeagueId = await readActiveLeagueId();
-  const { league, rows } = session
-    ? await getLeaderboardRows(session.userId, activeLeagueId)
-    : { league: null, rows: [] };
+  const params = await searchParams;
+  const selectedParam = params?.league;
+  const leagues = session ? await getUserLeagues(session.userId) : [];
+  const requestedLeagueId =
+    selectedParam && selectedParam !== "all" ? Number(selectedParam) : null;
+  const requestedAll = selectedParam === "all";
+  const selectedLeagueId = requestedAll
+    ? null
+    : Number.isInteger(requestedLeagueId)
+      ? requestedLeagueId
+      : activeLeagueId ?? leagues[0]?.leagueId ?? null;
+  const selectedLeague = selectedLeagueId
+    ? leagues.find((league) => league.leagueId === selectedLeagueId)
+    : null;
+  const selectedValue = selectedLeague ? String(selectedLeague.leagueId) : "all";
+
+  const singleLeagueData =
+    session && selectedLeague
+      ? await getLeaderboardRows(session.userId, selectedLeague.leagueId)
+      : { league: null, rows: [] };
+  const allTables =
+    session && selectedValue === "all" ? await getAllLeaderboardTables(session.userId) : [];
 
   return (
     <div className="space-y-6">
@@ -21,7 +51,22 @@ export default async function LeaderboardPage() {
         </p>
       </div>
 
-      {!league ? (
+      {leagues.length > 0 ? (
+        <section className="rounded-xl border border-white/10 bg-[var(--color-panel-low)] p-4">
+          <LeaderboardSelector
+            selectedValue={selectedValue}
+            allLabel={t(locale, "leaderboard.allLeagues")}
+            label={t(locale, "leaderboard.selectLeague")}
+            leagues={leagues.map((league) => ({
+              leagueId: league.leagueId,
+              leagueName: league.leagueName,
+              gameModeLabel: gameModeLabel(league.gameMode, locale),
+            }))}
+          />
+        </section>
+      ) : null}
+
+      {session && leagues.length === 0 ? (
         <div className="glass-card rounded-xl p-6">
           <h2 className="font-display text-xl font-bold">{t(locale, "common.noActiveLeague")}</h2>
           <p className="mt-2 text-sm text-[var(--color-fg-muted)]">
@@ -34,19 +79,68 @@ export default async function LeaderboardPage() {
             {t(locale, "common.goToLeagues")}
           </Link>
         </div>
-      ) : (
-        <section className="rounded-xl border border-white/10 bg-[var(--color-panel-low)] p-4">
-          <div className="text-xs font-bold uppercase text-[var(--color-fg-muted)]">
-            {t(locale, "common.activeLeague")}
-          </div>
-          <div className="mt-1 font-display text-lg font-bold">{league.leagueName}</div>
-          <div className="mt-1 text-sm text-[var(--color-fg-muted)]">
-            {league.gameMode === "match_scores"
-              ? t(locale, "app.matchScores")
-              : t(locale, "app.stagePredictions")}
-          </div>
-        </section>
-      )}
+      ) : null}
+
+      {selectedValue === "all" ? (
+        <div className="space-y-6">
+          {allTables.map((table) => (
+            <LeaderboardTable
+              key={table.gameMode}
+              title={
+                table.gameMode === "match_scores"
+                  ? t(locale, "leaderboard.matchScoresTable")
+                  : t(locale, "leaderboard.stagePredictionsTable")
+              }
+              rows={table.rows}
+              locale={locale}
+              showLeagueNames
+            />
+          ))}
+        </div>
+      ) : singleLeagueData.league ? (
+        <>
+          <section className="rounded-xl border border-white/10 bg-[var(--color-panel-low)] p-4">
+            <div className="text-xs font-bold uppercase text-[var(--color-fg-muted)]">
+              {t(locale, "common.activeLeague")}
+            </div>
+            <div className="mt-1 font-display text-lg font-bold">
+              {singleLeagueData.league.leagueName}
+            </div>
+            <div className="mt-1 text-sm text-[var(--color-fg-muted)]">
+              {gameModeLabel(singleLeagueData.league.gameMode, locale)}
+            </div>
+          </section>
+
+          <LeaderboardTable
+            title={singleLeagueData.league.leagueName}
+            rows={singleLeagueData.rows}
+            locale={locale}
+          />
+        </>
+      ) : null}
+    </div>
+  );
+}
+
+function LeaderboardTable({
+  title,
+  rows,
+  locale,
+  showLeagueNames = false,
+}: {
+  title: string;
+  rows: LeaderboardRow[];
+  locale: Locale;
+  showLeagueNames?: boolean;
+}) {
+  return (
+    <section className="space-y-4">
+      <div>
+        <h2 className="font-display text-xl font-bold">{title}</h2>
+        <p className="mt-1 text-sm text-[var(--color-fg-muted)]">
+          {t(locale, "leaderboard.clickPlayer")}
+        </p>
+      </div>
 
       <div className="grid gap-3">
         {rows.map((row, index) => {
@@ -108,6 +202,7 @@ export default async function LeaderboardPage() {
                           <div className="text-sm font-bold">{detail.label}</div>
                           <div className="mt-0.5 text-xs text-[var(--color-fg-muted)]">
                             {detail.reason} · {detail.detail}
+                            {showLeagueNames && detail.leagueName ? ` · ${detail.leagueName}` : ""}
                           </div>
                         </div>
                         <div className="text-end font-display text-lg font-extrabold text-[var(--color-accent)]">
@@ -127,9 +222,9 @@ export default async function LeaderboardPage() {
         })}
       </div>
 
-      {league && rows.length > 0 ? (
+      {rows.length > 0 ? (
         <section className="rounded-xl border border-white/10 bg-[var(--color-panel-low)] p-4">
-          <h2 className="font-display text-lg font-bold">{t(locale, "leaderboard.summary")}</h2>
+          <h3 className="font-display text-lg font-bold">{t(locale, "leaderboard.summary")}</h3>
           <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
             <SummaryTile
               label={t(locale, "leaderboard.exactScores")}
@@ -149,15 +244,17 @@ export default async function LeaderboardPage() {
             />
           </div>
         </section>
-      ) : null}
-
-      {league && rows.length === 0 ? (
+      ) : (
         <div className="rounded-xl border border-white/10 bg-[var(--color-panel-low)] p-4 text-sm text-[var(--color-fg-muted)]">
           {t(locale, "leaderboard.noMembers")}
         </div>
-      ) : null}
-    </div>
+      )}
+    </section>
   );
+}
+
+function gameModeLabel(mode: LeagueGameMode, locale: Locale) {
+  return mode === "match_scores" ? t(locale, "app.matchScores") : t(locale, "app.stagePredictions");
 }
 
 function ScorePill({ label, value }: { label: string; value: number }) {
