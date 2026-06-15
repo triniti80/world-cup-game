@@ -1,5 +1,5 @@
 import { randomInt } from "crypto";
-import { and, desc, eq, inArray, or, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, ne, or, sql } from "drizzle-orm";
 import { db } from "@/db/client";
 import {
   bonusPredictions,
@@ -22,6 +22,7 @@ import {
   tournament as seedTournament,
   type Match,
 } from "@/lib/world-cup/data";
+import { scoreMatchPrediction } from "@/lib/world-cup/scoring";
 
 const TOURNAMENT_YEAR = 2026;
 const TOP_SCORER_CHANGE_WINDOW_LOCK_AT = new Date("2026-06-13T09:00:00.000Z");
@@ -927,18 +928,7 @@ export async function getLeaderboardRows(
     .from(leagueMembers)
     .where(eq(leagueMembers.leagueId, league.leagueId));
 
-  const events = await db
-    .select({
-      userId: scoreEvents.userId,
-      sourceType: scoreEvents.sourceType,
-      sourceId: scoreEvents.sourceId,
-      reason: scoreEvents.reason,
-      points: sql<number>`${scoreEvents.points}::int`,
-      leagueName: leagues.name,
-    })
-    .from(scoreEvents)
-    .innerJoin(leagues, eq(scoreEvents.leagueId, leagues.id))
-    .where(eq(scoreEvents.leagueId, league.leagueId));
+  const events = await getLeaderboardEventsForLeagues([league.leagueId]);
 
   const rows = await buildLeaderboardRows(members, events);
 
@@ -983,23 +973,92 @@ export async function getAllLeaderboardTables(userId: number): Promise<Leaderboa
       .innerJoin(users, eq(leagueMembers.userId, users.id))
       .where(inArray(leagueMembers.leagueId, leagueIds));
 
-    const events = await db
-      .select({
-        userId: scoreEvents.userId,
-        sourceType: scoreEvents.sourceType,
-        sourceId: scoreEvents.sourceId,
-        reason: scoreEvents.reason,
-        points: sql<number>`${scoreEvents.points}::int`,
-        leagueName: leagues.name,
-      })
-      .from(scoreEvents)
-      .innerJoin(leagues, eq(scoreEvents.leagueId, leagues.id))
-      .where(inArray(scoreEvents.leagueId, leagueIds));
+    const events = await getLeaderboardEventsForLeagues(leagueIds);
 
     tables.push({ gameMode, rows: await buildLeaderboardRows(dedupeMembers(members), events) });
   }
 
   return tables;
+}
+
+async function getLeaderboardEventsForLeagues(leagueIds: number[]) {
+  if (leagueIds.length === 0) return [];
+
+  const storedEvents = await db
+    .select({
+      userId: scoreEvents.userId,
+      sourceType: scoreEvents.sourceType,
+      sourceId: scoreEvents.sourceId,
+      reason: scoreEvents.reason,
+      points: sql<number>`${scoreEvents.points}::int`,
+      leagueName: leagues.name,
+    })
+    .from(scoreEvents)
+    .innerJoin(leagues, eq(scoreEvents.leagueId, leagues.id))
+    .where(
+      and(
+        inArray(scoreEvents.leagueId, leagueIds),
+        ne(scoreEvents.sourceType, "match_prediction"),
+      ),
+    );
+
+  const currentMatchEvents = await getCurrentMatchScoreLeaderboardEvents(leagueIds);
+  return [...storedEvents, ...currentMatchEvents];
+}
+
+async function getCurrentMatchScoreLeaderboardEvents(leagueIds: number[]) {
+  const predictions = await db
+    .select({
+      userId: matchPredictions.userId,
+      leagueId: matchPredictions.leagueId,
+      sourceId: matchPredictions.id,
+      predictedHomeScore: matchPredictions.homeScore,
+      predictedAwayScore: matchPredictions.awayScore,
+      realHomeScore: dbMatches.homeScore,
+      realAwayScore: dbMatches.awayScore,
+      status: dbMatches.status,
+      leagueName: leagues.name,
+    })
+    .from(matchPredictions)
+    .innerJoin(leagues, eq(matchPredictions.leagueId, leagues.id))
+    .innerJoin(dbMatches, eq(matchPredictions.matchId, dbMatches.id))
+    .innerJoin(
+      leagueMembers,
+      and(
+        eq(leagueMembers.leagueId, matchPredictions.leagueId),
+        eq(leagueMembers.userId, matchPredictions.userId),
+      ),
+    )
+    .where(and(inArray(matchPredictions.leagueId, leagueIds), eq(leagues.gameMode, "match_scores")));
+
+  return predictions.flatMap((prediction) => {
+    if (
+      prediction.status !== "final" ||
+      prediction.realHomeScore === null ||
+      prediction.realAwayScore === null
+    ) {
+      return [];
+    }
+
+    const result = scoreMatchPrediction({
+      realHomeScore: prediction.realHomeScore,
+      realAwayScore: prediction.realAwayScore,
+      predictedHomeScore: prediction.predictedHomeScore,
+      predictedAwayScore: prediction.predictedAwayScore,
+    });
+    if (result.points === 0) return [];
+
+    return [
+      {
+        userId: prediction.userId,
+        sourceType: "match_prediction" as const,
+        sourceId: prediction.sourceId,
+        reason: result.reason,
+        points: result.points,
+        leagueName: prediction.leagueName,
+      },
+    ];
+  });
 }
 
 async function buildLeaderboardRows(
@@ -1086,6 +1145,9 @@ async function getLeaderboardDetailMap(
             id: matchPredictions.id,
             homeScore: matchPredictions.homeScore,
             awayScore: matchPredictions.awayScore,
+            realHomeScore: dbMatches.homeScore,
+            realAwayScore: dbMatches.awayScore,
+            status: dbMatches.status,
             matchNumber: dbMatches.matchNumber,
             homeTeamId: dbMatches.homeTeamId,
             awayTeamId: dbMatches.awayTeamId,
@@ -1145,9 +1207,13 @@ async function getLeaderboardDetailMap(
   for (const row of matchRows) {
     const home = row.homeTeamId ? teamById.get(row.homeTeamId)?.name : undefined;
     const away = row.awayTeamId ? teamById.get(row.awayTeamId)?.name : undefined;
+    const actualScore =
+      row.status === "final" && row.realHomeScore !== null && row.realAwayScore !== null
+        ? ` · Actual ${row.realHomeScore}-${row.realAwayScore}`
+        : "";
     detailBySource.set(`match_prediction:${row.id}`, {
       label: `Match ${row.matchNumber}: ${home ?? row.homePlaceholder ?? "TBD"} vs ${away ?? row.awayPlaceholder ?? "TBD"}`,
-      detail: `Predicted ${row.homeScore}-${row.awayScore}`,
+      detail: `Predicted ${row.homeScore}-${row.awayScore}${actualScore}`,
     });
   }
 
