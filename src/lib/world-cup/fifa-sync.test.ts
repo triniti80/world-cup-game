@@ -11,14 +11,16 @@ test("parses final FIFA calendar results by match number", () => {
         HomeTeamScore: 2,
         AwayTeamScore: 1,
         Winner: "home-team",
-        Home: { IdTeam: "home-team" },
-        Away: { IdTeam: "away-team" },
+        Home: { IdTeam: "home-team", Abbreviation: "QAT" },
+        Away: { IdTeam: "away-team", IdCountry: "SUI" },
       },
     ],
   });
 
   assert.deepEqual(match, {
     matchNumber: 7,
+    homeTeamCode: "QAT",
+    awayTeamCode: "SUI",
     status: "final",
     homeScore: 2,
     awayScore: 1,
@@ -41,6 +43,8 @@ test("keeps scheduled FIFA fixtures scoreless", () => {
 
   assert.deepEqual(match, {
     matchNumber: 1,
+    homeTeamCode: null,
+    awayTeamCode: null,
     status: "scheduled",
     homeScore: null,
     awayScore: null,

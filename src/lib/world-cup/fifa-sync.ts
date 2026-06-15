@@ -1,6 +1,6 @@
-import { and, eq } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { db } from "../../db/client";
-import { auditLog, matches } from "../../db/schema";
+import { auditLog, matches, teams } from "../../db/schema";
 import { resolvePredictedWinnerSide, type PredictedWinnerSide } from "./match-predictions";
 import { ensureSeedTournament } from "./repository";
 import { recalculateTournamentMatchScoreEvents } from "./scoring";
@@ -17,13 +17,23 @@ type FifaMatchObject = {
   MatchStatus?: unknown;
   HomeTeamScore?: unknown;
   AwayTeamScore?: unknown;
-  Home?: { IdTeam?: unknown; Score?: unknown } | null;
-  Away?: { IdTeam?: unknown; Score?: unknown } | null;
+  Home?: FifaTeamObject | null;
+  Away?: FifaTeamObject | null;
   Winner?: unknown;
+};
+
+type FifaTeamObject = {
+  IdTeam?: unknown;
+  IdCountry?: unknown;
+  IdAssociation?: unknown;
+  Score?: unknown;
+  Abbreviation?: unknown;
 };
 
 export type FifaMatchResult = {
   matchNumber: number;
+  homeTeamCode: string | null;
+  awayTeamCode: string | null;
   status: "scheduled" | "live" | "final";
   homeScore: number | null;
   awayScore: number | null;
@@ -57,6 +67,8 @@ export function parseFifaCalendarMatches(payload: unknown): FifaMatchResult[] {
     return [
       {
         matchNumber,
+        homeTeamCode: fifaTeamCode(match.Home),
+        awayTeamCode: fifaTeamCode(match.Away),
         status,
         homeScore,
         awayScore,
@@ -89,6 +101,7 @@ export async function syncFifaResults(options: {
   const dryRun = options.dryRun ?? false;
   const fifaMatches = await fetchFifaCalendarMatches();
   const tournament = await ensureSeedTournament();
+  const localMatches = await getLocalMatchesForSync(tournament.id);
   const finalResults = fifaMatches.filter(
     (match) => match.status === "final" && match.homeScore !== null && match.awayScore !== null,
   );
@@ -103,48 +116,34 @@ export async function syncFifaResults(options: {
     dryRun,
   };
 
-  for (const result of finalResults) {
-    const [existing] = await db
-      .select({
-        id: matches.id,
-        stage: matches.stage,
-        matchNumber: matches.matchNumber,
-        homeTeamId: matches.homeTeamId,
-        awayTeamId: matches.awayTeamId,
-        homeScore: matches.homeScore,
-        awayScore: matches.awayScore,
-        status: matches.status,
-        winnerTeamId: matches.winnerTeamId,
-        winnerSide: matches.winnerSide,
-      })
-      .from(matches)
-      .where(
-        and(
-          eq(matches.tournamentId, tournament.id),
-          eq(matches.matchNumber, result.matchNumber),
-        ),
-      )
-      .limit(1);
+  for (const result of fifaMatches) {
+    const existing = findLocalMatchForFifaResult(localMatches, result);
 
     if (!existing) {
-      summary.skipped.push(`Match ${result.matchNumber}: not found in local schedule.`);
-      continue;
-    }
-
-    const winnerSideResult = resolvePredictedWinnerSide({
-      stage: existing.stage,
-      homeScore: result.homeScore!,
-      awayScore: result.awayScore!,
-      selectedSide: result.winnerSide,
-    });
-    if (!winnerSideResult.ok) {
       summary.skipped.push(
-        `Match ${result.matchNumber}: tied knockout result has no FIFA winner side yet.`,
+        `Match ${result.matchNumber}: ${result.homeTeamCode ?? "?"} vs ${result.awayTeamCode ?? "?"} not found in local schedule.`,
       );
       continue;
     }
 
-    const winnerSide = winnerSideResult.side;
+    const hasScores = result.homeScore !== null && result.awayScore !== null;
+    let winnerSide: PredictedWinnerSide | null = null;
+    if (result.status === "final" && hasScores) {
+      const winnerSideResult = resolvePredictedWinnerSide({
+        stage: existing.stage,
+        homeScore: result.homeScore!,
+        awayScore: result.awayScore!,
+        selectedSide: result.winnerSide,
+      });
+      if (!winnerSideResult.ok) {
+        summary.skipped.push(
+          `Match ${result.matchNumber}: tied knockout result has no FIFA winner side yet.`,
+        );
+        continue;
+      }
+      winnerSide = winnerSideResult.side;
+    }
+
     const winnerTeamId =
       winnerSide === "home"
         ? existing.homeTeamId
@@ -153,9 +152,9 @@ export async function syncFifaResults(options: {
           : null;
 
     const nextResult = {
-      homeScore: result.homeScore,
-      awayScore: result.awayScore,
-      status: "final" as const,
+      homeScore: hasScores ? result.homeScore : null,
+      awayScore: hasScores ? result.awayScore : null,
+      status: result.status,
       winnerTeamId,
       winnerSide,
     };
@@ -194,6 +193,51 @@ export async function syncFifaResults(options: {
   return summary;
 }
 
+async function getLocalMatchesForSync(tournamentId: number) {
+  const matchRows = await db
+    .select({
+      id: matches.id,
+      stage: matches.stage,
+      matchNumber: matches.matchNumber,
+      homeTeamId: matches.homeTeamId,
+      awayTeamId: matches.awayTeamId,
+      homeScore: matches.homeScore,
+      awayScore: matches.awayScore,
+      status: matches.status,
+      winnerTeamId: matches.winnerTeamId,
+      winnerSide: matches.winnerSide,
+    })
+    .from(matches)
+    .where(eq(matches.tournamentId, tournamentId));
+
+  const teamRows = await db
+    .select({ id: teams.id, fifaCode: teams.fifaCode })
+    .from(teams)
+    .where(eq(teams.tournamentId, tournamentId));
+  const fifaCodeByTeamId = new Map(teamRows.map((team) => [team.id, team.fifaCode]));
+
+  return matchRows.map((match) => ({
+    ...match,
+    homeTeamCode: match.homeTeamId ? fifaCodeByTeamId.get(match.homeTeamId) ?? null : null,
+    awayTeamCode: match.awayTeamId ? fifaCodeByTeamId.get(match.awayTeamId) ?? null : null,
+  }));
+}
+
+function findLocalMatchForFifaResult(
+  localMatches: Awaited<ReturnType<typeof getLocalMatchesForSync>>,
+  result: FifaMatchResult,
+) {
+  const homeCode = result.homeTeamCode;
+  const awayCode = result.awayTeamCode;
+  if (homeCode && awayCode) {
+    return localMatches.find(
+      (match) => match.homeTeamCode === homeCode && match.awayTeamCode === awayCode,
+    );
+  }
+
+  return localMatches.find((match) => match.matchNumber === result.matchNumber);
+}
+
 function normalizeFifaStatus(
   rawStatus: unknown,
   homeScore: number | null,
@@ -212,6 +256,14 @@ function resolveFifaWinnerSide(match: FifaMatchObject): PredictedWinnerSide | nu
   if (winnerId && homeId && winnerId === homeId) return "home";
   if (winnerId && awayId && winnerId === awayId) return "away";
   return null;
+}
+
+function fifaTeamCode(team: FifaTeamObject | null | undefined): string | null {
+  return normalizeCode(team?.Abbreviation ?? team?.IdCountry ?? team?.IdAssociation);
+}
+
+function normalizeCode(value: unknown): string | null {
+  return typeof value === "string" && value.trim() ? value.trim().toUpperCase() : null;
 }
 
 function toInteger(value: unknown): number | null {
