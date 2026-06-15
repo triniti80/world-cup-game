@@ -12,7 +12,32 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: "Cron access is not authorized." }, { status: 401 });
   }
 
-  const predictionBackfill = await backfillRandomLockedStagePredictions();
-  const summary = await syncFifaResults();
+  let predictionBackfill: Awaited<ReturnType<typeof backfillRandomLockedStagePredictions>>;
+  try {
+    predictionBackfill = await backfillRandomLockedStagePredictions();
+  } catch (error) {
+    console.error("Cron stage prediction backfill failed", error);
+    return cronErrorResponse("prediction_backfill", error);
+  }
+
+  let summary: Awaited<ReturnType<typeof syncFifaResults>>;
+  try {
+    summary = await syncFifaResults();
+  } catch (error) {
+    console.error("Cron FIFA results sync failed", error);
+    return cronErrorResponse("fifa_results_sync", error);
+  }
+
   return NextResponse.json({ ok: true, summary, predictionBackfill });
+}
+
+function cronErrorResponse(step: string, error: unknown) {
+  return NextResponse.json(
+    {
+      ok: false,
+      step,
+      error: error instanceof Error ? error.message : "Unknown cron error",
+    },
+    { status: 500 },
+  );
 }
