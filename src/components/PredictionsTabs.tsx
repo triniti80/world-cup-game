@@ -1,37 +1,17 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useI18n } from "@/components/I18nProvider";
 import { PredictionForm } from "@/components/PredictionForm";
-import type { Match, Stage } from "@/lib/world-cup/data";
+import type { Match } from "@/lib/world-cup/data";
 import type { SavedPredictionMap } from "@/lib/world-cup/repository";
 
-type GroupTab = {
-  kind: "group";
+type DateTab = {
+  key: string;
+  month: string;
+  day: string;
   label: string;
-  group: string;
 };
-
-type StageTab = {
-  kind: "stage";
-  label: string;
-  stage: Stage | "champion";
-};
-
-type PredictionsTab = GroupTab | StageTab;
-
-const tabs: PredictionsTab[] = [
-  ...Array.from({ length: 12 }, (_, index) => {
-    const group = String.fromCharCode(65 + index);
-    return { kind: "group" as const, label: `Group ${group}`, group };
-  }),
-  { kind: "stage", label: "Round of 32", stage: "r32" },
-  { kind: "stage", label: "Round of 16", stage: "r16" },
-  { kind: "stage", label: "Quarter-finals", stage: "qf" },
-  { kind: "stage", label: "Semi-finals", stage: "sf" },
-  { kind: "stage", label: "Third place", stage: "third" },
-  { kind: "stage", label: "Final", stage: "final" },
-  { kind: "stage", label: "Champion", stage: "champion" },
-];
 
 type PredictionsTabsProps = {
   matches: Match[];
@@ -39,56 +19,98 @@ type PredictionsTabsProps = {
 };
 
 export function PredictionsTabs({ matches, initialPredictions }: PredictionsTabsProps) {
-  const [activeIndex, setActiveIndex] = useState(0);
-  const activeTab = tabs[activeIndex] ?? tabs[0]!;
+  const { locale, t } = useI18n();
+  const [activeDate, setActiveDate] = useState("all");
+  const sortedMatches = useMemo(() => [...matches].sort(sortMatchesByKickoff), [matches]);
+  const dateTabs = useMemo(() => buildDateTabs(sortedMatches, locale), [locale, sortedMatches]);
 
   const visibleMatches = useMemo(() => {
-    if (activeTab.kind === "group") {
-      return matches.filter((match) => match.stage === "group" && match.group === activeTab.group);
-    }
-
-    if (activeTab.stage === "champion") {
-      return [];
-    }
-
-    return matches.filter((match) => match.stage === activeTab.stage);
-  }, [activeTab, matches]);
+    if (activeDate === "all") return sortedMatches;
+    return sortedMatches.filter((match) => getLocalDateKey(match.kickoffAtUtc) === activeDate);
+  }, [activeDate, sortedMatches]);
 
   return (
     <div className="space-y-6">
-      <section className="hide-scrollbar -mx-4 overflow-x-auto px-4 py-1">
-        <div className="flex min-w-max gap-2">
-          {tabs.map((tab, index) => {
-            const active = index === activeIndex;
-            return (
-              <button
-                key={tab.label}
-                type="button"
-                onClick={() => setActiveIndex(index)}
-                className={
-                  "rounded-full px-5 py-2 text-sm font-bold transition active:scale-95 " +
-                  (active
-                    ? "bg-[var(--color-accent)] text-[#102000] glow-lime"
-                    : "bg-[var(--color-panel-high)] text-[var(--color-fg-muted)] hover:bg-[var(--color-panel-highest)]")
-                }
-              >
-                {tab.label}
-              </button>
-            );
-          })}
-        </div>
+      <section className="hide-scrollbar -mx-4 flex gap-3 overflow-x-auto px-4 pb-1">
+        <button
+          type="button"
+          onClick={() => setActiveDate("all")}
+          className={dateButtonClass(activeDate === "all")}
+          aria-pressed={activeDate === "all"}
+        >
+          <span className="text-xs">{t("common.all").toUpperCase()}</span>
+          <span className="font-display text-2xl font-extrabold">{matches.length}</span>
+        </button>
+        {dateTabs.map((date) => (
+          <button
+            key={date.key}
+            type="button"
+            onClick={() => setActiveDate(date.key)}
+            className={dateButtonClass(activeDate === date.key)}
+            aria-pressed={activeDate === date.key}
+            title={date.label}
+          >
+            <span className="text-xs">{date.month}</span>
+            <span className="font-display text-2xl font-extrabold">{date.day}</span>
+          </button>
+        ))}
       </section>
 
       {visibleMatches.length > 0 ? (
         <PredictionForm matches={visibleMatches} initialPredictions={initialPredictions} />
       ) : (
         <div className="glass-card rounded-xl p-6">
-          <h2 className="font-display text-xl font-bold">{activeTab.label}</h2>
+          <h2 className="font-display text-xl font-bold">{t("fixtures.noFixtures")}</h2>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--color-fg-muted)]">
-            No fixtures are loaded for this tab yet.
+            {t("fixtures.tryAnother")}
           </p>
         </div>
       )}
     </div>
   );
+}
+
+function dateButtonClass(active: boolean): string {
+  return (
+    "flex h-20 min-w-16 flex-col items-center justify-center rounded-xl font-bold transition active:scale-95 " +
+    (active
+      ? "bg-[var(--color-accent)] text-[#102000] glow-lime"
+      : "bg-[var(--color-panel-highest)] text-[var(--color-fg-muted)] hover:bg-[var(--color-panel-high)]")
+  );
+}
+
+function buildDateTabs(matches: Match[], locale: "en" | "he"): DateTab[] {
+  const seen = new Set<string>();
+  return matches.flatMap((match) => {
+    const key = getLocalDateKey(match.kickoffAtUtc);
+    if (seen.has(key)) return [];
+    seen.add(key);
+
+    const date = new Date(match.kickoffAtUtc);
+    return [
+      {
+        key,
+        month: new Intl.DateTimeFormat(locale, { month: "short" }).format(date).toUpperCase(),
+        day: new Intl.DateTimeFormat(locale, { day: "2-digit" }).format(date),
+        label: new Intl.DateTimeFormat(locale, {
+          weekday: "long",
+          month: "long",
+          day: "numeric",
+        }).format(date),
+      },
+    ];
+  });
+}
+
+function getLocalDateKey(iso: string): string {
+  const date = new Date(iso);
+  return [
+    date.getFullYear(),
+    String(date.getMonth() + 1).padStart(2, "0"),
+    String(date.getDate()).padStart(2, "0"),
+  ].join("-");
+}
+
+function sortMatchesByKickoff(a: Match, b: Match): number {
+  return new Date(a.kickoffAtUtc).getTime() - new Date(b.kickoffAtUtc).getTime() || a.number - b.number;
 }
