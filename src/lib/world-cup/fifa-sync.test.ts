@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { parseFifaCalendarMatches } from "./fifa-sync";
+import { fetchFifaCalendarMatches, parseFifaCalendarMatches } from "./fifa-sync";
 
 test("parses final FIFA calendar results by match number", () => {
   const [match] = parseFifaCalendarMatches({
@@ -50,4 +50,28 @@ test("keeps scheduled FIFA fixtures scoreless", () => {
     awayScore: null,
     winnerSide: null,
   });
+});
+
+test("retries temporary FIFA fetch failures", async () => {
+  let attempts = 0;
+  const matches = await fetchFifaCalendarMatches((async () => {
+    attempts += 1;
+    if (attempts === 1) {
+      return new Response("Temporary error", { status: 503 });
+    }
+
+    return Response.json({
+      Results: [
+        {
+          MatchNumber: 2,
+          MatchStatus: 1,
+          Home: { Abbreviation: "MEX" },
+          Away: { Abbreviation: "RSA" },
+        },
+      ],
+    });
+  }) as typeof fetch);
+
+  assert.equal(attempts, 2);
+  assert.equal(matches[0]?.matchNumber, 2);
 });

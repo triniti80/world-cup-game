@@ -79,19 +79,33 @@ export function parseFifaCalendarMatches(payload: unknown): FifaMatchResult[] {
 }
 
 export async function fetchFifaCalendarMatches(fetchImpl: typeof fetch = fetch) {
-  const res = await fetchImpl(FIFA_WORLD_CUP_2026_RESULTS_URL, {
-    headers: {
-      accept: "application/json",
-      "user-agent": "world-cup-game/1.0 (+https://www.fifa.com)",
-    },
-    next: { revalidate: 60 },
-  });
+  const maxAttempts = 3;
+  let lastError: unknown = null;
 
-  if (!res.ok) {
-    throw new Error(`FIFA results fetch failed with ${res.status}`);
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    try {
+      const res = await fetchImpl(FIFA_WORLD_CUP_2026_RESULTS_URL, {
+        headers: {
+          accept: "application/json",
+          "user-agent": "world-cup-game/1.0 (+https://www.fifa.com)",
+        },
+        next: { revalidate: 60 },
+      });
+
+      if (!res.ok) {
+        throw new Error(`FIFA results fetch failed with ${res.status}`);
+      }
+
+      return parseFifaCalendarMatches(await res.json());
+    } catch (error) {
+      lastError = error;
+      if (attempt < maxAttempts) {
+        await delay(500 * attempt);
+      }
+    }
   }
 
-  return parseFifaCalendarMatches(await res.json());
+  throw lastError instanceof Error ? lastError : new Error("FIFA results fetch failed");
 }
 
 export async function syncFifaResults(options: {
@@ -274,6 +288,10 @@ function toInteger(value: unknown): number | null {
 function toNullableInteger(value: unknown): number | null {
   if (value === null || value === undefined || value === "") return null;
   return toInteger(value);
+}
+
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 function isSameResult(

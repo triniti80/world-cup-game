@@ -37,7 +37,8 @@ function cronErrorResponse(step: string, error: unknown) {
       ok: false,
       step,
       error: error instanceof Error ? error.message : "Unknown cron error",
+      failedAt: new Date().toISOString(),
     },
-    { status: 500 },
+    { status: 200 },
   );
 }
