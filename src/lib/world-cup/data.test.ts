@@ -5,11 +5,35 @@ import { matches, stageLabel, teams } from "./data";
 test("imports the full 104-match tournament schedule", () => {
   assert.equal(matches.length, 104);
   assert.equal(matches[0]?.number, 1);
-  assert.equal(matches[0]?.kickoffAtUtc, "2026-06-11T20:00:00.000Z");
+  assert.equal(matches[0]?.kickoffAtUtc, "2026-06-11T19:00:00.000Z");
   assert.equal(matches[0]?.venue, "Estadio Banorte");
   assert.equal(matches[103]?.number, 104);
   assert.equal(matches[103]?.stage, "final");
+  assert.equal(matches[103]?.kickoffAtUtc, "2026-07-19T19:00:00.000Z");
   assert.equal(matches[103]?.venue, "MetLife Stadium");
+});
+
+test("uses official kickoff times for corrected group fixtures", () => {
+  const portugalCongo = matches.find((match) => match.number === 19);
+  assert.equal(portugalCongo?.homeTeamId, "portugal");
+  assert.equal(portugalCongo?.awayTeamId, "dr-congo");
+  assert.equal(portugalCongo?.kickoffAtUtc, "2026-06-17T17:00:00.000Z");
+
+  const uzbekistanColombia = matches.find((match) => match.number === 24);
+  assert.equal(uzbekistanColombia?.homeTeamId, "uzbekistan");
+  assert.equal(uzbekistanColombia?.awayTeamId, "colombia");
+  assert.equal(uzbekistanColombia?.kickoffAtUtc, "2026-06-18T02:00:00.000Z");
+});
+
+test("keeps knockout fixture numbers aligned with official placeholders", () => {
+  const match74 = matches.find((match) => match.number === 74);
+  assert.equal(match74?.homePlaceholder, "1E");
+  assert.equal(match74?.awayPlaceholder, "3A/B/C/D/F");
+  assert.equal(match74?.kickoffAtUtc, "2026-06-29T20:30:00.000Z");
+
+  const thirdPlace = matches.find((match) => match.number === 103);
+  assert.equal(thirdPlace?.homePlaceholder, "RU101");
+  assert.equal(thirdPlace?.awayPlaceholder, "RU102");
 });
 
 test("keeps the expected group and knockout stage counts", () => {

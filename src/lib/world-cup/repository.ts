@@ -28,20 +28,38 @@ const TOURNAMENT_YEAR = 2026;
 const TOP_SCORER_CHANGE_WINDOW_LOCK_AT = new Date("2026-06-13T09:00:00.000Z");
 const LEGACY_SEED_VENUES = [
   "Mexico City Stadium",
+  "Estadio Banorte",
   "Estadio Guadalajara",
+  "Estadio Akron",
   "Toronto Stadium",
+  "BMO Field",
   "Los Angeles Stadium",
+  "SoFi Stadium",
   "Boston Stadium",
+  "Gillette Stadium",
   "BC Place Vancouver",
+  "BC Place",
   "New York New Jersey Stadium",
+  "New York/New Jersey Stadium",
+  "MetLife Stadium",
   "San Francisco Bay Area Stadium",
+  "Levi's Stadium",
   "Philadelphia Stadium",
+  "Lincoln Financial Field",
   "Houston Stadium",
+  "NRG Stadium",
   "Dallas Stadium",
+  "AT&T Stadium",
   "Estadio Monterrey",
+  "Estadio BBVA",
   "Miami Stadium",
+  "Hard Rock Stadium",
   "Atlanta Stadium",
+  "Mercedes-Benz Stadium",
   "Seattle Stadium",
+  "Lumen Field",
+  "Kansas City Stadium",
+  "GEHA Field at Arrowhead Stadium",
   "Knockout venue TBD",
 ];
 
@@ -661,31 +679,34 @@ export async function getSeededMatchesWithResults(): Promise<SeededMatchWithResu
     .where(eq(dbTeams.tournamentId, tournamentRow.id));
   const slugByTeamId = new Map(seededTeams.map((team) => [team.id, team.slug]));
 
-  return seedMatches.flatMap((seedMatch) => {
-    const dbMatch = dbMatchByNumber.get(seedMatch.number);
-    if (!dbMatch) return [];
-    return [
-      {
-        ...seedMatch,
-        dbId: dbMatch.id,
-        stage: dbMatch.stage,
-        group: dbMatch.groupCode ?? undefined,
-        homeTeamId: dbMatch.homeTeamId ? slugByTeamId.get(dbMatch.homeTeamId) : undefined,
-        awayTeamId: dbMatch.awayTeamId ? slugByTeamId.get(dbMatch.awayTeamId) : undefined,
-        homePlaceholder: dbMatch.homePlaceholder ?? undefined,
-        awayPlaceholder: dbMatch.awayPlaceholder ?? undefined,
-        kickoffAtUtc: dbMatch.kickoffAt.toISOString(),
-        venue: dbMatch.venue,
-        status: dbMatch.status,
-        homeScore: dbMatch.homeScore ?? undefined,
-        awayScore: dbMatch.awayScore ?? undefined,
-        winnerSide:
-          dbMatch.winnerSide === "home" || dbMatch.winnerSide === "away"
-            ? dbMatch.winnerSide
-            : undefined,
-      },
-    ];
-  });
+  return seedMatches
+    .flatMap<SeededMatchWithResult>((seedMatch) => {
+      const dbMatch = dbMatchByNumber.get(seedMatch.number);
+      if (!dbMatch) return [];
+      const winnerSide: SeededMatchWithResult["winnerSide"] =
+        dbMatch.winnerSide === "home" || dbMatch.winnerSide === "away"
+          ? dbMatch.winnerSide
+          : undefined;
+      return [
+        {
+          ...seedMatch,
+          dbId: dbMatch.id,
+          stage: dbMatch.stage,
+          group: dbMatch.groupCode ?? undefined,
+          homeTeamId: dbMatch.homeTeamId ? slugByTeamId.get(dbMatch.homeTeamId) : undefined,
+          awayTeamId: dbMatch.awayTeamId ? slugByTeamId.get(dbMatch.awayTeamId) : undefined,
+          homePlaceholder: dbMatch.homePlaceholder ?? undefined,
+          awayPlaceholder: dbMatch.awayPlaceholder ?? undefined,
+          kickoffAtUtc: dbMatch.kickoffAt.toISOString(),
+          venue: dbMatch.venue,
+          status: dbMatch.status,
+          homeScore: dbMatch.homeScore ?? undefined,
+          awayScore: dbMatch.awayScore ?? undefined,
+          winnerSide,
+        },
+      ];
+    })
+    .sort(sortMatchesByKickoff);
 }
 
 export async function getSavedMatchPredictions(
@@ -1709,6 +1730,7 @@ export async function getLeaguePredictionVisibility(userId: number, activeLeague
       id: dbMatches.id,
       matchNumber: dbMatches.matchNumber,
       kickoffAt: dbMatches.kickoffAt,
+      venue: dbMatches.venue,
     })
     .from(dbMatches)
     .where(eq(dbMatches.tournamentId, tournamentRow.id));
@@ -1732,34 +1754,38 @@ export async function getLeaguePredictionVisibility(userId: number, activeLeague
   );
 
   const now = Date.now();
-  const visibleMatches = seedMatches.flatMap<LeaguePredictionMatch>((seedMatch) => {
-    const dbMatch = dbMatchByNumber.get(seedMatch.number);
-    if (!dbMatch) return [];
-    const revealed = now >= dbMatch.kickoffAt.getTime();
-    return [
-      {
-        ...seedMatch,
-        dbId: dbMatch.id,
-        revealed,
-        predictions: members.map((member) => {
-          const prediction = predictionByUserAndMatch.get(`${member.userId}:${dbMatch.id}`);
-          return {
-            userId: member.userId,
-            submitted: Boolean(prediction),
-            revealed,
-            homeScore: revealed ? prediction?.homeScore : undefined,
-            awayScore: revealed ? prediction?.awayScore : undefined,
-            predictedWinnerSide:
-              revealed &&
-              (prediction?.predictedWinnerSide === "home" ||
-                prediction?.predictedWinnerSide === "away")
-                ? prediction.predictedWinnerSide
-                : undefined,
-          };
-        }),
-      },
-    ];
-  });
+  const visibleMatches = seedMatches
+    .flatMap<LeaguePredictionMatch>((seedMatch) => {
+      const dbMatch = dbMatchByNumber.get(seedMatch.number);
+      if (!dbMatch) return [];
+      const revealed = now >= dbMatch.kickoffAt.getTime();
+      return [
+        {
+          ...seedMatch,
+          dbId: dbMatch.id,
+          kickoffAtUtc: dbMatch.kickoffAt.toISOString(),
+          venue: dbMatch.venue,
+          revealed,
+          predictions: members.map((member) => {
+            const prediction = predictionByUserAndMatch.get(`${member.userId}:${dbMatch.id}`);
+            return {
+              userId: member.userId,
+              submitted: Boolean(prediction),
+              revealed,
+              homeScore: revealed ? prediction?.homeScore : undefined,
+              awayScore: revealed ? prediction?.awayScore : undefined,
+              predictedWinnerSide:
+                revealed &&
+                (prediction?.predictedWinnerSide === "home" ||
+                  prediction?.predictedWinnerSide === "away")
+                  ? prediction.predictedWinnerSide
+                  : undefined,
+            };
+          }),
+        },
+      ];
+    })
+    .sort(sortMatchesByKickoff);
 
   const seededTeams = await db
     .select({ id: dbTeams.id, slug: dbTeams.slug })
@@ -1852,6 +1878,10 @@ export async function getLeaguePredictionVisibility(userId: number, activeLeague
 
 export function getMatchLockAtUtc(match: Pick<MatchRow, "kickoffAt">): Date {
   return new Date(match.kickoffAt.getTime() - 5 * 60 * 1000);
+}
+
+function sortMatchesByKickoff<T extends { kickoffAtUtc: string; number: number }>(a: T, b: T): number {
+  return new Date(a.kickoffAtUtc).getTime() - new Date(b.kickoffAtUtc).getTime() || a.number - b.number;
 }
 
 export function getPreTournamentLockAt(tournamentRow: Pick<TournamentRow, "predictionLockAt">): Date {
