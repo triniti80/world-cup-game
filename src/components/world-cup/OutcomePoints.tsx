@@ -17,34 +17,44 @@ export function OutcomePoints({
   locale = "en",
   showExactHint = false,
 }: OutcomePointsProps) {
-  const values = [
-    ["H", getCorrectOutcomePoints(matchNumber, "home")],
-    ["D", getCorrectOutcomePoints(matchNumber, "draw")],
-    ["A", getCorrectOutcomePoints(matchNumber, "away")],
-  ] as const;
+  const homePoints = getCorrectOutcomePoints(matchNumber, "home");
+  const drawPoints = getCorrectOutcomePoints(matchNumber, "draw");
+  const awayPoints = getCorrectOutcomePoints(matchNumber, "away");
   const exactHint = isOddsScoredGroupMatch(matchNumber)
     ? `+${formatPointValue(ODDS_EXACT_SCORE_BONUS)} ${locale === "he" ? "מדויק" : "exact"}`
     : `${formatPointValue(BASE_EXACT_SCORE_POINTS)} ${locale === "he" ? "מדויק" : "exact"}`;
 
   return (
-    <div className="flex flex-wrap items-center gap-2 text-xs font-bold text-[var(--color-fg-muted)]">
-      <span className="uppercase">{locale === "he" ? "ניקוד" : "Points"}</span>
-      <div className="flex flex-wrap gap-1.5">
-        {values.map(([label, points]) => (
-          <span
-            key={label}
-            className="rounded-full border border-white/10 bg-[var(--color-panel-high)] px-2 py-1 text-[var(--color-fg)]"
-          >
-            {label} {formatPointValue(points)}
-          </span>
-        ))}
+    <div className="space-y-2">
+      <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3 rounded-xl border border-white/10 bg-[var(--color-panel-low)] p-2">
+        <PointValue value={homePoints} />
+        <PointValue value={drawPoints} emphasized />
+        <PointValue value={awayPoints} />
       </div>
       {showExactHint ? (
-        <span className="rounded-full bg-[var(--color-gold)]/15 px-2 py-1 text-[var(--color-gold)]">
+        <div className="text-center text-xs font-bold text-[var(--color-gold)]">
           {exactHint}
-        </span>
+        </div>
       ) : null}
-      <span className="sr-only">{t(locale, "common.points")}</span>
+      <span className="sr-only">
+        {t(locale, "common.points")}: home win {formatPointValue(homePoints)}, draw{" "}
+        {formatPointValue(drawPoints)}, away win {formatPointValue(awayPoints)}
+      </span>
+    </div>
+  );
+}
+
+function PointValue({ value, emphasized = false }: { value: number; emphasized?: boolean }) {
+  return (
+    <div
+      className={
+        "mx-auto min-w-14 rounded-lg px-3 py-1.5 text-center font-display text-lg font-extrabold " +
+        (emphasized
+          ? "bg-[var(--color-gold)]/15 text-[var(--color-gold)]"
+          : "bg-[var(--color-accent)]/15 text-[var(--color-accent)]")
+      }
+    >
+      {formatPointValue(value)}
     </div>
   );
 }

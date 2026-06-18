@@ -229,10 +229,10 @@ export function PredictionForm({ matches, initialPredictions = {} }: PredictionF
               <TeamBadge teamId={match.awayTeamId} label={away} locale={locale} />
             </div>
 
-            <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+            <div className="mt-4 space-y-3">
               <OutcomePoints matchNumber={match.number} locale={locale} showExactHint />
               {hasActualScore ? (
-                <div className="rounded-full bg-[var(--color-accent)]/15 px-3 py-1 text-xs font-bold text-[var(--color-accent)]">
+                <div className="inline-flex rounded-full bg-[var(--color-accent)]/15 px-3 py-1 text-xs font-bold text-[var(--color-accent)]">
                   {t("match.actualResult")}: {match.homeScore}-{match.awayScore}
                 </div>
               ) : null}

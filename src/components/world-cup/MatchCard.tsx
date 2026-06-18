@@ -50,6 +50,12 @@ export function MatchCard({
         </div>
       )}
 
+      {showOutcomePoints && !compact ? (
+        <div className="mb-4">
+          <OutcomePoints matchNumber={match.number} locale={locale} />
+        </div>
+      ) : null}
+
       <div className="grid gap-2 text-sm text-[var(--color-fg-muted)]">
         {hasActualScore ? (
           <div className="flex justify-between gap-3">
@@ -77,7 +83,7 @@ export function MatchCard({
         </div>
       </div>
 
-      {showOutcomePoints ? (
+      {showOutcomePoints && compact ? (
         <div className="mt-4 border-t border-white/10 pt-3">
           <OutcomePoints matchNumber={match.number} locale={locale} />
         </div>
