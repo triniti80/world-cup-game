@@ -354,7 +354,7 @@ async function assertLeaderboardMatchesScoreEvents(
       userId: scoreEvents.userId,
       sourceType: scoreEvents.sourceType,
       reason: scoreEvents.reason,
-      points: sql<number>`${scoreEvents.points}::int`,
+      points: scoreEvents.points,
     })
     .from(scoreEvents)
     .where(eq(scoreEvents.leagueId, leagueId));
@@ -392,6 +392,7 @@ async function expectedMatchScoreTotals(leagueId: number, createdMatches: Create
     const match = matchById.get(prediction.matchId);
     assert.ok(match);
     const score = scoreMatchPrediction({
+      matchNumber: match.matchNumber,
       realHomeScore: match.homeScore!,
       realAwayScore: match.awayScore!,
       predictedHomeScore: prediction.homeScore,

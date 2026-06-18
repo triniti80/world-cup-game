@@ -11,9 +11,11 @@ import {
   scoreEvents,
   stagePredictions,
 } from "@/db/schema";
+import { getStaticMatchOdds, isOddsScoredGroupMatch, type OutcomeSide } from "./static-odds";
 
 type FinalMatch = {
   id: number;
+  matchNumber: number;
   tournamentId: number;
   status: "scheduled" | "live" | "final";
   homeScore: number | null;
@@ -38,7 +40,7 @@ const STAGE_REASON = {
   champion: "World Cup champion",
 } as const;
 
-function outcome(homeScore: number, awayScore: number): "home" | "away" | "draw" {
+function outcome(homeScore: number, awayScore: number): OutcomeSide {
   if (homeScore > awayScore) return "home";
   if (awayScore > homeScore) return "away";
   return "draw";
@@ -49,25 +51,42 @@ function normalizeName(value: string): string {
 }
 
 export function scoreMatchPrediction(input: {
+  matchNumber?: number;
   realHomeScore: number;
   realAwayScore: number;
   predictedHomeScore: number;
   predictedAwayScore: number;
 }): { points: number; reason: string } {
+  const realOutcome = outcome(input.realHomeScore, input.realAwayScore);
+  const predictedOutcome = outcome(input.predictedHomeScore, input.predictedAwayScore);
+
+  if (realOutcome !== predictedOutcome) {
+    return { points: 0, reason: "Wrong outcome" };
+  }
+
+  const outcomePoints = correctOutcomePoints(input.matchNumber, realOutcome);
+
   if (
     input.realHomeScore === input.predictedHomeScore &&
     input.realAwayScore === input.predictedAwayScore
   ) {
-    return { points: 5, reason: "Exact score" };
+    return {
+      points: isOddsScoredGroupMatch(input.matchNumber) ? outcomePoints + 4 : 5,
+      reason: "Exact score",
+    };
   }
 
-  const realOutcome = outcome(input.realHomeScore, input.realAwayScore);
-  const predictedOutcome = outcome(input.predictedHomeScore, input.predictedAwayScore);
-  if (realOutcome === predictedOutcome) {
-    return { points: 2, reason: "Correct outcome" };
-  }
+  return { points: outcomePoints, reason: "Correct outcome" };
+}
 
-  return { points: 0, reason: "Wrong outcome" };
+function correctOutcomePoints(matchNumber: number | undefined, side: OutcomeSide): number {
+  if (!isOddsScoredGroupMatch(matchNumber)) return 2;
+  const odds = getStaticMatchOdds(matchNumber)?.[side];
+  return odds ? Math.min(Math.max(roundToHalfPoint(odds), 1.5), 15) : 2;
+}
+
+function roundToHalfPoint(value: number): number {
+  return Math.round(value * 2) / 2;
 }
 
 export async function recalculateMatchScoreEvents(match: FinalMatch): Promise<void> {
@@ -108,6 +127,7 @@ export async function recalculateMatchScoreEvents(match: FinalMatch): Promise<vo
 
     const events = predictions.flatMap((prediction) => {
       const result = scoreMatchPrediction({
+        matchNumber: match.matchNumber,
         realHomeScore: match.homeScore!,
         realAwayScore: match.awayScore!,
         predictedHomeScore: prediction.homeScore,
@@ -140,6 +160,7 @@ export async function recalculateMatchById(matchId: number): Promise<void> {
     .select({
       id: matches.id,
       tournamentId: matches.tournamentId,
+      matchNumber: matches.matchNumber,
       status: matches.status,
       homeScore: matches.homeScore,
       awayScore: matches.awayScore,

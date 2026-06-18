@@ -514,7 +514,7 @@ export async function getUserLeagues(userId: number): Promise<UserLeague[]> {
           .select({
             leagueId: scoreEvents.leagueId,
             userId: scoreEvents.userId,
-            points: sql<number>`${scoreEvents.points}::int`,
+            points: scoreEvents.points,
           })
           .from(scoreEvents)
           .where(inArray(scoreEvents.leagueId, leagueIds))
@@ -603,7 +603,7 @@ export async function getUserProfileSummary(userId: number): Promise<UserProfile
     .select({
       leagueId: scoreEvents.leagueId,
       userId: scoreEvents.userId,
-      points: sql<number>`${scoreEvents.points}::int`,
+      points: scoreEvents.points,
     })
     .from(scoreEvents)
     .where(inArray(scoreEvents.leagueId, leagueIds));
@@ -1011,7 +1011,7 @@ async function getLeaderboardEventsForLeagues(leagueIds: number[]) {
       sourceType: scoreEvents.sourceType,
       sourceId: scoreEvents.sourceId,
       reason: scoreEvents.reason,
-      points: sql<number>`${scoreEvents.points}::int`,
+      points: scoreEvents.points,
       leagueName: leagues.name,
     })
     .from(scoreEvents)
@@ -1035,6 +1035,7 @@ async function getCurrentMatchScoreLeaderboardEvents(leagueIds: number[]) {
       sourceId: matchPredictions.id,
       predictedHomeScore: matchPredictions.homeScore,
       predictedAwayScore: matchPredictions.awayScore,
+      matchNumber: dbMatches.matchNumber,
       realHomeScore: dbMatches.homeScore,
       realAwayScore: dbMatches.awayScore,
       status: dbMatches.status,
@@ -1062,6 +1063,7 @@ async function getCurrentMatchScoreLeaderboardEvents(leagueIds: number[]) {
     }
 
     const result = scoreMatchPrediction({
+      matchNumber: prediction.matchNumber,
       realHomeScore: prediction.realHomeScore,
       realAwayScore: prediction.realAwayScore,
       predictedHomeScore: prediction.predictedHomeScore,

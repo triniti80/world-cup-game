@@ -57,6 +57,13 @@
       "when": 1779749337978,
       "tag": "0007_nappy_blur",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1781712000000,
+      "tag": "0008_half_point_score_events",
+      "breakpoints": true
     }
   ]
 }

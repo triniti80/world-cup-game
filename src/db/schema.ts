@@ -1,5 +1,6 @@
 import {
   boolean,
+  doublePrecision,
   index,
   integer,
   jsonb,
@@ -320,7 +321,7 @@ export const scoreEvents = pgTable(
     gameMode: leagueGameModeEnum("game_mode").notNull().default("match_scores"),
     sourceType: scoreEventSourceTypeEnum("source_type").notNull(),
     sourceId: integer("source_id").notNull(),
-    points: integer("points").notNull(),
+    points: doublePrecision("points").notNull(),
     reason: text("reason").notNull(),
     calculatedAt: timestamp("calculated_at", { withTimezone: true }).notNull().defaultNow(),
   },
