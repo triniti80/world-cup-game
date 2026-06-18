@@ -8,6 +8,12 @@ export type MatchOutcomeOdds = {
   away: number;
 };
 
+export const BASE_OUTCOME_POINTS = 2;
+export const BASE_EXACT_SCORE_POINTS = 5;
+export const ODDS_EXACT_SCORE_BONUS = 4;
+export const ODDS_SCORING_MIN_POINTS = 1.5;
+export const ODDS_SCORING_MAX_POINTS = 15;
+
 // Static decimal odds snapshot for group-stage score prediction scoring.
 // Replace these values with the chosen bookmaker snapshot before recalculating.
 export const STATIC_GROUP_STAGE_ODDS: Record<number, MatchOutcomeOdds> = {
@@ -106,4 +112,29 @@ export function getStaticMatchOdds(matchNumber: number | undefined | null): Matc
 export function isOddsScoredGroupMatch(matchNumber: number | undefined | null): boolean {
   const matchday = getGroupMatchday(matchNumber);
   return matchday === 2 || matchday === 3;
+}
+
+export function getCorrectOutcomePoints(
+  matchNumber: number | undefined | null,
+  side: OutcomeSide,
+): number {
+  if (!isOddsScoredGroupMatch(matchNumber)) return BASE_OUTCOME_POINTS;
+  const odds = getStaticMatchOdds(matchNumber)?.[side];
+  if (!odds) return BASE_OUTCOME_POINTS;
+  return Math.min(
+    Math.max(roundToHalfPoint(odds), ODDS_SCORING_MIN_POINTS),
+    ODDS_SCORING_MAX_POINTS,
+  );
+}
+
+export function getExactScorePoints(
+  matchNumber: number | undefined | null,
+  side: OutcomeSide,
+): number {
+  if (!isOddsScoredGroupMatch(matchNumber)) return BASE_EXACT_SCORE_POINTS;
+  return getCorrectOutcomePoints(matchNumber, side) + ODDS_EXACT_SCORE_BONUS;
+}
+
+function roundToHalfPoint(value: number): number {
+  return Math.round(value * 2) / 2;
 }

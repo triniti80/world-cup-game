@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useI18n } from "@/components/I18nProvider";
 import { PredictionForm } from "@/components/PredictionForm";
 import type { Match } from "@/lib/world-cup/data";
@@ -20,9 +20,14 @@ type PredictionsTabsProps = {
 
 export function PredictionsTabs({ matches, initialPredictions }: PredictionsTabsProps) {
   const { locale, t } = useI18n();
-  const [activeDate, setActiveDate] = useState("all");
   const sortedMatches = useMemo(() => [...matches].sort(sortMatchesByKickoff), [matches]);
+  const initialDate = useMemo(() => getInitialPredictionDate(sortedMatches), [sortedMatches]);
+  const [activeDate, setActiveDate] = useState(initialDate);
   const dateTabs = useMemo(() => buildDateTabs(sortedMatches, locale), [locale, sortedMatches]);
+
+  useEffect(() => {
+    setActiveDate(initialDate);
+  }, [initialDate]);
 
   const visibleMatches = useMemo(() => {
     if (activeDate === "all") return sortedMatches;
@@ -109,6 +114,13 @@ function getLocalDateKey(iso: string): string {
     String(date.getMonth() + 1).padStart(2, "0"),
     String(date.getDate()).padStart(2, "0"),
   ].join("-");
+}
+
+function getInitialPredictionDate(matches: Match[]): string {
+  const dateKeys = [...new Set(matches.map((match) => getLocalDateKey(match.kickoffAtUtc)))];
+  const todayKey = getLocalDateKey(new Date().toISOString());
+  if (dateKeys.includes(todayKey)) return todayKey;
+  return dateKeys.find((key) => key > todayKey) ?? "all";
 }
 
 function sortMatchesByKickoff(a: Match, b: Match): number {

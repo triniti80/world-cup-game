@@ -83,6 +83,11 @@ export function LeaguePredictionsMatchList({
               <h3 className="mt-1 font-display text-lg font-bold">{getMatchName(match, locale)}</h3>
               <p className="mt-1 text-sm text-[var(--color-fg-muted)]">
                 {formatKickoff(match.kickoffAtUtc, locale)}
+                {match.homeScore !== undefined && match.awayScore !== undefined ? (
+                  <span className="ms-2 font-bold text-[var(--color-accent)]">
+                    · {t(locale, "match.actualResult")}: {match.homeScore}-{match.awayScore}
+                  </span>
+                ) : null}
               </p>
             </div>
             <span

@@ -6,18 +6,22 @@ import {
   type Match,
 } from "@/lib/world-cup/data";
 import { t, type Locale } from "@/lib/i18n";
+import { OutcomePoints } from "./OutcomePoints";
 import { TeamBadge } from "./TeamBadge";
 
 export function MatchCard({
   match,
   compact = false,
   locale = "en",
+  showOutcomePoints = false,
 }: {
   match: Match;
   compact?: boolean;
   locale?: Locale;
+  showOutcomePoints?: boolean;
 }) {
   const lockAt = getMatchLockAt(match);
+  const hasActualScore = match.homeScore !== undefined && match.awayScore !== undefined;
 
   return (
     <article className="glass-card rounded-xl p-4">
@@ -40,13 +44,21 @@ export function MatchCard({
         <div className="mb-4 grid grid-cols-[1fr_auto_1fr] items-center gap-4">
           <TeamBadge teamId={match.homeTeamId} label={match.homePlaceholder} locale={locale} />
           <div className="font-display text-2xl font-extrabold text-[var(--color-fg-muted)]">
-            {t(locale, "common.vs").toUpperCase()}
+            {hasActualScore ? `${match.homeScore}-${match.awayScore}` : t(locale, "common.vs").toUpperCase()}
           </div>
           <TeamBadge teamId={match.awayTeamId} label={match.awayPlaceholder} locale={locale} />
         </div>
       )}
 
       <div className="grid gap-2 text-sm text-[var(--color-fg-muted)]">
+        {hasActualScore ? (
+          <div className="flex justify-between gap-3">
+            <span>{t(locale, "match.actualResult")}</span>
+            <span className="text-end font-semibold text-[var(--color-accent)]">
+              {match.homeScore}-{match.awayScore}
+            </span>
+          </div>
+        ) : null}
         <div className="flex justify-between gap-3">
           <span>{t(locale, "match.kickoff")}</span>
           <span className="text-end font-semibold text-[var(--color-fg)]">
@@ -64,6 +76,12 @@ export function MatchCard({
           <span className="max-w-52 text-end">{match.venue}</span>
         </div>
       </div>
+
+      {showOutcomePoints ? (
+        <div className="mt-4 border-t border-white/10 pt-3">
+          <OutcomePoints matchNumber={match.number} locale={locale} />
+        </div>
+      ) : null}
     </article>
   );
 }

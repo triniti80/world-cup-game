@@ -10,7 +10,10 @@ import { getSeededMatchesWithResults } from "@/lib/world-cup/repository";
 export default async function DashboardPage() {
   const locale = await readLocale();
   const matches = await getSeededMatchesWithResults();
-  const nextMatches = matches.slice(0, 4);
+  const now = Date.now();
+  const nextMatches = matches
+    .filter((match) => match.status !== "final" && new Date(match.kickoffAtUtc).getTime() >= now)
+    .slice(0, 4);
   const serverNowUtc = new Date().toISOString();
 
   return (
@@ -67,7 +70,7 @@ export default async function DashboardPage() {
         </div>
         <div className="grid gap-4 md:grid-cols-2">
           {nextMatches.map((match) => (
-            <MatchCard key={match.id} match={match} locale={locale} />
+            <MatchCard key={match.id} match={match} locale={locale} showOutcomePoints />
           ))}
         </div>
       </section>

@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useI18n } from "@/components/I18nProvider";
 import { formatKickoff, getMatchLockAt, getTeam, getTeamName, type Match } from "@/lib/world-cup/data";
 import { isKnockoutStage, type PredictedWinnerSide } from "@/lib/world-cup/match-predictions";
+import { OutcomePoints } from "@/components/world-cup/OutcomePoints";
 import { TeamBadge } from "@/components/world-cup/TeamBadge";
 
 type Prediction = {
@@ -165,6 +166,7 @@ export function PredictionForm({ matches, initialPredictions = {} }: PredictionF
           (savedPrediction?.predictedWinnerSide ?? null) === winnerSide;
         const saving = savingMatchId === match.id;
         const error = errors[match.id];
+        const hasActualScore = match.homeScore !== undefined && match.awayScore !== undefined;
         const status = locked
           ? t("predictions.locked")
           : saved
@@ -225,6 +227,15 @@ export function PredictionForm({ matches, initialPredictions = {} }: PredictionF
                 />
               </div>
               <TeamBadge teamId={match.awayTeamId} label={away} locale={locale} />
+            </div>
+
+            <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+              <OutcomePoints matchNumber={match.number} locale={locale} showExactHint />
+              {hasActualScore ? (
+                <div className="rounded-full bg-[var(--color-accent)]/15 px-3 py-1 text-xs font-bold text-[var(--color-accent)]">
+                  {t("match.actualResult")}: {match.homeScore}-{match.awayScore}
+                </div>
+              ) : null}
             </div>
 
             {needsAdvancingSide ? (

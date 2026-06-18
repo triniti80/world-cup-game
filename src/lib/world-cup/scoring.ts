@@ -11,7 +11,7 @@ import {
   scoreEvents,
   stagePredictions,
 } from "@/db/schema";
-import { getStaticMatchOdds, isOddsScoredGroupMatch, type OutcomeSide } from "./static-odds";
+import { getCorrectOutcomePoints, getExactScorePoints, type OutcomeSide } from "./static-odds";
 
 type FinalMatch = {
   id: number;
@@ -64,29 +64,19 @@ export function scoreMatchPrediction(input: {
     return { points: 0, reason: "Wrong outcome" };
   }
 
-  const outcomePoints = correctOutcomePoints(input.matchNumber, realOutcome);
+  const outcomePoints = getCorrectOutcomePoints(input.matchNumber, realOutcome);
 
   if (
     input.realHomeScore === input.predictedHomeScore &&
     input.realAwayScore === input.predictedAwayScore
   ) {
     return {
-      points: isOddsScoredGroupMatch(input.matchNumber) ? outcomePoints + 4 : 5,
+      points: getExactScorePoints(input.matchNumber, realOutcome),
       reason: "Exact score",
     };
   }
 
   return { points: outcomePoints, reason: "Correct outcome" };
-}
-
-function correctOutcomePoints(matchNumber: number | undefined, side: OutcomeSide): number {
-  if (!isOddsScoredGroupMatch(matchNumber)) return 2;
-  const odds = getStaticMatchOdds(matchNumber)?.[side];
-  return odds ? Math.min(Math.max(roundToHalfPoint(odds), 1.5), 15) : 2;
-}
-
-function roundToHalfPoint(value: number): number {
-  return Math.round(value * 2) / 2;
 }
 
 export async function recalculateMatchScoreEvents(match: FinalMatch): Promise<void> {

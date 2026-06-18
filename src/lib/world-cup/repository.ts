@@ -1733,6 +1733,9 @@ export async function getLeaguePredictionVisibility(userId: number, activeLeague
       matchNumber: dbMatches.matchNumber,
       kickoffAt: dbMatches.kickoffAt,
       venue: dbMatches.venue,
+      status: dbMatches.status,
+      homeScore: dbMatches.homeScore,
+      awayScore: dbMatches.awayScore,
     })
     .from(dbMatches)
     .where(eq(dbMatches.tournamentId, tournamentRow.id));
@@ -1767,6 +1770,9 @@ export async function getLeaguePredictionVisibility(userId: number, activeLeague
           dbId: dbMatch.id,
           kickoffAtUtc: dbMatch.kickoffAt.toISOString(),
           venue: dbMatch.venue,
+          status: dbMatch.status,
+          homeScore: dbMatch.homeScore ?? undefined,
+          awayScore: dbMatch.awayScore ?? undefined,
           revealed,
           predictions: members.map((member) => {
             const prediction = predictionByUserAndMatch.get(`${member.userId}:${dbMatch.id}`);
