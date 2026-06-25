@@ -22,7 +22,7 @@ type FinalMatch = {
   awayScore: number | null;
 };
 
-const STAGE_POINTS = {
+export const STAGE_POINTS = {
   r32: 10,
   r16: 20,
   qf: 40,
@@ -31,7 +31,7 @@ const STAGE_POINTS = {
   champion: 150,
 } as const;
 
-const STAGE_REASON = {
+export const STAGE_REASON = {
   r32: "Round of 32 qualifier",
   r16: "Round of 16 qualifier",
   qf: "Quarter-finalist",
@@ -184,7 +184,22 @@ export async function recalculateStageScoreEvents(tournamentId: number): Promise
     .from(officialStageResults)
     .where(eq(officialStageResults.tournamentId, tournamentId));
 
-  const officialTeamByStage = officialRows.reduce<Map<string, Set<number>>>((acc, row) => {
+  const roundOf32FixtureRows = await db
+    .select({
+      homeTeamId: matches.homeTeamId,
+      awayTeamId: matches.awayTeamId,
+    })
+    .from(matches)
+    .where(and(eq(matches.tournamentId, tournamentId), eq(matches.stage, "r32")));
+
+  const roundOf32FixtureTeams = roundOf32FixtureRows.flatMap((row) =>
+    [row.homeTeamId, row.awayTeamId].filter((teamId): teamId is number => teamId !== null),
+  );
+
+  const officialTeamByStage = [
+    ...officialRows,
+    ...roundOf32FixtureTeams.map((teamId) => ({ stage: "r32" as const, teamId })),
+  ].reduce<Map<string, Set<number>>>((acc, row) => {
     const teamsForStage = acc.get(row.stage) ?? new Set<number>();
     teamsForStage.add(row.teamId);
     acc.set(row.stage, teamsForStage);

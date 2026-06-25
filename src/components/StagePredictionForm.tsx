@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import { useI18n } from "@/components/I18nProvider";
 import type { Locale, TranslationKey } from "@/lib/i18n";
 import { buildRoundOf32Pairs as buildOfficialRoundOf32Pairs } from "@/lib/world-cup/bracket";
-import { getTeamName, teams, type Team } from "@/lib/world-cup/data";
+import { getTeamName, teams, type Match, type Team } from "@/lib/world-cup/data";
 import type { SavedStagePredictions } from "@/lib/world-cup/repository";
 
 const groups = Array.from(new Set(teams.map((team) => team.group))).sort();
@@ -57,12 +57,22 @@ type Translate = (key: TranslationKey, params?: Record<string, string | number>)
 export function StagePredictionForm({
   initialPredictions,
   lockedStages,
+  realRoundOf32Matches = [],
 }: {
   initialPredictions: SavedStagePredictions;
   lockedStages: { r32: boolean; knockout: boolean };
+  realRoundOf32Matches?: Match[];
 }) {
   const { locale, t } = useI18n();
-  const [selected, setSelected] = useState<Record<string, string[]>>(initialPredictions.teams);
+  const initialRoundOf32Pairs = useMemo(() => {
+    const actualPairs = buildRoundOf32PairsFromMatches(realRoundOf32Matches);
+    return actualPairs.length > 0
+      ? actualPairs
+      : buildRoundOf32Pairs(initialPredictions.r32Ranks);
+  }, [initialPredictions.r32Ranks, realRoundOf32Matches]);
+  const [selected, setSelected] = useState<Record<string, string[]>>(() =>
+    sanitizeSelectionsWithRoundOf32Pairs(initialPredictions.teams, initialRoundOf32Pairs),
+  );
   const [r32Ranks, setR32Ranks] = useState<Record<string, Rank>>(initialPredictions.r32Ranks);
   const [saving, setSaving] = useState<string | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -74,7 +84,12 @@ export function StagePredictionForm({
     Object.fromEntries(stageIds.map((stage) => [stage, false])) as Record<StageId, boolean>,
   );
 
-  const r32Pairs = useMemo(() => buildRoundOf32Pairs(r32Ranks), [r32Ranks]);
+  const actualRoundOf32Pairs = useMemo(
+    () => buildRoundOf32PairsFromMatches(realRoundOf32Matches),
+    [realRoundOf32Matches],
+  );
+  const predictedRoundOf32Pairs = useMemo(() => buildRoundOf32Pairs(r32Ranks), [r32Ranks]);
+  const r32Pairs = actualRoundOf32Pairs.length > 0 ? actualRoundOf32Pairs : predictedRoundOf32Pairs;
   const r16Pairs = useMemo(() => buildPairsFromTeamIds(selected.r16 ?? [], "R16"), [selected.r16]);
   const qfPairs = useMemo(() => buildPairsFromTeamIds(selected.qf ?? [], "QF"), [selected.qf]);
   const sfPairs = useMemo(() => buildPairsFromTeamIds(selected.sf ?? [], "SF"), [selected.sf]);
@@ -109,7 +124,11 @@ export function StagePredictionForm({
 
       if (existing === rank) {
         delete next[team.id];
-        setSelected((selectedCurrent) => sanitizeAfterR32Change(selectedCurrent, next));
+        const nextRoundOf32Pairs =
+          actualRoundOf32Pairs.length > 0 ? actualRoundOf32Pairs : buildRoundOf32Pairs(next);
+        setSelected((selectedCurrent) =>
+          sanitizeAfterR32Change(selectedCurrent, next, nextRoundOf32Pairs),
+        );
         return next;
       }
 
@@ -131,7 +150,11 @@ export function StagePredictionForm({
       }
 
       next[team.id] = rank;
-      setSelected((selectedCurrent) => sanitizeAfterR32Change(selectedCurrent, next));
+      const nextRoundOf32Pairs =
+        actualRoundOf32Pairs.length > 0 ? actualRoundOf32Pairs : buildRoundOf32Pairs(next);
+      setSelected((selectedCurrent) =>
+        sanitizeAfterR32Change(selectedCurrent, next, nextRoundOf32Pairs),
+      );
       return next;
     });
   }
@@ -597,6 +620,18 @@ function buildRoundOf32Pairs(ranks: Record<string, Rank>): Pair[] {
   return buildOfficialRoundOf32Pairs(teams, ranks);
 }
 
+function buildRoundOf32PairsFromMatches(matches: Match[]): Pair[] {
+  return [...matches]
+    .sort((a, b) => a.number - b.number)
+    .map((match) => ({
+      label: `Match ${match.number}`,
+      home: getTeamById(match.homeTeamId),
+      away: getTeamById(match.awayTeamId),
+      homePlaceholder: match.homePlaceholder,
+      awayPlaceholder: match.awayPlaceholder,
+    }));
+}
+
 function buildPairsFromTeamIds(teamIds: string[], prefix: string): Pair[] {
   const filledTeamIds = teamIds.filter(Boolean);
   const pairs: Pair[] = [];
@@ -718,12 +753,29 @@ function getKnockoutCompletion(
 function sanitizeAfterR32Change(
   current: Record<string, string[]>,
   ranks: Record<string, Rank>,
+  roundOf32Pairs: Pair[],
 ): Record<string, string[]> {
   const next: Record<string, string[]> = {
     ...current,
     r32: sortedRankTeamIds(ranks),
   };
-  next.r16 = keepValidPairWinners(next.r16 ?? [], buildRoundOf32Pairs(ranks));
+  next.r16 = keepValidPairWinners(next.r16 ?? [], roundOf32Pairs);
+  next.qf = keepValidPairWinners(next.qf ?? [], buildPairsFromTeamIds(next.r16 ?? [], "R16"));
+  next.sf = keepValidPairWinners(next.sf ?? [], buildPairsFromTeamIds(next.qf ?? [], "QF"));
+  next.final = keepValidPairWinners(next.final ?? [], buildPairsFromTeamIds(next.sf ?? [], "SF"));
+  next.champion = keepValidPairWinners(
+    next.champion ?? [],
+    buildPairsFromTeamIds(next.final ?? [], "Final"),
+  );
+  return next;
+}
+
+function sanitizeSelectionsWithRoundOf32Pairs(
+  current: Record<string, string[]>,
+  roundOf32Pairs: Pair[],
+): Record<string, string[]> {
+  const next = { ...current };
+  next.r16 = keepValidPairWinners(next.r16 ?? [], roundOf32Pairs);
   next.qf = keepValidPairWinners(next.qf ?? [], buildPairsFromTeamIds(next.r16 ?? [], "R16"));
   next.sf = keepValidPairWinners(next.sf ?? [], buildPairsFromTeamIds(next.qf ?? [], "QF"));
   next.final = keepValidPairWinners(next.final ?? [], buildPairsFromTeamIds(next.sf ?? [], "SF"));

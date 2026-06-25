@@ -39,7 +39,7 @@ export default async function PredictionsPage() {
       shouldLoadStages
         ? getSavedStagePredictions(session!.userId, activeLeagueId)
         : { teams: {}, r32Ranks: {} },
-      shouldLoadMatchScores ? getSeededMatchesWithResults() : [],
+      shouldLoadMatchScores || shouldLoadStages ? getSeededMatchesWithResults() : [],
       shouldLoadStages ? getStageLockState() : { r32: false, knockout: false },
       shouldLoadBonus ? getBonusLockState() : { top_scorer: false, winner: false },
     ]);
@@ -92,6 +92,7 @@ export default async function PredictionsPage() {
             <StagePredictionForm
               initialPredictions={savedStagePredictions}
               lockedStages={stageLockState}
+              realRoundOf32Matches={matches.filter((match) => match.stage === "r32")}
             />
           )}
         </>

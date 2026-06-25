@@ -22,7 +22,7 @@ import {
   tournament as seedTournament,
   type Match,
 } from "@/lib/world-cup/data";
-import { scoreMatchPrediction } from "@/lib/world-cup/scoring";
+import { scoreMatchPrediction, STAGE_POINTS, STAGE_REASON } from "@/lib/world-cup/scoring";
 
 const TOURNAMENT_YEAR = 2026;
 const TOP_SCORER_CHANGE_WINDOW_LOCK_AT = new Date("2026-06-13T09:00:00.000Z");
@@ -508,17 +508,7 @@ export async function getUserLeagues(userId: number): Promise<UserLeague[]> {
           .orderBy(leagueMembers.joinedAt)
       : [];
 
-  const events =
-    leagueIds.length > 0
-      ? await db
-          .select({
-            leagueId: scoreEvents.leagueId,
-            userId: scoreEvents.userId,
-            points: scoreEvents.points,
-          })
-          .from(scoreEvents)
-          .where(inArray(scoreEvents.leagueId, leagueIds))
-      : [];
+  const events = leagueIds.length > 0 ? await getLeaderboardEventsForLeagues(leagueIds) : [];
 
   const pointsByLeagueAndUser = new Map<string, number>();
   for (const event of events) {
@@ -599,14 +589,7 @@ export async function getUserProfileSummary(userId: number): Promise<UserProfile
     .from(leagueMembers)
     .where(inArray(leagueMembers.leagueId, leagueIds));
 
-  const events = await db
-    .select({
-      leagueId: scoreEvents.leagueId,
-      userId: scoreEvents.userId,
-      points: scoreEvents.points,
-    })
-    .from(scoreEvents)
-    .where(inArray(scoreEvents.leagueId, leagueIds));
+  const events = await getLeaderboardEventsForLeagues(leagueIds);
 
   const pointsByLeagueAndUser = new Map<string, number>();
   for (const event of events) {
@@ -1007,6 +990,7 @@ async function getLeaderboardEventsForLeagues(leagueIds: number[]) {
 
   const storedEvents = await db
     .select({
+      leagueId: scoreEvents.leagueId,
       userId: scoreEvents.userId,
       sourceType: scoreEvents.sourceType,
       sourceId: scoreEvents.sourceId,
@@ -1020,11 +1004,13 @@ async function getLeaderboardEventsForLeagues(leagueIds: number[]) {
       and(
         inArray(scoreEvents.leagueId, leagueIds),
         ne(scoreEvents.sourceType, "match_prediction"),
+        ne(scoreEvents.sourceType, "stage_prediction"),
       ),
     );
 
   const currentMatchEvents = await getCurrentMatchScoreLeaderboardEvents(leagueIds);
-  return [...storedEvents, ...currentMatchEvents];
+  const currentStageEvents = await getCurrentStagePredictionLeaderboardEvents(leagueIds);
+  return [...storedEvents, ...currentMatchEvents, ...currentStageEvents];
 }
 
 async function getCurrentMatchScoreLeaderboardEvents(leagueIds: number[]) {
@@ -1073,6 +1059,7 @@ async function getCurrentMatchScoreLeaderboardEvents(leagueIds: number[]) {
 
     return [
       {
+        leagueId: prediction.leagueId,
         userId: prediction.userId,
         sourceType: "match_prediction" as const,
         sourceId: prediction.sourceId,
@@ -1084,9 +1071,82 @@ async function getCurrentMatchScoreLeaderboardEvents(leagueIds: number[]) {
   });
 }
 
+async function getCurrentStagePredictionLeaderboardEvents(leagueIds: number[]) {
+  const officialRows = await db
+    .select({
+      tournamentId: officialStageResults.tournamentId,
+      stage: officialStageResults.stage,
+      teamId: officialStageResults.teamId,
+    })
+    .from(officialStageResults);
+
+  const roundOf32FixtureRows = await db
+    .select({
+      tournamentId: dbMatches.tournamentId,
+      homeTeamId: dbMatches.homeTeamId,
+      awayTeamId: dbMatches.awayTeamId,
+    })
+    .from(dbMatches)
+    .where(eq(dbMatches.stage, "r32"));
+
+  const officialTeamByStage = officialRows.reduce<Map<string, Set<number>>>((acc, row) => {
+    const key = `${row.tournamentId}:${row.stage}`;
+    const teamsForStage = acc.get(key) ?? new Set<number>();
+    teamsForStage.add(row.teamId);
+    acc.set(key, teamsForStage);
+    return acc;
+  }, new Map());
+
+  for (const row of roundOf32FixtureRows) {
+    const key = `${row.tournamentId}:r32`;
+    const teamsForStage = officialTeamByStage.get(key) ?? new Set<number>();
+    if (row.homeTeamId !== null) teamsForStage.add(row.homeTeamId);
+    if (row.awayTeamId !== null) teamsForStage.add(row.awayTeamId);
+    officialTeamByStage.set(key, teamsForStage);
+  }
+
+  const predictions = await db
+    .select({
+      id: stagePredictions.id,
+      userId: stagePredictions.userId,
+      leagueId: stagePredictions.leagueId,
+      tournamentId: stagePredictions.tournamentId,
+      stage: stagePredictions.stage,
+      teamId: stagePredictions.teamId,
+      leagueName: leagues.name,
+    })
+    .from(stagePredictions)
+    .innerJoin(leagues, eq(stagePredictions.leagueId, leagues.id))
+    .innerJoin(
+      leagueMembers,
+      and(
+        eq(leagueMembers.leagueId, stagePredictions.leagueId),
+        eq(leagueMembers.userId, stagePredictions.userId),
+      ),
+    )
+    .where(and(inArray(stagePredictions.leagueId, leagueIds), eq(leagues.gameMode, "stage_predictions")));
+
+  return predictions.flatMap((prediction) => {
+    const officialTeams = officialTeamByStage.get(`${prediction.tournamentId}:${prediction.stage}`);
+    if (!officialTeams?.has(prediction.teamId)) return [];
+    return [
+      {
+        leagueId: prediction.leagueId,
+        userId: prediction.userId,
+        sourceType: "stage_prediction" as const,
+        sourceId: prediction.id,
+        reason: STAGE_REASON[prediction.stage],
+        points: STAGE_POINTS[prediction.stage],
+        leagueName: prediction.leagueName,
+      },
+    ];
+  });
+}
+
 async function buildLeaderboardRows(
   members: { userId: number; name: string }[],
   events: {
+    leagueId: number;
     userId: number;
     sourceType: "match_prediction" | "stage_prediction" | "bonus_prediction";
     sourceId: number;

@@ -5,6 +5,7 @@ import { db } from "@/db/client";
 import { auditLog, matches } from "@/db/schema";
 import { readSession } from "@/lib/session";
 import { ensureSeedTournament, getDbTeamIdForSeedTeamSlug } from "@/lib/world-cup/repository";
+import { recalculateStageScoreEvents } from "@/lib/world-cup/scoring";
 
 const bodySchema = z.object({
   matchDbId: z.number().int().positive(),
@@ -113,6 +114,10 @@ export async function POST(req: Request) {
 
   if (!updated) {
     return NextResponse.json({ error: "Match not found." }, { status: 404 });
+  }
+
+  if (existing.stage === "r32" || parsed.data.stage === "r32") {
+    await recalculateStageScoreEvents(tournament.id);
   }
 
   return NextResponse.json({ ok: true, match: updated });

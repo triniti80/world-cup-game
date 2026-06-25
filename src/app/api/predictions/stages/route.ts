@@ -2,7 +2,7 @@ import { and, eq, inArray } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { db } from "@/db/client";
-import { stagePredictions } from "@/db/schema";
+import { matches as dbMatches, stagePredictions } from "@/db/schema";
 import { readActiveLeagueId, readSession } from "@/lib/session";
 import {
   ensureSeedTournament,
@@ -160,7 +160,41 @@ export async function POST(req: Request) {
   }
   const resolvedTeamIds = teamIds.filter((teamId): teamId is number => teamId !== null);
 
-  if (parsed.data.stage !== "r32") {
+  if (parsed.data.stage === "r16") {
+    const roundOf32Matches = await db
+      .select({
+        matchNumber: dbMatches.matchNumber,
+        homeTeamId: dbMatches.homeTeamId,
+        awayTeamId: dbMatches.awayTeamId,
+      })
+      .from(dbMatches)
+      .where(and(eq(dbMatches.tournamentId, tournament.id), eq(dbMatches.stage, "r32")))
+      .orderBy(dbMatches.matchNumber);
+
+    if (
+      roundOf32Matches.length !== stageExpectedCounts.r16 ||
+      roundOf32Matches.some((match) => match.homeTeamId === null || match.awayTeamId === null)
+    ) {
+      return NextResponse.json(
+        { error: "Round of 32 fixtures are not ready yet." },
+        { status: 400 },
+      );
+    }
+
+    const selectedTeamIds = new Set(resolvedTeamIds);
+    const invalidMatch = roundOf32Matches.find((match) => {
+      const homeSelected = selectedTeamIds.has(match.homeTeamId!);
+      const awaySelected = selectedTeamIds.has(match.awayTeamId!);
+      return Number(homeSelected) + Number(awaySelected) !== 1;
+    });
+
+    if (invalidMatch) {
+      return NextResponse.json(
+        { error: `Choose exactly one winner from Match ${invalidMatch.matchNumber}.` },
+        { status: 400 },
+      );
+    }
+  } else if (parsed.data.stage !== "r32") {
     const previousStage = previousStageByStage[parsed.data.stage];
     const previousRows = await db
       .select({ teamId: stagePredictions.teamId })
