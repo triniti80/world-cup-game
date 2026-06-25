@@ -2,7 +2,7 @@ import { and, eq, inArray } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { db } from "@/db/client";
-import { matches as dbMatches, stagePredictions } from "@/db/schema";
+import { matches as dbMatches, stagePredictions, teams as dbTeams } from "@/db/schema";
 import { readActiveLeagueId, readSession } from "@/lib/session";
 import {
   ensureSeedTournament,
@@ -12,6 +12,7 @@ import {
   getPreTournamentLockAt,
 } from "@/lib/world-cup/repository";
 import { teams } from "@/lib/world-cup/data";
+import { getCompletedGroupTopTwoRanks } from "@/lib/world-cup/group-standings";
 
 const stageSchema = z.enum(["r32", "r16", "qf", "sf", "final", "champion"]);
 const bodySchema = z.object({
@@ -93,8 +94,24 @@ export async function POST(req: Request) {
     );
   }
 
-  const uniqueTeamSlugs = Array.from(new Set(parsed.data.teamIds));
-  if (uniqueTeamSlugs.length !== stageExpectedCounts[parsed.data.stage]) {
+  const uniqueEntries = Array.from(new Set(parsed.data.teamIds));
+  if (parsed.data.stage === "r32") {
+    if (uniqueEntries.some(isPlaceholderKey)) {
+      return NextResponse.json(
+        { error: "Round of 32 qualifier picks must be real teams." },
+        { status: 400 },
+      );
+    }
+  }
+
+  if (parsed.data.stage !== "r32") {
+    if (uniqueEntries.length < 1 || uniqueEntries.length > stageExpectedCounts[parsed.data.stage]) {
+      return NextResponse.json(
+        { error: `${stageLabel(parsed.data.stage)} picks must include at least one entrant and no more than ${stageExpectedCounts[parsed.data.stage]}.` },
+        { status: 400 },
+      );
+    }
+  } else if (uniqueEntries.length !== stageExpectedCounts[parsed.data.stage]) {
     return NextResponse.json(
       { error: `${stageLabel(parsed.data.stage)} requires exactly ${stageExpectedCounts[parsed.data.stage]} teams.` },
       { status: 400 },
@@ -103,7 +120,7 @@ export async function POST(req: Request) {
 
   if (parsed.data.stage === "r32") {
     const rankByTeam = parsed.data.r32Ranks ?? {};
-    if (Object.keys(rankByTeam).length !== uniqueTeamSlugs.length) {
+    if (Object.keys(rankByTeam).length !== uniqueEntries.length) {
       return NextResponse.json(
         { error: "Every Round of 32 team must have a group rank." },
         { status: 400 },
@@ -122,7 +139,7 @@ export async function POST(req: Request) {
 
     const rankByGroup = new Map<string, Set<1 | 2 | 3>>();
     for (const [teamSlug, rank] of Object.entries(rankByTeam)) {
-      if (!uniqueTeamSlugs.includes(teamSlug)) {
+      if (!uniqueEntries.includes(teamSlug)) {
         return NextResponse.json(
           { error: "Round of 32 rank data must match selected teams." },
           { status: 400 },
@@ -152,13 +169,25 @@ export async function POST(req: Request) {
     }
   }
 
+  const realTeamSlugs = uniqueEntries.filter((entry) => !isPlaceholderKey(entry));
+  const placeholderKeys = uniqueEntries.filter(isPlaceholderKey);
   const teamIds = await Promise.all(
-    uniqueTeamSlugs.map((slug) => getDbTeamIdForSeedTeamSlug(tournament.id, slug)),
+    realTeamSlugs.map((slug) => getDbTeamIdForSeedTeamSlug(tournament.id, slug)),
   );
   if (teamIds.some((teamId) => teamId === null)) {
     return NextResponse.json({ error: "One or more selected teams were not found." }, { status: 404 });
   }
-  const resolvedTeamIds = teamIds.filter((teamId): teamId is number => teamId !== null);
+  const teamIdBySlug = new Map(
+    realTeamSlugs.map((slug, index) => [slug, teamIds[index]] as const),
+  );
+  const resolvedEntries = uniqueEntries.map((entry) =>
+    isPlaceholderKey(entry)
+      ? { entry, placeholderKey: entry }
+      : { entry, teamId: teamIdBySlug.get(entry)! },
+  );
+  const resolvedTeamIds = resolvedEntries.flatMap((entry) =>
+    entry.teamId === undefined ? [] : [entry.teamId],
+  );
 
   if (parsed.data.stage === "r16") {
     const roundOf32Matches = await db
@@ -176,6 +205,13 @@ export async function POST(req: Request) {
       roundOf32Matches.every((match) => match.homeTeamId !== null && match.awayTeamId !== null);
 
     if (roundOf32FixturesReady) {
+      if (placeholderKeys.length > 0 || uniqueEntries.length !== stageExpectedCounts.r16) {
+        return NextResponse.json(
+          { error: "Round of 16 requires one real-team winner from every Round of 32 match." },
+          { status: 400 },
+        );
+      }
+
       const selectedTeamIds = new Set(resolvedTeamIds);
       const invalidMatch = roundOf32Matches.find((match) => {
         const homeSelected = selectedTeamIds.has(match.homeTeamId!);
@@ -195,8 +231,50 @@ export async function POST(req: Request) {
         leagueId: league.leagueId,
         tournamentId: tournament.id,
         stage: parsed.data.stage,
-        resolvedTeamIds,
-        uniqueTeamSlugs,
+        entries: resolvedEntries,
+        r32Ranks: parsed.data.r32Ranks,
+      });
+    }
+
+    const [tournamentTeams, groupMatches] = await Promise.all([
+      db
+        .select({
+          id: dbTeams.id,
+          group: dbTeams.groupCode,
+          name: dbTeams.name,
+        })
+        .from(dbTeams)
+        .where(eq(dbTeams.tournamentId, tournament.id)),
+      db
+        .select({
+          stage: dbMatches.stage,
+          group: dbMatches.groupCode,
+          homeTeamId: dbMatches.homeTeamId,
+          awayTeamId: dbMatches.awayTeamId,
+          status: dbMatches.status,
+          homeScore: dbMatches.homeScore,
+          awayScore: dbMatches.awayScore,
+        })
+        .from(dbMatches)
+        .where(and(eq(dbMatches.tournamentId, tournament.id), eq(dbMatches.stage, "group"))),
+    ]);
+
+    const knownRoundOf32TeamIds = new Set(getCompletedGroupTopTwoRanks(tournamentTeams, groupMatches).keys());
+    if (knownRoundOf32TeamIds.size > 0) {
+      const unknownTeamId = resolvedTeamIds.find((teamId) => !knownRoundOf32TeamIds.has(teamId));
+      if (unknownTeamId) {
+        return NextResponse.json(
+          { error: "Round of 16 picks must come from the known Round of 32 bracket teams." },
+          { status: 400 },
+        );
+      }
+
+      return saveStagePredictions({
+        sessionUserId: session.userId,
+        leagueId: league.leagueId,
+        tournamentId: tournament.id,
+        stage: parsed.data.stage,
+        entries: resolvedEntries,
         r32Ranks: parsed.data.r32Ranks,
       });
     }
@@ -206,7 +284,10 @@ export async function POST(req: Request) {
     const stage = parsed.data.stage;
     const previousStage = previousStageByStage[stage];
     const previousRows = await db
-      .select({ teamId: stagePredictions.teamId })
+      .select({
+        teamId: stagePredictions.teamId,
+        placeholderKey: stagePredictions.placeholderKey,
+      })
       .from(stagePredictions)
       .where(
         and(
@@ -217,15 +298,25 @@ export async function POST(req: Request) {
         ),
       );
 
-    if (previousRows.length !== stageExpectedCounts[previousStage]) {
+    if (previousRows.length === 0) {
       return NextResponse.json(
-        { error: `Save a complete ${stageLabel(previousStage)} before saving ${stageLabel(stage)}.` },
+        { error: `Save ${stageLabel(previousStage)} before saving ${stageLabel(stage)}.` },
         { status: 400 },
       );
     }
 
-    const previousTeamIds = new Set(previousRows.map((row) => row.teamId));
-    if (resolvedTeamIds.some((teamId) => !previousTeamIds.has(teamId))) {
+    const previousEntryKeys = new Set(
+      previousRows.flatMap((row) => {
+        if (row.teamId !== null) return [`team:${row.teamId}`];
+        if (row.placeholderKey) return [row.placeholderKey];
+        return [];
+      }),
+    );
+    const invalidEntry = resolvedEntries.find((entry) => {
+      const key = entry.teamId === undefined ? entry.placeholderKey : `team:${entry.teamId}`;
+      return !key || !previousEntryKeys.has(key);
+    });
+    if (invalidEntry) {
       return NextResponse.json(
         { error: `${stageLabel(stage)} picks must come from your saved ${stageLabel(previousStage)} picks.` },
         { status: 400 },
@@ -238,8 +329,7 @@ export async function POST(req: Request) {
     leagueId: league.leagueId,
     tournamentId: tournament.id,
     stage: parsed.data.stage,
-    resolvedTeamIds,
-    uniqueTeamSlugs,
+    entries: resolvedEntries,
     r32Ranks: parsed.data.r32Ranks,
   });
 }
@@ -249,16 +339,14 @@ async function saveStagePredictions({
   leagueId,
   tournamentId,
   stage,
-  resolvedTeamIds,
-  uniqueTeamSlugs,
+  entries,
   r32Ranks,
 }: {
   sessionUserId: number;
   leagueId: number;
   tournamentId: number;
   stage: keyof typeof stageExpectedCounts;
-  resolvedTeamIds: number[];
-  uniqueTeamSlugs: string[];
+  entries: Array<{ entry: string; teamId?: number; placeholderKey?: string }>;
   r32Ranks?: Record<string, 1 | 2 | 3>;
 }) {
   await db.transaction(async (tx) => {
@@ -287,17 +375,18 @@ async function saveStagePredictions({
         );
     }
 
-    if (resolvedTeamIds.length > 0) {
+    if (entries.length > 0) {
       await tx.insert(stagePredictions).values(
-        resolvedTeamIds.map((teamId, index) => ({
+        entries.map((entry) => ({
           userId: sessionUserId,
           leagueId,
           tournamentId,
           stage,
-          teamId,
+          teamId: entry.teamId ?? null,
+          placeholderKey: entry.placeholderKey ?? null,
           groupRank:
-            stage === "r32" && uniqueTeamSlugs[index]
-              ? (r32Ranks?.[uniqueTeamSlugs[index]] ?? null)
+            stage === "r32" && entry.teamId !== undefined
+              ? (r32Ranks?.[entry.entry] ?? null)
               : null,
           source: "manual" as const,
         })),
@@ -308,8 +397,12 @@ async function saveStagePredictions({
   return NextResponse.json({
     ok: true,
     stage,
-    teamIds: uniqueTeamSlugs,
+    teamIds: entries.map((entry) => entry.entry),
   });
+}
+
+function isPlaceholderKey(value: string): boolean {
+  return value.startsWith("placeholder:");
 }
 
 function rankLabel(rank: 1 | 2 | 3): string {

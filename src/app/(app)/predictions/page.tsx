@@ -92,7 +92,7 @@ export default async function PredictionsPage() {
             <StagePredictionForm
               initialPredictions={savedStagePredictions}
               lockedStages={stageLockState}
-              realRoundOf32Matches={matches.filter((match) => match.stage === "r32")}
+              matches={matches}
             />
           )}
         </>

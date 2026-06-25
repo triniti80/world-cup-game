@@ -22,6 +22,7 @@ import {
   tournament as seedTournament,
   type Match,
 } from "@/lib/world-cup/data";
+import { getCompletedGroupTopTwoRanks } from "@/lib/world-cup/group-standings";
 import { scoreMatchPrediction, STAGE_POINTS, STAGE_REASON } from "@/lib/world-cup/scoring";
 
 const TOURNAMENT_YEAR = 2026;
@@ -812,6 +813,7 @@ export async function getSavedStagePredictions(
     .select({
       stage: stagePredictions.stage,
       teamId: stagePredictions.teamId,
+      placeholderKey: stagePredictions.placeholderKey,
       groupRank: stagePredictions.groupRank,
     })
     .from(stagePredictions)
@@ -825,11 +827,12 @@ export async function getSavedStagePredictions(
 
   return rows.reduce<SavedStagePredictions>(
     (acc, row) => {
-      const slug = slugByTeamId.get(row.teamId);
+      const slug = row.teamId === null ? row.placeholderKey : slugByTeamId.get(row.teamId);
       if (!slug) return acc;
       acc.teams[row.stage] = [...(acc.teams[row.stage] ?? []), slug];
       if (
         row.stage === "r32" &&
+        row.teamId !== null &&
         (row.groupRank === 1 || row.groupRank === 2 || row.groupRank === 3)
       ) {
         acc.r32Ranks[slug] = row.groupRank;
@@ -1097,6 +1100,41 @@ async function getCurrentStagePredictionLeaderboardEvents(leagueIds: number[]) {
     .from(dbMatches)
     .where(eq(dbMatches.stage, "r32"));
 
+  const tournamentIds = [
+    ...new Set([
+      ...officialRows.map((row) => row.tournamentId),
+      ...roundOf32FixtureRows.map((row) => row.tournamentId),
+    ]),
+  ];
+  const tournamentTeams =
+    tournamentIds.length > 0
+      ? await db
+          .select({
+            id: dbTeams.id,
+            tournamentId: dbTeams.tournamentId,
+            group: dbTeams.groupCode,
+            name: dbTeams.name,
+          })
+          .from(dbTeams)
+          .where(inArray(dbTeams.tournamentId, tournamentIds))
+      : [];
+  const groupMatchRows =
+    tournamentIds.length > 0
+      ? await db
+          .select({
+            tournamentId: dbMatches.tournamentId,
+            stage: dbMatches.stage,
+            group: dbMatches.groupCode,
+            homeTeamId: dbMatches.homeTeamId,
+            awayTeamId: dbMatches.awayTeamId,
+            status: dbMatches.status,
+            homeScore: dbMatches.homeScore,
+            awayScore: dbMatches.awayScore,
+          })
+          .from(dbMatches)
+          .where(and(inArray(dbMatches.tournamentId, tournamentIds), eq(dbMatches.stage, "group")))
+      : [];
+
   const officialTeamByStage = officialRows.reduce<Map<string, Set<number>>>((acc, row) => {
     const key = `${row.tournamentId}:${row.stage}`;
     const teamsForStage = acc.get(key) ?? new Set<number>();
@@ -1110,6 +1148,19 @@ async function getCurrentStagePredictionLeaderboardEvents(leagueIds: number[]) {
     const teamsForStage = officialTeamByStage.get(key) ?? new Set<number>();
     if (row.homeTeamId !== null) teamsForStage.add(row.homeTeamId);
     if (row.awayTeamId !== null) teamsForStage.add(row.awayTeamId);
+    officialTeamByStage.set(key, teamsForStage);
+  }
+
+  for (const tournamentId of tournamentIds) {
+    const teamsForTournament = tournamentTeams.filter((team) => team.tournamentId === tournamentId);
+    const matchesForTournament = groupMatchRows.filter((match) => match.tournamentId === tournamentId);
+    const topTwoRanks = getCompletedGroupTopTwoRanks(teamsForTournament, matchesForTournament);
+    if (topTwoRanks.size === 0) continue;
+    const key = `${tournamentId}:r32`;
+    const teamsForStage = officialTeamByStage.get(key) ?? new Set<number>();
+    for (const teamId of topTwoRanks.keys()) {
+      teamsForStage.add(teamId);
+    }
     officialTeamByStage.set(key, teamsForStage);
   }
 
@@ -1135,6 +1186,7 @@ async function getCurrentStagePredictionLeaderboardEvents(leagueIds: number[]) {
     .where(and(inArray(stagePredictions.leagueId, leagueIds), eq(leagues.gameMode, "stage_predictions")));
 
   return predictions.flatMap((prediction) => {
+    if (prediction.teamId === null) return [];
     const officialTeams = officialTeamByStage.get(`${prediction.tournamentId}:${prediction.stage}`);
     if (!officialTeams?.has(prediction.teamId)) return [];
     return [
@@ -1257,6 +1309,7 @@ async function getLeaderboardDetailMap(
             id: stagePredictions.id,
             stage: stagePredictions.stage,
             teamId: stagePredictions.teamId,
+            placeholderKey: stagePredictions.placeholderKey,
           })
           .from(stagePredictions)
           .where(inArray(stagePredictions.id, stagePredictionIds))
@@ -1280,7 +1333,7 @@ async function getLeaderboardDetailMap(
     if (row.awayTeamId) teamIds.add(row.awayTeamId);
   }
   for (const row of stageRows) {
-    teamIds.add(row.teamId);
+    if (row.teamId !== null) teamIds.add(row.teamId);
   }
   for (const row of bonusRows) {
     if (row.teamId) teamIds.add(row.teamId);
@@ -1309,10 +1362,11 @@ async function getLeaderboardDetailMap(
   }
 
   for (const row of stageRows) {
-    const team = teamById.get(row.teamId);
+    const team = row.teamId === null ? undefined : teamById.get(row.teamId);
+    const placeholder = row.placeholderKey ? placeholderLabel(row.placeholderKey) : undefined;
     detailBySource.set(`stage_prediction:${row.id}`, {
-      label: `${stagePredictionLabel(row.stage)}: ${team?.name ?? "Unknown team"}`,
-      detail: team?.fifaCode ?? "Team pick",
+      label: `${stagePredictionLabel(row.stage)}: ${team?.name ?? placeholder ?? "Unknown team"}`,
+      detail: team?.fifaCode ?? (placeholder ? "Placeholder pick" : "Team pick"),
     });
   }
 
@@ -1345,6 +1399,10 @@ function stagePredictionLabel(stage: "r32" | "r16" | "qf" | "sf" | "final" | "ch
     case "champion":
       return "Champion";
   }
+}
+
+function placeholderLabel(value: string): string {
+  return value.startsWith("placeholder:") ? value.slice("placeholder:".length) : value;
 }
 
 function sortStagePredictionPicks(
@@ -1440,6 +1498,7 @@ export async function getMobileLeaguePredictionVisibility(
       userId: stagePredictions.userId,
       stage: stagePredictions.stage,
       teamId: stagePredictions.teamId,
+      placeholderKey: stagePredictions.placeholderKey,
       groupRank: stagePredictions.groupRank,
       source: stagePredictions.source,
     })
@@ -1471,14 +1530,15 @@ export async function getMobileLeaguePredictionVisibility(
         ? (rowsByUserAndStage.get(`${member.userId}:${stage}`) ?? [])
         : [];
       const picks = stageRows.flatMap<MobileLeagueStagePick>((row) => {
-        const team = teamByDbId.get(row.teamId);
-        if (!team) return [];
+        const team = row.teamId === null ? undefined : teamByDbId.get(row.teamId);
+        const placeholder = row.placeholderKey ? placeholderLabel(row.placeholderKey) : undefined;
+        if (!team && !placeholder) return [];
         return [
           {
-            teamId: team.slug,
-            teamName: team.name,
-            teamCode: team.fifaCode,
-            group: team.groupCode,
+            teamId: team?.slug ?? row.placeholderKey!,
+            teamName: team?.name ?? placeholder!,
+            teamCode: team?.fifaCode ?? placeholder!,
+            group: team?.groupCode ?? null,
             groupRank: stage === "r32" ? normalizeGroupRank(row.groupRank) : null,
           },
         ];
@@ -1592,6 +1652,7 @@ export async function backfillRandomLockedStagePredictions(options: {
       const expectedCount = stagePredictionExpectedCounts[stage];
       const existing = rowsByMemberAndStage.get(`${member.leagueId}:${member.userId}:${stage}`) ?? [];
       const existingPicks = existing.flatMap<RandomBackfillPick>((row) => {
+        if (row.teamId === null) return [];
         const team = teamsByDbId.get(row.teamId);
         if (!team) return [];
         return [
@@ -1937,6 +1998,7 @@ export async function getLeaguePredictionVisibility(userId: number, activeLeague
       picks: r32Revealed
         ? rows
             .flatMap((row) => {
+              if (row.teamId === null) return [];
               const slug = slugByTeamId.get(row.teamId);
               const groupRank = normalizeGroupRank(row.groupRank);
               if (!slug || !groupRank) {

@@ -216,8 +216,8 @@ export const stagePredictions = pgTable(
       .references(() => tournaments.id, { onDelete: "cascade" }),
     stage: stagePredictionStageEnum("stage").notNull(),
     teamId: integer("team_id")
-      .notNull()
       .references(() => teams.id, { onDelete: "cascade" }),
+    placeholderKey: text("placeholder_key"),
     groupRank: integer("group_rank"),
     source: stagePredictionSourceEnum("source").notNull().default("manual"),
     submittedAt: timestamp("submitted_at", { withTimezone: true }).notNull().defaultNow(),

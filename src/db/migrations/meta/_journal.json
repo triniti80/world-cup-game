@@ -64,6 +64,13 @@
       "when": 1781712000000,
       "tag": "0008_half_point_score_events",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1782864000000,
+      "tag": "0009_stage_prediction_placeholders",
+      "breakpoints": true
     }
   ]
 }

@@ -10,7 +10,9 @@ import {
   officialStageResults,
   scoreEvents,
   stagePredictions,
+  teams,
 } from "@/db/schema";
+import { getCompletedGroupTopTwoRanks } from "./group-standings";
 import { getCorrectOutcomePoints, getExactScorePoints, type OutcomeSide } from "./static-odds";
 
 type FinalMatch = {
@@ -196,9 +198,28 @@ export async function recalculateStageScoreEvents(tournamentId: number): Promise
     [row.homeTeamId, row.awayTeamId].filter((teamId): teamId is number => teamId !== null),
   );
 
+  const tournamentTeams = await db
+    .select({ id: teams.id, group: teams.groupCode, name: teams.name })
+    .from(teams)
+    .where(eq(teams.tournamentId, tournamentId));
+  const groupMatchRows = await db
+    .select({
+      stage: matches.stage,
+      group: matches.groupCode,
+      homeTeamId: matches.homeTeamId,
+      awayTeamId: matches.awayTeamId,
+      status: matches.status,
+      homeScore: matches.homeScore,
+      awayScore: matches.awayScore,
+    })
+    .from(matches)
+    .where(and(eq(matches.tournamentId, tournamentId), eq(matches.stage, "group")));
+  const completedGroupTopTwoTeams = [...getCompletedGroupTopTwoRanks(tournamentTeams, groupMatchRows).keys()];
+
   const officialTeamByStage = [
     ...officialRows,
     ...roundOf32FixtureTeams.map((teamId) => ({ stage: "r32" as const, teamId })),
+    ...completedGroupTopTwoTeams.map((teamId) => ({ stage: "r32" as const, teamId })),
   ].reduce<Map<string, Set<number>>>((acc, row) => {
     const teamsForStage = acc.get(row.stage) ?? new Set<number>();
     teamsForStage.add(row.teamId);
@@ -242,6 +263,7 @@ export async function recalculateStageScoreEvents(tournamentId: number): Promise
     }
 
     const events = predictions.flatMap((prediction) => {
+      if (prediction.teamId === null) return [];
       const officialTeams = officialTeamByStage.get(prediction.stage);
       if (!officialTeams?.has(prediction.teamId)) return [];
       return [

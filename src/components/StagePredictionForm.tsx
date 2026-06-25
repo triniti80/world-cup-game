@@ -5,6 +5,7 @@ import { useI18n } from "@/components/I18nProvider";
 import type { Locale, TranslationKey } from "@/lib/i18n";
 import { buildRoundOf32Pairs as buildOfficialRoundOf32Pairs } from "@/lib/world-cup/bracket";
 import { getTeamName, teams, type Match, type Team } from "@/lib/world-cup/data";
+import { getCompletedGroupTopTwoRanks } from "@/lib/world-cup/group-standings";
 import type { SavedStagePredictions } from "@/lib/world-cup/repository";
 
 const groups = Array.from(new Set(teams.map((team) => team.group))).sort();
@@ -44,6 +45,10 @@ type Pair = {
   label: string;
   home?: Team;
   away?: Team;
+  homeId?: string;
+  awayId?: string;
+  homePlaceholderKey?: string;
+  awayPlaceholderKey?: string;
   homePlaceholder?: string;
   awayPlaceholder?: string;
 };
@@ -57,19 +62,16 @@ type Translate = (key: TranslationKey, params?: Record<string, string | number>)
 export function StagePredictionForm({
   initialPredictions,
   lockedStages,
-  realRoundOf32Matches = [],
+  matches = [],
 }: {
   initialPredictions: SavedStagePredictions;
   lockedStages: { r32: boolean; knockout: boolean };
-  realRoundOf32Matches?: Match[];
+  matches?: Match[];
 }) {
   const { locale, t } = useI18n();
   const initialRoundOf32Pairs = useMemo(() => {
-    const actualPairs = buildRoundOf32PairsFromMatches(realRoundOf32Matches);
-    return actualPairs.length > 0
-      ? actualPairs
-      : buildRoundOf32Pairs(initialPredictions.r32Ranks);
-  }, [initialPredictions.r32Ranks, realRoundOf32Matches]);
+    return buildBestRoundOf32Pairs(matches, initialPredictions.r32Ranks);
+  }, [initialPredictions.r32Ranks, matches]);
   const [selected, setSelected] = useState<Record<string, string[]>>(() =>
     sanitizeSelectionsWithRoundOf32Pairs(initialPredictions.teams, initialRoundOf32Pairs),
   );
@@ -84,12 +86,18 @@ export function StagePredictionForm({
     Object.fromEntries(stageIds.map((stage) => [stage, false])) as Record<StageId, boolean>,
   );
 
-  const actualRoundOf32Pairs = useMemo(
-    () => buildRoundOf32PairsFromMatches(realRoundOf32Matches),
-    [realRoundOf32Matches],
+  const actualRoundOf32Pairs = useMemo(() => buildRoundOf32PairsFromMatches(matches), [matches]);
+  const completedGroupRoundOf32Pairs = useMemo(
+    () => buildRoundOf32PairsFromCompletedGroups(matches),
+    [matches],
   );
   const predictedRoundOf32Pairs = useMemo(() => buildRoundOf32Pairs(r32Ranks), [r32Ranks]);
-  const r32Pairs = actualRoundOf32Pairs.length > 0 ? actualRoundOf32Pairs : predictedRoundOf32Pairs;
+  const r32Pairs =
+    actualRoundOf32Pairs.length > 0
+      ? actualRoundOf32Pairs
+      : completedGroupRoundOf32Pairs.length > 0
+        ? completedGroupRoundOf32Pairs
+        : predictedRoundOf32Pairs;
   const r16Pairs = useMemo(() => buildPairsFromTeamIds(selected.r16 ?? [], "R16"), [selected.r16]);
   const qfPairs = useMemo(() => buildPairsFromTeamIds(selected.qf ?? [], "QF"), [selected.qf]);
   const sfPairs = useMemo(() => buildPairsFromTeamIds(selected.sf ?? [], "SF"), [selected.sf]);
@@ -107,11 +115,11 @@ export function StagePredictionForm({
   } satisfies Record<(typeof knockoutStages)[number]["id"], Pair[]>;
   const completionMap = {
     r32: getR32Completion(r32Ranks, t),
-    r16: getKnockoutCompletion(selected.r16 ?? [], r32Pairs, 16, t),
-    qf: getKnockoutCompletion(selected.qf ?? [], r16Pairs, 8, t),
-    sf: getKnockoutCompletion(selected.sf ?? [], qfPairs, 4, t),
-    final: getKnockoutCompletion(selected.final ?? [], sfPairs, 2, t),
-    champion: getKnockoutCompletion(selected.champion ?? [], finalPairs, 1, t),
+    r16: getKnockoutCompletion(selected.r16 ?? [], r32Pairs, 16, t, { allowPartial: true }),
+    qf: getKnockoutCompletion(selected.qf ?? [], r16Pairs, 8, t, { allowPartial: true }),
+    sf: getKnockoutCompletion(selected.sf ?? [], qfPairs, 4, t, { allowPartial: true }),
+    final: getKnockoutCompletion(selected.final ?? [], sfPairs, 2, t, { allowPartial: true }),
+    champion: getKnockoutCompletion(selected.champion ?? [], finalPairs, 1, t, { allowPartial: true }),
   } satisfies Record<StageId, StageCompletion>;
 
   function setRank(team: Team, rank: Rank) {
@@ -125,7 +133,11 @@ export function StagePredictionForm({
       if (existing === rank) {
         delete next[team.id];
         const nextRoundOf32Pairs =
-          actualRoundOf32Pairs.length > 0 ? actualRoundOf32Pairs : buildRoundOf32Pairs(next);
+          actualRoundOf32Pairs.length > 0
+            ? actualRoundOf32Pairs
+            : completedGroupRoundOf32Pairs.length > 0
+              ? completedGroupRoundOf32Pairs
+              : buildRoundOf32Pairs(next);
         setSelected((selectedCurrent) =>
           sanitizeAfterR32Change(selectedCurrent, next, nextRoundOf32Pairs),
         );
@@ -151,7 +163,11 @@ export function StagePredictionForm({
 
       next[team.id] = rank;
       const nextRoundOf32Pairs =
-        actualRoundOf32Pairs.length > 0 ? actualRoundOf32Pairs : buildRoundOf32Pairs(next);
+        actualRoundOf32Pairs.length > 0
+          ? actualRoundOf32Pairs
+          : completedGroupRoundOf32Pairs.length > 0
+            ? completedGroupRoundOf32Pairs
+            : buildRoundOf32Pairs(next);
       setSelected((selectedCurrent) =>
         sanitizeAfterR32Change(selectedCurrent, next, nextRoundOf32Pairs),
       );
@@ -436,10 +452,11 @@ function KnockoutStage({
               <PairTeamButton
                 team={pair.home}
                 placeholder={pair.homePlaceholder}
-                active={Boolean(pair.home && selectedTeamIds[index] === pair.home.id)}
+                active={Boolean(pair.homeId && selectedTeamIds[index] === pair.homeId)}
                 locale={locale}
                 disabled={controlsDisabled}
-                onClick={() => pair.home && onPick(stage, index, pair.home.id)}
+                entrantId={pair.homeId}
+                onClick={() => pair.homeId && onPick(stage, index, pair.homeId)}
               />
               <div className="my-2 text-center text-xs font-bold uppercase text-[var(--color-fg-muted)]">
                 {translate("common.vs")}
@@ -447,10 +464,11 @@ function KnockoutStage({
               <PairTeamButton
                 team={pair.away}
                 placeholder={pair.awayPlaceholder}
-                active={Boolean(pair.away && selectedTeamIds[index] === pair.away.id)}
+                active={Boolean(pair.awayId && selectedTeamIds[index] === pair.awayId)}
                 locale={locale}
                 disabled={controlsDisabled}
-                onClick={() => pair.away && onPick(stage, index, pair.away.id)}
+                entrantId={pair.awayId}
+                onClick={() => pair.awayId && onPick(stage, index, pair.awayId)}
               />
             </div>
           ))
@@ -491,6 +509,7 @@ function PairTeamButton({
   placeholder,
   active,
   locale,
+  entrantId,
   disabled = false,
   onClick,
 }: {
@@ -498,13 +517,14 @@ function PairTeamButton({
   placeholder?: string;
   active: boolean;
   locale: Locale;
+  entrantId?: string;
   disabled?: boolean;
   onClick: () => void;
 }) {
   return (
     <button
       type="button"
-      disabled={!team || disabled}
+      disabled={!entrantId || disabled}
       onClick={onClick}
       className={
         "w-full rounded-lg border px-3 py-2 text-start text-sm transition active:scale-95 disabled:cursor-not-allowed disabled:opacity-50 " +
@@ -617,14 +637,16 @@ function StageFooter({
 }
 
 function buildRoundOf32Pairs(ranks: Record<string, Rank>): Pair[] {
-  return buildOfficialRoundOf32Pairs(teams, ranks);
+  return buildOfficialRoundOf32Pairs(teams, ranks).map(withPairEntrantIds);
 }
 
 function buildRoundOf32PairsFromMatches(matches: Match[]): Pair[] {
-  const sortedMatches = [...matches].sort((a, b) => a.number - b.number);
+  const sortedMatches = matches
+    .filter((match) => match.stage === "r32")
+    .sort((a, b) => a.number - b.number);
   if (
     sortedMatches.length !== 16 ||
-    sortedMatches.some((match) => !match.homeTeamId || !match.awayTeamId)
+    sortedMatches.every((match) => !match.homeTeamId && !match.awayTeamId)
   ) {
     return [];
   }
@@ -634,19 +656,44 @@ function buildRoundOf32PairsFromMatches(matches: Match[]): Pair[] {
       label: `Match ${match.number}`,
       home: getTeamById(match.homeTeamId),
       away: getTeamById(match.awayTeamId),
-      homePlaceholder: match.homePlaceholder,
-      awayPlaceholder: match.awayPlaceholder,
+      homeId: match.homeTeamId,
+      awayId: match.awayTeamId,
+      homePlaceholderKey: match.homePlaceholder ? placeholderKey(match.homePlaceholder) : undefined,
+      awayPlaceholderKey: match.awayPlaceholder ? placeholderKey(match.awayPlaceholder) : undefined,
+      homePlaceholder: match.homePlaceholder ? normalizePlaceholderLabel(match.homePlaceholder) : undefined,
+      awayPlaceholder: match.awayPlaceholder ? normalizePlaceholderLabel(match.awayPlaceholder) : undefined,
     }));
+}
+
+function buildRoundOf32PairsFromCompletedGroups(matches: Match[]): Pair[] {
+  const ranks = Object.fromEntries(getCompletedGroupTopTwoRanks(teams, matches));
+  return Object.keys(ranks).length > 0 ? buildRoundOf32Pairs(ranks) : [];
+}
+
+function buildBestRoundOf32Pairs(matches: Match[], fallbackRanks: Record<string, Rank>): Pair[] {
+  const actualPairs = buildRoundOf32PairsFromMatches(matches);
+  if (actualPairs.length > 0) return actualPairs;
+  const completedGroupPairs = buildRoundOf32PairsFromCompletedGroups(matches);
+  if (completedGroupPairs.length > 0) return completedGroupPairs;
+  return buildRoundOf32Pairs(fallbackRanks);
 }
 
 function buildPairsFromTeamIds(teamIds: string[], prefix: string): Pair[] {
   const filledTeamIds = teamIds.filter(Boolean);
   const pairs: Pair[] = [];
   for (let index = 0; index < filledTeamIds.length; index += 2) {
+    const homeId = filledTeamIds[index];
+    const awayId = filledTeamIds[index + 1];
     pairs.push({
       label: `${prefix} Match ${pairs.length + 1}`,
-      home: getTeamById(filledTeamIds[index]),
-      away: getTeamById(filledTeamIds[index + 1]),
+      home: getTeamById(homeId),
+      away: getTeamById(awayId),
+      homeId,
+      awayId,
+      homePlaceholder: placeholderLabel(homeId),
+      awayPlaceholder: placeholderLabel(awayId),
+      homePlaceholderKey: isPlaceholderId(homeId) ? homeId : undefined,
+      awayPlaceholderKey: isPlaceholderId(awayId) ? awayId : undefined,
     });
   }
   return pairs;
@@ -664,12 +711,11 @@ function thirdPlaceCount(ranks: Record<string, Rank>): number {
 function getSubmittedStages(predictions: SavedStagePredictions): Record<StageId, boolean> {
   return {
     r32: isCompleteR32Prediction(predictions.r32Ranks),
-    r16: (predictions.teams.r16 ?? []).filter(Boolean).length === stageExpectedCounts.r16,
-    qf: (predictions.teams.qf ?? []).filter(Boolean).length === stageExpectedCounts.qf,
-    sf: (predictions.teams.sf ?? []).filter(Boolean).length === stageExpectedCounts.sf,
-    final: (predictions.teams.final ?? []).filter(Boolean).length === stageExpectedCounts.final,
-    champion:
-      (predictions.teams.champion ?? []).filter(Boolean).length === stageExpectedCounts.champion,
+    r16: (predictions.teams.r16 ?? []).filter(Boolean).length > 0,
+    qf: (predictions.teams.qf ?? []).filter(Boolean).length > 0,
+    sf: (predictions.teams.sf ?? []).filter(Boolean).length > 0,
+    final: (predictions.teams.final ?? []).filter(Boolean).length > 0,
+    champion: (predictions.teams.champion ?? []).filter(Boolean).length > 0,
   };
 }
 
@@ -735,23 +781,35 @@ function getKnockoutCompletion(
   pairs: Pair[],
   expected: number,
   t: Translate,
+  options: { allowPartial?: boolean } = {},
 ): StageCompletion {
   const playablePairs = pairs.filter((pair) => pair.home && pair.away);
+  const selectablePairs = pairs.filter((pair) => pair.homeId || pair.awayId);
+  const hasPlaceholder = pairs.some(
+    (pair) => isPlaceholderId(pair.homeId) || isPlaceholderId(pair.awayId),
+  );
   const picked = selectedTeamIds.filter(Boolean).length;
+  const selectedTeamsAreValid = selectedTeamIds.every((selectedTeamId, index) => {
+    if (!selectedTeamId) return true;
+    const pair = pairs[index];
+    return selectedTeamId === pair?.homeId || selectedTeamId === pair?.awayId;
+  });
   const complete =
-    playablePairs.length === expected &&
-    picked === expected &&
-    playablePairs.every((pair, index) => {
-      const selectedTeamId = selectedTeamIds[index];
-      return selectedTeamId === pair.home?.id || selectedTeamId === pair.away?.id;
-    });
+    options.allowPartial && (playablePairs.length < expected || hasPlaceholder)
+      ? picked > 0 && selectedTeamsAreValid
+      : playablePairs.length === expected &&
+        picked === expected &&
+        playablePairs.every((pair, index) => {
+          const selectedTeamId = selectedTeamIds[index];
+          return selectedTeamId === pair.homeId || selectedTeamId === pair.awayId;
+        });
 
   return {
     picked,
     complete,
     message: complete
       ? t("predictions.lockKnockout")
-      : playablePairs.length < expected
+      : selectablePairs.length < expected
         ? t("predictions.completePrevious")
         : t("predictions.chooseExpected", { expected }),
   };
@@ -819,13 +877,60 @@ function sanitizeAfterStageChange(
 }
 
 function keepValidPairWinners(selectedTeamIds: string[], pairs: Pair[]): string[] {
+  const selectedTeamIdSet = new Set(selectedTeamIds.filter(Boolean));
   return pairs.map((pair, index) => {
     const selectedTeamId = selectedTeamIds[index];
-    if (selectedTeamId && (pair.home?.id === selectedTeamId || pair.away?.id === selectedTeamId)) {
+    if (selectedTeamId && (pair.homeId === selectedTeamId || pair.awayId === selectedTeamId)) {
       return selectedTeamId;
+    }
+    if (selectedTeamId && selectedTeamId === pair.homePlaceholderKey && pair.homeId) {
+      return pair.homeId;
+    }
+    if (selectedTeamId && selectedTeamId === pair.awayPlaceholderKey && pair.awayId) {
+      return pair.awayId;
+    }
+    if (pair.homeId && selectedTeamIdSet.has(pair.homeId)) {
+      return pair.homeId;
+    }
+    if (pair.awayId && selectedTeamIdSet.has(pair.awayId)) {
+      return pair.awayId;
+    }
+    if (pair.homePlaceholderKey && selectedTeamIdSet.has(pair.homePlaceholderKey) && pair.homeId) {
+      return pair.homeId;
+    }
+    if (pair.awayPlaceholderKey && selectedTeamIdSet.has(pair.awayPlaceholderKey) && pair.awayId) {
+      return pair.awayId;
     }
     return "";
   });
+}
+
+function withPairEntrantIds(pair: Pair): Pair {
+  const homePlaceholderKey = pair.homePlaceholder ? placeholderKey(pair.homePlaceholder) : undefined;
+  const awayPlaceholderKey = pair.awayPlaceholder ? placeholderKey(pair.awayPlaceholder) : undefined;
+  return {
+    ...pair,
+    homeId: pair.home?.id ?? homePlaceholderKey,
+    awayId: pair.away?.id ?? awayPlaceholderKey,
+    homePlaceholderKey,
+    awayPlaceholderKey,
+  };
+}
+
+function placeholderKey(value: string): string {
+  return `placeholder:${value.replaceAll("/", "")}`;
+}
+
+function placeholderLabel(value: string | undefined): string | undefined {
+  return value && isPlaceholderId(value) ? value.slice("placeholder:".length) : undefined;
+}
+
+function normalizePlaceholderLabel(value: string): string {
+  return value.replaceAll("/", "");
+}
+
+function isPlaceholderId(value: string | undefined): boolean {
+  return Boolean(value?.startsWith("placeholder:"));
 }
 
 function sortedRankTeamIds(ranks: Record<string, Rank>): string[] {
