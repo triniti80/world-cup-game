@@ -1004,13 +1004,21 @@ async function getLeaderboardEventsForLeagues(leagueIds: number[]) {
       and(
         inArray(scoreEvents.leagueId, leagueIds),
         ne(scoreEvents.sourceType, "match_prediction"),
-        ne(scoreEvents.sourceType, "stage_prediction"),
       ),
     );
 
   const currentMatchEvents = await getCurrentMatchScoreLeaderboardEvents(leagueIds);
   const currentStageEvents = await getCurrentStagePredictionLeaderboardEvents(leagueIds);
-  return [...storedEvents, ...currentMatchEvents, ...currentStageEvents];
+  return dedupeLeaderboardEvents([...storedEvents, ...currentMatchEvents, ...currentStageEvents]);
+}
+
+function dedupeLeaderboardEvents<T extends { sourceType: string; sourceId: number }>(events: T[]): T[] {
+  return Array.from(
+    events.reduce((acc, event) => {
+      acc.set(`${event.sourceType}:${event.sourceId}`, event);
+      return acc;
+    }, new Map<string, T>()).values(),
+  );
 }
 
 async function getCurrentMatchScoreLeaderboardEvents(leagueIds: number[]) {

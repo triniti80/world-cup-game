@@ -171,31 +171,40 @@ export async function POST(req: Request) {
       .where(and(eq(dbMatches.tournamentId, tournament.id), eq(dbMatches.stage, "r32")))
       .orderBy(dbMatches.matchNumber);
 
-    if (
-      roundOf32Matches.length !== stageExpectedCounts.r16 ||
-      roundOf32Matches.some((match) => match.homeTeamId === null || match.awayTeamId === null)
-    ) {
-      return NextResponse.json(
-        { error: "Round of 32 fixtures are not ready yet." },
-        { status: 400 },
-      );
-    }
+    const roundOf32FixturesReady =
+      roundOf32Matches.length === stageExpectedCounts.r16 &&
+      roundOf32Matches.every((match) => match.homeTeamId !== null && match.awayTeamId !== null);
 
-    const selectedTeamIds = new Set(resolvedTeamIds);
-    const invalidMatch = roundOf32Matches.find((match) => {
-      const homeSelected = selectedTeamIds.has(match.homeTeamId!);
-      const awaySelected = selectedTeamIds.has(match.awayTeamId!);
-      return Number(homeSelected) + Number(awaySelected) !== 1;
-    });
+    if (roundOf32FixturesReady) {
+      const selectedTeamIds = new Set(resolvedTeamIds);
+      const invalidMatch = roundOf32Matches.find((match) => {
+        const homeSelected = selectedTeamIds.has(match.homeTeamId!);
+        const awaySelected = selectedTeamIds.has(match.awayTeamId!);
+        return Number(homeSelected) + Number(awaySelected) !== 1;
+      });
 
-    if (invalidMatch) {
-      return NextResponse.json(
-        { error: `Choose exactly one winner from Match ${invalidMatch.matchNumber}.` },
-        { status: 400 },
-      );
+      if (invalidMatch) {
+        return NextResponse.json(
+          { error: `Choose exactly one winner from Match ${invalidMatch.matchNumber}.` },
+          { status: 400 },
+        );
+      }
+
+      return saveStagePredictions({
+        sessionUserId: session.userId,
+        leagueId: league.leagueId,
+        tournamentId: tournament.id,
+        stage: parsed.data.stage,
+        resolvedTeamIds,
+        uniqueTeamSlugs,
+        r32Ranks: parsed.data.r32Ranks,
+      });
     }
-  } else if (parsed.data.stage !== "r32") {
-    const previousStage = previousStageByStage[parsed.data.stage];
+  }
+
+  if (parsed.data.stage !== "r32") {
+    const stage = parsed.data.stage;
+    const previousStage = previousStageByStage[stage];
     const previousRows = await db
       .select({ teamId: stagePredictions.teamId })
       .from(stagePredictions)
@@ -210,7 +219,7 @@ export async function POST(req: Request) {
 
     if (previousRows.length !== stageExpectedCounts[previousStage]) {
       return NextResponse.json(
-        { error: `Save a complete ${stageLabel(previousStage)} before saving ${stageLabel(parsed.data.stage)}.` },
+        { error: `Save a complete ${stageLabel(previousStage)} before saving ${stageLabel(stage)}.` },
         { status: 400 },
       );
     }
@@ -218,33 +227,61 @@ export async function POST(req: Request) {
     const previousTeamIds = new Set(previousRows.map((row) => row.teamId));
     if (resolvedTeamIds.some((teamId) => !previousTeamIds.has(teamId))) {
       return NextResponse.json(
-        { error: `${stageLabel(parsed.data.stage)} picks must come from your saved ${stageLabel(previousStage)} picks.` },
+        { error: `${stageLabel(stage)} picks must come from your saved ${stageLabel(previousStage)} picks.` },
         { status: 400 },
       );
     }
   }
 
+  return saveStagePredictions({
+    sessionUserId: session.userId,
+    leagueId: league.leagueId,
+    tournamentId: tournament.id,
+    stage: parsed.data.stage,
+    resolvedTeamIds,
+    uniqueTeamSlugs,
+    r32Ranks: parsed.data.r32Ranks,
+  });
+}
+
+async function saveStagePredictions({
+  sessionUserId,
+  leagueId,
+  tournamentId,
+  stage,
+  resolvedTeamIds,
+  uniqueTeamSlugs,
+  r32Ranks,
+}: {
+  sessionUserId: number;
+  leagueId: number;
+  tournamentId: number;
+  stage: keyof typeof stageExpectedCounts;
+  resolvedTeamIds: number[];
+  uniqueTeamSlugs: string[];
+  r32Ranks?: Record<string, 1 | 2 | 3>;
+}) {
   await db.transaction(async (tx) => {
     await tx
       .delete(stagePredictions)
       .where(
         and(
-          eq(stagePredictions.userId, session.userId),
-          eq(stagePredictions.leagueId, league.leagueId),
-          eq(stagePredictions.tournamentId, tournament.id),
-          eq(stagePredictions.stage, parsed.data.stage),
+          eq(stagePredictions.userId, sessionUserId),
+          eq(stagePredictions.leagueId, leagueId),
+          eq(stagePredictions.tournamentId, tournamentId),
+          eq(stagePredictions.stage, stage),
         ),
       );
 
-    const downstreamStages = downstreamStagesByStage[parsed.data.stage];
+    const downstreamStages = downstreamStagesByStage[stage];
     if (downstreamStages.length > 0) {
       await tx
         .delete(stagePredictions)
         .where(
           and(
-            eq(stagePredictions.userId, session.userId),
-            eq(stagePredictions.leagueId, league.leagueId),
-            eq(stagePredictions.tournamentId, tournament.id),
+            eq(stagePredictions.userId, sessionUserId),
+            eq(stagePredictions.leagueId, leagueId),
+            eq(stagePredictions.tournamentId, tournamentId),
             inArray(stagePredictions.stage, [...downstreamStages]),
           ),
         );
@@ -253,14 +290,14 @@ export async function POST(req: Request) {
     if (resolvedTeamIds.length > 0) {
       await tx.insert(stagePredictions).values(
         resolvedTeamIds.map((teamId, index) => ({
-          userId: session.userId,
-          leagueId: league.leagueId,
-          tournamentId: tournament.id,
-          stage: parsed.data.stage,
+          userId: sessionUserId,
+          leagueId,
+          tournamentId,
+          stage,
           teamId,
           groupRank:
-            parsed.data.stage === "r32" && uniqueTeamSlugs[index]
-              ? (parsed.data.r32Ranks?.[uniqueTeamSlugs[index]] ?? null)
+            stage === "r32" && uniqueTeamSlugs[index]
+              ? (r32Ranks?.[uniqueTeamSlugs[index]] ?? null)
               : null,
           source: "manual" as const,
         })),
@@ -270,7 +307,7 @@ export async function POST(req: Request) {
 
   return NextResponse.json({
     ok: true,
-    stage: parsed.data.stage,
+    stage,
     teamIds: uniqueTeamSlugs,
   });
 }

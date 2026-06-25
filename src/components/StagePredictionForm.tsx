@@ -621,8 +621,15 @@ function buildRoundOf32Pairs(ranks: Record<string, Rank>): Pair[] {
 }
 
 function buildRoundOf32PairsFromMatches(matches: Match[]): Pair[] {
-  return [...matches]
-    .sort((a, b) => a.number - b.number)
+  const sortedMatches = [...matches].sort((a, b) => a.number - b.number);
+  if (
+    sortedMatches.length !== 16 ||
+    sortedMatches.some((match) => !match.homeTeamId || !match.awayTeamId)
+  ) {
+    return [];
+  }
+
+  return sortedMatches
     .map((match) => ({
       label: `Match ${match.number}`,
       home: getTeamById(match.homeTeamId),
