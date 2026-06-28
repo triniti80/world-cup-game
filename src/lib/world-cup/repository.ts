@@ -200,23 +200,13 @@ export type LeagueBonusPrediction = {
   winnerTeamId?: string;
 };
 
-export type LeagueR32Prediction = {
-  userId: number;
-  submitted: boolean;
-  revealed: boolean;
-  randomPick: boolean;
-  picks: {
-    teamId: string;
-    groupRank: 1 | 2 | 3;
-  }[];
-};
-
 export type MobileLeagueStagePick = {
   teamId: string;
   teamName: string;
   teamCode: string;
   group: string | null;
   groupRank: 1 | 2 | 3 | null;
+  successful: boolean | null;
 };
 
 export type MobileLeagueStagePrediction = {
@@ -1405,17 +1395,64 @@ function placeholderLabel(value: string): string {
   return value.startsWith("placeholder:") ? value.slice("placeholder:".length) : value;
 }
 
-function sortStagePredictionPicks(
-  a: LeagueR32Prediction["picks"][number],
-  b: LeagueR32Prediction["picks"][number],
-): number {
-  const teamA = seedTeams.find((team) => team.id === a.teamId);
-  const teamB = seedTeams.find((team) => team.id === b.teamId);
-  return (
-    (teamA?.group ?? "").localeCompare(teamB?.group ?? "") ||
-    a.groupRank - b.groupRank ||
-    (teamA?.name ?? "").localeCompare(teamB?.name ?? "")
+async function getOfficialStageTeamSets(tournamentId: number): Promise<Map<StagePredictionStage, Set<number>>> {
+  const officialRows = await db
+    .select({
+      stage: officialStageResults.stage,
+      teamId: officialStageResults.teamId,
+    })
+    .from(officialStageResults)
+    .where(eq(officialStageResults.tournamentId, tournamentId));
+
+  const officialTeamByStage = officialRows.reduce<Map<StagePredictionStage, Set<number>>>(
+    (acc, row) => {
+      const teamsForStage = acc.get(row.stage) ?? new Set<number>();
+      teamsForStage.add(row.teamId);
+      acc.set(row.stage, teamsForStage);
+      return acc;
+    },
+    new Map(),
   );
+
+  const roundOf32FixtureRows = await db
+    .select({
+      homeTeamId: dbMatches.homeTeamId,
+      awayTeamId: dbMatches.awayTeamId,
+    })
+    .from(dbMatches)
+    .where(and(eq(dbMatches.tournamentId, tournamentId), eq(dbMatches.stage, "r32")));
+  const roundOf32Teams = officialTeamByStage.get("r32") ?? new Set<number>();
+  for (const row of roundOf32FixtureRows) {
+    if (row.homeTeamId !== null) roundOf32Teams.add(row.homeTeamId);
+    if (row.awayTeamId !== null) roundOf32Teams.add(row.awayTeamId);
+  }
+
+  const [tournamentTeams, groupMatches] = await Promise.all([
+    db
+      .select({ id: dbTeams.id, group: dbTeams.groupCode, name: dbTeams.name })
+      .from(dbTeams)
+      .where(eq(dbTeams.tournamentId, tournamentId)),
+    db
+      .select({
+        stage: dbMatches.stage,
+        group: dbMatches.groupCode,
+        homeTeamId: dbMatches.homeTeamId,
+        awayTeamId: dbMatches.awayTeamId,
+        status: dbMatches.status,
+        homeScore: dbMatches.homeScore,
+        awayScore: dbMatches.awayScore,
+      })
+      .from(dbMatches)
+      .where(and(eq(dbMatches.tournamentId, tournamentId), eq(dbMatches.stage, "group"))),
+  ]);
+  for (const teamId of getCompletedGroupQualifierRanks(tournamentTeams, groupMatches).keys()) {
+    roundOf32Teams.add(teamId);
+  }
+  if (roundOf32Teams.size > 0) {
+    officialTeamByStage.set("r32", roundOf32Teams);
+  }
+
+  return officialTeamByStage;
 }
 
 function normalizeGroupRank(rank: number | null): 1 | 2 | 3 | null {
@@ -1491,6 +1528,7 @@ export async function getMobileLeaguePredictionVisibility(
     .from(dbTeams)
     .where(eq(dbTeams.tournamentId, tournamentRow.id));
   const teamByDbId = new Map(seededTeams.map((team) => [team.id, team]));
+  const officialTeamByStage = await getOfficialStageTeamSets(tournamentRow.id);
 
   const rows = await db
     .select({
@@ -1540,6 +1578,10 @@ export async function getMobileLeaguePredictionVisibility(
             teamCode: team?.fifaCode ?? placeholder!,
             group: team?.groupCode ?? null,
             groupRank: stage === "r32" ? normalizeGroupRank(row.groupRank) : null,
+            successful:
+              team && officialTeamByStage.get(stage)?.size
+                ? officialTeamByStage.get(stage)!.has(team.id)
+                : null,
           },
         ];
       });
@@ -1841,7 +1883,7 @@ export async function getLeaguePredictionVisibility(userId: number, activeLeague
   members: LeaguePredictionMember[];
   matches: LeaguePredictionMatch[];
   bonuses: LeagueBonusPrediction[];
-  stagePredictions: LeagueR32Prediction[];
+  stagePredictions: MobileLeaguePredictionStage[];
 }> {
   const tournamentRow = await getSeedTournamentForRead();
   const league = await getCurrentLeague(userId, activeLeagueId);
@@ -1949,8 +1991,6 @@ export async function getLeaguePredictionVisibility(userId: number, activeLeague
   );
   const bonusRevealed = now >= tournamentRow.firstMatchAt.getTime();
   const topScorerRevealed = now >= getBonusPredictionLockAt(tournamentRow, "top_scorer").getTime();
-  const r32Revealed = now >= tournamentRow.predictionLockAt.getTime();
-
   const bonuses = members.map<LeagueBonusPrediction>((member) => {
     const topScorer = bonusByUserAndType.get(`${member.userId}:top_scorer`);
     const winner = bonusByUserAndType.get(`${member.userId}:tournament_winner`);
@@ -1965,10 +2005,13 @@ export async function getLeaguePredictionVisibility(userId: number, activeLeague
     };
   });
 
-  const r32Rows = await db
+  const lockedStages = new Set(await getLockedStagePredictionStages(tournamentRow, new Date(now)));
+  const stageRows = await db
     .select({
       userId: stagePredictions.userId,
+      stage: stagePredictions.stage,
       teamId: stagePredictions.teamId,
+      placeholderKey: stagePredictions.placeholderKey,
       groupRank: stagePredictions.groupRank,
       source: stagePredictions.source,
     })
@@ -1977,39 +2020,70 @@ export async function getLeaguePredictionVisibility(userId: number, activeLeague
       and(
         eq(stagePredictions.leagueId, league.leagueId),
         eq(stagePredictions.tournamentId, tournamentRow.id),
-        eq(stagePredictions.stage, "r32"),
+        inArray(stagePredictions.stage, [...stagePredictionOrder]),
       ),
-    );
+    )
+    .orderBy(stagePredictions.id);
 
-  const r32RowsByUserId = new Map<number, typeof r32Rows>();
-  for (const row of r32Rows) {
-    const rows = r32RowsByUserId.get(row.userId) ?? [];
+  const stageRowsByUserAndStage = new Map<string, typeof stageRows>();
+  for (const row of stageRows) {
+    const key = `${row.userId}:${row.stage}`;
+    const rows = stageRowsByUserAndStage.get(key) ?? [];
     rows.push(row);
-    r32RowsByUserId.set(row.userId, rows);
+    stageRowsByUserAndStage.set(key, rows);
   }
 
-  const stagePredictionsByMember = members.map<LeagueR32Prediction>((member) => {
-    const rows = r32RowsByUserId.get(member.userId) ?? [];
-    return {
-      userId: member.userId,
-      submitted: rows.length === 32,
-      revealed: r32Revealed,
-      randomPick: rows.length === 32 && rows.every((row) => row.source === "calculated"),
-      picks: r32Revealed
-        ? rows
-            .flatMap((row) => {
-              if (row.teamId === null) return [];
-              const slug = slugByTeamId.get(row.teamId);
-              const groupRank = normalizeGroupRank(row.groupRank);
-              if (!slug || !groupRank) {
-                return [];
-              }
-              return [{ teamId: slug, groupRank }];
-            })
-            .sort((a, b) => sortStagePredictionPicks(a, b))
-        : [],
-    };
-  });
+  const seededTeamDetails = await db
+    .select({
+      id: dbTeams.id,
+      slug: dbTeams.slug,
+      name: dbTeams.name,
+      fifaCode: dbTeams.fifaCode,
+      groupCode: dbTeams.groupCode,
+    })
+    .from(dbTeams)
+    .where(eq(dbTeams.tournamentId, tournamentRow.id));
+  const teamByDbId = new Map(seededTeamDetails.map((team) => [team.id, team]));
+  const officialTeamByStage = await getOfficialStageTeamSets(tournamentRow.id);
+
+  const stagePredictionsByMember = stagePredictionOrder.map<MobileLeaguePredictionStage>((stage) => ({
+    stage,
+    expected: stagePredictionExpectedCounts[stage],
+    locked: lockedStages.has(stage),
+    predictions: members.map<MobileLeagueStagePrediction>((member) => {
+      const canRevealForMember = lockedStages.has(stage) || member.userId === userId;
+      const rows = canRevealForMember
+        ? (stageRowsByUserAndStage.get(`${member.userId}:${stage}`) ?? [])
+        : [];
+      const picks = rows.flatMap<MobileLeagueStagePick>((row) => {
+        const team = row.teamId === null ? undefined : teamByDbId.get(row.teamId);
+        const placeholder = row.placeholderKey ? placeholderLabel(row.placeholderKey) : undefined;
+        if (!team && !placeholder) return [];
+        return [
+          {
+            teamId: team?.slug ?? row.placeholderKey!,
+            teamName: team?.name ?? placeholder!,
+            teamCode: team?.fifaCode ?? placeholder!,
+            group: team?.groupCode ?? null,
+            groupRank: stage === "r32" ? normalizeGroupRank(row.groupRank) : null,
+            successful:
+              team && officialTeamByStage.get(stage)?.size
+                ? officialTeamByStage.get(stage)!.has(team.id)
+                : null,
+          },
+        ];
+      });
+
+      return {
+        userId: member.userId,
+        submitted: rows.length === stagePredictionExpectedCounts[stage],
+        randomPick:
+          rows.length === stagePredictionExpectedCounts[stage] &&
+          rows.every((row) => row.source === "calculated"),
+        picks: stage === "r32" ? picks.sort(sortMobileStagePicks) : picks,
+      };
+    }),
+  }));
 
   return { league, members, matches: visibleMatches, bonuses, stagePredictions: stagePredictionsByMember };
 }

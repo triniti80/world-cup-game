@@ -97,6 +97,31 @@ test("round of 32 matches the FIFA predictor screenshot scenario", () => {
   });
 });
 
+test("round of 32 matches the final qualifier snapshot", () => {
+  const ranks = buildFinalQualifierSnapshotRanks();
+  const pairs = buildRoundOf32Pairs(teams, ranks);
+  const matchupByMatch = new Map(pairs.map((pair) => [pair.label, `${pair.home?.code}-${pair.away?.code}`]));
+
+  assert.deepEqual(Object.fromEntries(matchupByMatch), {
+    M74: "GER-PAR",
+    M77: "FRA-SWE",
+    M73: "RSA-CAN",
+    M75: "NED-MAR",
+    M83: "POR-CRO",
+    M84: "ESP-AUT",
+    M81: "USA-BIH",
+    M82: "BEL-SEN",
+    M76: "BRA-JPN",
+    M78: "CIV-NOR",
+    M79: "MEX-ECU",
+    M80: "ENG-COD",
+    M86: "ARG-CPV",
+    M88: "AUS-EGY",
+    M85: "SUI-ALG",
+    M87: "COL-GHA",
+  });
+});
+
 function buildRanks(thirdPlaceGroups: string[]): Record<string, GroupRank> {
   const ranks: Record<string, GroupRank> = {};
   for (const group of [...new Set(teams.map((team) => team.group))]) {
@@ -144,6 +169,43 @@ function buildScreenshotRanks(): Record<string, GroupRank> {
     england: 1,
     panama: 2,
     croatia: 3,
+  };
+}
+
+function buildFinalQualifierSnapshotRanks(): Record<string, GroupRank> {
+  return {
+    mexico: 1,
+    "south-africa": 2,
+    switzerland: 1,
+    canada: 2,
+    "bosnia-herzegovina": 3,
+    brazil: 1,
+    morocco: 2,
+    usa: 1,
+    australia: 2,
+    paraguay: 3,
+    germany: 1,
+    "cote-divoire": 2,
+    ecuador: 3,
+    netherlands: 1,
+    japan: 2,
+    sweden: 3,
+    belgium: 1,
+    egypt: 2,
+    spain: 1,
+    "cabo-verde": 2,
+    france: 1,
+    norway: 2,
+    senegal: 3,
+    argentina: 1,
+    austria: 2,
+    algeria: 3,
+    colombia: 1,
+    portugal: 2,
+    "dr-congo": 3,
+    england: 1,
+    croatia: 2,
+    ghana: 3,
   };
 }
 

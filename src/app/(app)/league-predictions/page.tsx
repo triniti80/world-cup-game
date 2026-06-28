@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { LeaguePredictionsMatchList } from "@/components/LeaguePredictionsMatchList";
-import { RoundOf32PredictionsView } from "@/components/RoundOf32PredictionsView";
+import { StagePredictionsView } from "@/components/RoundOf32PredictionsView";
 import { t } from "@/lib/i18n";
 import { readLocale } from "@/lib/i18n-server";
 import { readActiveLeagueId, readSession } from "@/lib/session";
@@ -101,10 +101,10 @@ export default async function LeaguePredictionsPage() {
           {league.gameMode === "match_scores" ? (
             <LeaguePredictionsMatchList locale={locale} members={members} matches={matches} />
           ) : (
-            <RoundOf32PredictionsView
+            <StagePredictionsView
               locale={locale}
               members={members}
-              predictions={stagePredictions}
+              stages={stagePredictions}
             />
           )}
         </>
