@@ -115,7 +115,7 @@ export async function syncFifaResults(options: {
   const dryRun = options.dryRun ?? false;
   const fifaMatches = await fetchFifaCalendarMatches();
   const tournament = await ensureSeedTournament();
-  const localMatches = await getLocalMatchesForSync(tournament.id);
+  const { localMatches, teamIdByFifaCode } = await getLocalMatchesForSync(tournament.id);
   const finalResults = fifaMatches.filter(
     (match) => match.status === "final" && match.homeScore !== null && match.awayScore !== null,
   );
@@ -158,14 +158,22 @@ export async function syncFifaResults(options: {
       winnerSide = winnerSideResult.side;
     }
 
+    const homeTeamId =
+      existing.homeTeamId ??
+      (result.homeTeamCode ? teamIdByFifaCode.get(result.homeTeamCode) ?? null : null);
+    const awayTeamId =
+      existing.awayTeamId ??
+      (result.awayTeamCode ? teamIdByFifaCode.get(result.awayTeamCode) ?? null : null);
     const winnerTeamId =
       winnerSide === "home"
-        ? existing.homeTeamId
+        ? homeTeamId
         : winnerSide === "away"
-          ? existing.awayTeamId
+          ? awayTeamId
           : null;
 
     const nextResult = {
+      homeTeamId,
+      awayTeamId,
       homeScore: hasScores ? result.homeScore : null,
       awayScore: hasScores ? result.awayScore : null,
       status: result.status,
@@ -229,24 +237,29 @@ async function getLocalMatchesForSync(tournamentId: number) {
     .from(teams)
     .where(eq(teams.tournamentId, tournamentId));
   const fifaCodeByTeamId = new Map(teamRows.map((team) => [team.id, team.fifaCode]));
+  const teamIdByFifaCode = new Map(teamRows.map((team) => [team.fifaCode, team.id]));
 
-  return matchRows.map((match) => ({
-    ...match,
-    homeTeamCode: match.homeTeamId ? fifaCodeByTeamId.get(match.homeTeamId) ?? null : null,
-    awayTeamCode: match.awayTeamId ? fifaCodeByTeamId.get(match.awayTeamId) ?? null : null,
-  }));
+  return {
+    localMatches: matchRows.map((match) => ({
+      ...match,
+      homeTeamCode: match.homeTeamId ? fifaCodeByTeamId.get(match.homeTeamId) ?? null : null,
+      awayTeamCode: match.awayTeamId ? fifaCodeByTeamId.get(match.awayTeamId) ?? null : null,
+    })),
+    teamIdByFifaCode,
+  };
 }
 
 function findLocalMatchForFifaResult(
-  localMatches: Awaited<ReturnType<typeof getLocalMatchesForSync>>,
+  localMatches: Awaited<ReturnType<typeof getLocalMatchesForSync>>["localMatches"],
   result: FifaMatchResult,
 ) {
   const homeCode = result.homeTeamCode;
   const awayCode = result.awayTeamCode;
   if (homeCode && awayCode) {
-    return localMatches.find(
+    const teamCodeMatch = localMatches.find(
       (match) => match.homeTeamCode === homeCode && match.awayTeamCode === awayCode,
     );
+    if (teamCodeMatch) return teamCodeMatch;
   }
 
   return localMatches.find((match) => match.matchNumber === result.matchNumber);
@@ -296,6 +309,8 @@ function delay(ms: number): Promise<void> {
 
 function isSameResult(
   existing: {
+    homeTeamId: number | null;
+    awayTeamId: number | null;
     homeScore: number | null;
     awayScore: number | null;
     status: string;
@@ -303,6 +318,8 @@ function isSameResult(
     winnerSide: string | null;
   },
   nextResult: {
+    homeTeamId: number | null;
+    awayTeamId: number | null;
     homeScore: number | null;
     awayScore: number | null;
     status: string;
@@ -311,6 +328,8 @@ function isSameResult(
   },
 ) {
   return (
+    existing.homeTeamId === nextResult.homeTeamId &&
+    existing.awayTeamId === nextResult.awayTeamId &&
     existing.homeScore === nextResult.homeScore &&
     existing.awayScore === nextResult.awayScore &&
     existing.status === nextResult.status &&
@@ -321,6 +340,8 @@ function isSameResult(
 
 function normalizeResultAudit(result: {
   matchNumber: number;
+  homeTeamId?: number | null;
+  awayTeamId?: number | null;
   homeScore: number | null;
   awayScore: number | null;
   status: string;
@@ -329,6 +350,8 @@ function normalizeResultAudit(result: {
 }) {
   return {
     matchNumber: result.matchNumber,
+    homeTeamId: result.homeTeamId ?? null,
+    awayTeamId: result.awayTeamId ?? null,
     homeScore: result.homeScore,
     awayScore: result.awayScore,
     status: result.status,
