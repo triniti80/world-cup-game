@@ -26,6 +26,25 @@ export type Match = {
   awayScore?: number;
 };
 
+const venueCityByVenue: Record<string, string> = {
+  "AT&T Stadium": "Dallas",
+  "BC Place": "Vancouver",
+  "BMO Field": "Toronto",
+  "Estadio Akron": "Guadalajara",
+  "Estadio Banorte": "Mexico City",
+  "Estadio BBVA": "Monterrey",
+  "GEHA Field at Arrowhead Stadium": "Kansas City",
+  "Gillette Stadium": "Boston",
+  "Hard Rock Stadium": "Miami",
+  "Levi's Stadium": "San Francisco Bay Area",
+  "Lincoln Financial Field": "Philadelphia",
+  "Lumen Field": "Seattle",
+  "Mercedes-Benz Stadium": "Atlanta",
+  "MetLife Stadium": "New York New Jersey",
+  "NRG Stadium": "Houston",
+  "SoFi Stadium": "Los Angeles",
+};
+
 export const tournament = {
   name: "FIFA World Cup 2026",
   firstMatchAtUtc: "2026-06-11T20:00:00.000Z",
@@ -264,7 +283,7 @@ export const matches: Match[] = fixtureRows.map(
     homePlaceholder: fixtureTeamIds[home] ? undefined : home,
     awayPlaceholder: fixtureTeamIds[away] ? undefined : away,
     kickoffAtUtc,
-    venue,
+    venue: formatVenue(venue),
     status: "scheduled",
   }),
 );
@@ -297,6 +316,12 @@ export function getMatchLockAt(match: Match): Date {
 
 export function formatKickoff(iso: string, locale: Locale = "en"): string {
   return formatDateTime(iso, locale);
+}
+
+export function formatVenue(venue: string): string {
+  if (venue.includes(",")) return venue;
+  const city = venueCityByVenue[venue];
+  return city ? `${venue}, ${city}` : venue;
 }
 
 export function stageLabel(stage: Stage, locale: Locale = "en"): string {

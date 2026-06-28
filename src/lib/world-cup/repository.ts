@@ -20,8 +20,10 @@ import {
   matches as seedMatches,
   teams as seedTeams,
   tournament as seedTournament,
+  formatVenue,
   type Match,
 } from "@/lib/world-cup/data";
+import { buildRoundOf32Pairs, type GroupRank } from "@/lib/world-cup/bracket";
 import { getCompletedGroupQualifierRanks } from "@/lib/world-cup/group-standings";
 import { scoreMatchPrediction, STAGE_POINTS, STAGE_REASON } from "@/lib/world-cup/scoring";
 
@@ -648,15 +650,52 @@ export async function getSeededMatchesWithResults(): Promise<SeededMatchWithResu
     .where(eq(dbMatches.tournamentId, tournamentRow.id));
   const dbMatchByNumber = new Map(rows.map((match) => [match.matchNumber, match]));
   const seededTeams = await db
-    .select({ id: dbTeams.id, slug: dbTeams.slug })
+    .select({ id: dbTeams.id, slug: dbTeams.slug, group: dbTeams.groupCode, name: dbTeams.name })
     .from(dbTeams)
     .where(eq(dbTeams.tournamentId, tournamentRow.id));
   const slugByTeamId = new Map(seededTeams.map((team) => [team.id, team.slug]));
+  const dbRankByTeamId = getCompletedGroupQualifierRanks(
+    seededTeams,
+    rows.map((match) => ({
+      stage: match.stage,
+      group: match.groupCode,
+      homeTeamId: match.homeTeamId,
+      awayTeamId: match.awayTeamId,
+      status: match.status,
+      homeScore: match.homeScore,
+      awayScore: match.awayScore,
+    })),
+  );
+  const seedRanks = Object.fromEntries(
+    [...dbRankByTeamId.entries()].flatMap(([teamId, rank]) => {
+      const slug = slugByTeamId.get(teamId);
+      return slug ? [[slug, rank] as const] : [];
+    }),
+  );
+  const derivedRoundOf32Pairs = buildRoundOf32Pairs(seedTeams, seedRanks);
+  const fallbackRoundOf32Pairs =
+    new Date() >= new Date(seedTournament.knockoutLockAtUtc)
+      ? buildRoundOf32Pairs(seedTeams, FINAL_ROUND_OF_32_RANKS)
+      : [];
+  const derivedRoundOf32ByNumber = new Map(
+    (derivedRoundOf32Pairs.every((pair) => pair.home && pair.away)
+      ? derivedRoundOf32Pairs
+      : fallbackRoundOf32Pairs
+    )
+      .map((pair) => [Number(pair.label.slice(1)), pair] as const)
+      .filter(([matchNumber]) => Number.isFinite(matchNumber)),
+  );
 
   return seedMatches
     .flatMap<SeededMatchWithResult>((seedMatch) => {
       const dbMatch = dbMatchByNumber.get(seedMatch.number);
       if (!dbMatch) return [];
+      const derivedRoundOf32Pair =
+        dbMatch.stage === "r32" ? derivedRoundOf32ByNumber.get(dbMatch.matchNumber) : undefined;
+      const homeTeamId =
+        dbMatch.homeTeamId ? slugByTeamId.get(dbMatch.homeTeamId) : derivedRoundOf32Pair?.home?.id;
+      const awayTeamId =
+        dbMatch.awayTeamId ? slugByTeamId.get(dbMatch.awayTeamId) : derivedRoundOf32Pair?.away?.id;
       const winnerSide: SeededMatchWithResult["winnerSide"] =
         dbMatch.winnerSide === "home" || dbMatch.winnerSide === "away"
           ? dbMatch.winnerSide
@@ -667,12 +706,12 @@ export async function getSeededMatchesWithResults(): Promise<SeededMatchWithResu
           dbId: dbMatch.id,
           stage: dbMatch.stage,
           group: dbMatch.groupCode ?? undefined,
-          homeTeamId: dbMatch.homeTeamId ? slugByTeamId.get(dbMatch.homeTeamId) : undefined,
-          awayTeamId: dbMatch.awayTeamId ? slugByTeamId.get(dbMatch.awayTeamId) : undefined,
-          homePlaceholder: dbMatch.homePlaceholder ?? undefined,
-          awayPlaceholder: dbMatch.awayPlaceholder ?? undefined,
+          homeTeamId,
+          awayTeamId,
+          homePlaceholder: homeTeamId ? undefined : dbMatch.homePlaceholder ?? undefined,
+          awayPlaceholder: awayTeamId ? undefined : dbMatch.awayPlaceholder ?? undefined,
           kickoffAtUtc: dbMatch.kickoffAt.toISOString(),
-          venue: dbMatch.venue,
+          venue: formatVenue(dbMatch.venue),
           status: dbMatch.status,
           homeScore: dbMatch.homeScore ?? undefined,
           awayScore: dbMatch.awayScore ?? undefined,
@@ -1470,6 +1509,40 @@ const stagePredictionExpectedCounts = {
   final: 2,
   champion: 1,
 } as const satisfies Record<StagePredictionStage, number>;
+const FINAL_ROUND_OF_32_RANKS = {
+  mexico: 1,
+  "south-africa": 2,
+  switzerland: 1,
+  canada: 2,
+  "bosnia-herzegovina": 3,
+  brazil: 1,
+  morocco: 2,
+  usa: 1,
+  australia: 2,
+  paraguay: 3,
+  germany: 1,
+  "cote-divoire": 2,
+  ecuador: 3,
+  netherlands: 1,
+  japan: 2,
+  sweden: 3,
+  belgium: 1,
+  egypt: 2,
+  spain: 1,
+  "cabo-verde": 2,
+  france: 1,
+  norway: 2,
+  senegal: 3,
+  argentina: 1,
+  austria: 2,
+  algeria: 3,
+  colombia: 1,
+  portugal: 2,
+  "dr-congo": 3,
+  england: 1,
+  croatia: 2,
+  ghana: 3,
+} as const satisfies Record<string, GroupRank>;
 const previousStageByStage = {
   r16: "r32",
   qf: "r16",
@@ -1940,7 +2013,7 @@ export async function getLeaguePredictionVisibility(userId: number, activeLeague
           ...seedMatch,
           dbId: dbMatch.id,
           kickoffAtUtc: dbMatch.kickoffAt.toISOString(),
-          venue: dbMatch.venue,
+          venue: formatVenue(dbMatch.venue),
           status: dbMatch.status,
           homeScore: dbMatch.homeScore ?? undefined,
           awayScore: dbMatch.awayScore ?? undefined,

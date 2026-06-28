@@ -6,11 +6,19 @@ test("imports the full 104-match tournament schedule", () => {
   assert.equal(matches.length, 104);
   assert.equal(matches[0]?.number, 1);
   assert.equal(matches[0]?.kickoffAtUtc, "2026-06-11T19:00:00.000Z");
-  assert.equal(matches[0]?.venue, "Estadio Banorte");
+  assert.equal(matches[0]?.venue, "Estadio Banorte, Mexico City");
   assert.equal(matches[103]?.number, 104);
   assert.equal(matches[103]?.stage, "final");
   assert.equal(matches[103]?.kickoffAtUtc, "2026-07-19T19:00:00.000Z");
-  assert.equal(matches[103]?.venue, "MetLife Stadium");
+  assert.equal(matches[103]?.venue, "MetLife Stadium, New York New Jersey");
+});
+
+test("adds host city to seeded venue names", () => {
+  const losAngelesMatch = matches.find((match) => match.number === 73);
+  const monterreyMatch = matches.find((match) => match.number === 75);
+
+  assert.equal(losAngelesMatch?.venue, "SoFi Stadium, Los Angeles");
+  assert.equal(monterreyMatch?.venue, "Estadio BBVA, Monterrey");
 });
 
 test("uses official kickoff times for corrected group fixtures", () => {
