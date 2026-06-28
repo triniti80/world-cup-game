@@ -5,7 +5,7 @@ import { useI18n } from "@/components/I18nProvider";
 import type { Locale, TranslationKey } from "@/lib/i18n";
 import { buildRoundOf32Pairs as buildOfficialRoundOf32Pairs } from "@/lib/world-cup/bracket";
 import { getTeamName, teams, type Match, type Team } from "@/lib/world-cup/data";
-import { getCompletedGroupTopTwoRanks } from "@/lib/world-cup/group-standings";
+import { getCompletedGroupQualifierRanks } from "@/lib/world-cup/group-standings";
 import type { SavedStagePredictions } from "@/lib/world-cup/repository";
 
 const groups = Array.from(new Set(teams.map((team) => team.group))).sort();
@@ -666,7 +666,7 @@ function buildRoundOf32PairsFromMatches(matches: Match[]): Pair[] {
 }
 
 function buildRoundOf32PairsFromCompletedGroups(matches: Match[]): Pair[] {
-  const ranks = Object.fromEntries(getCompletedGroupTopTwoRanks(teams, matches));
+  const ranks = Object.fromEntries(getCompletedGroupQualifierRanks(teams, matches));
   return Object.keys(ranks).length > 0 ? buildRoundOf32Pairs(ranks) : [];
 }
 

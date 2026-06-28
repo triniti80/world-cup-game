@@ -12,7 +12,7 @@ import {
   getPreTournamentLockAt,
 } from "@/lib/world-cup/repository";
 import { teams } from "@/lib/world-cup/data";
-import { getCompletedGroupTopTwoRanks } from "@/lib/world-cup/group-standings";
+import { getCompletedGroupQualifierRanks } from "@/lib/world-cup/group-standings";
 
 const stageSchema = z.enum(["r32", "r16", "qf", "sf", "final", "champion"]);
 const bodySchema = z.object({
@@ -259,7 +259,7 @@ export async function POST(req: Request) {
         .where(and(eq(dbMatches.tournamentId, tournament.id), eq(dbMatches.stage, "group"))),
     ]);
 
-    const knownRoundOf32TeamIds = new Set(getCompletedGroupTopTwoRanks(tournamentTeams, groupMatches).keys());
+    const knownRoundOf32TeamIds = new Set(getCompletedGroupQualifierRanks(tournamentTeams, groupMatches).keys());
     if (knownRoundOf32TeamIds.size > 0) {
       const unknownTeamId = resolvedTeamIds.find((teamId) => !knownRoundOf32TeamIds.has(teamId));
       if (unknownTeamId) {

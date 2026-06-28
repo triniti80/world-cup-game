@@ -12,7 +12,7 @@ import {
   stagePredictions,
   teams,
 } from "@/db/schema";
-import { getCompletedGroupTopTwoRanks } from "./group-standings";
+import { getCompletedGroupQualifierRanks } from "./group-standings";
 import { getCorrectOutcomePoints, getExactScorePoints, type OutcomeSide } from "./static-odds";
 
 type FinalMatch = {
@@ -214,12 +214,12 @@ export async function recalculateStageScoreEvents(tournamentId: number): Promise
     })
     .from(matches)
     .where(and(eq(matches.tournamentId, tournamentId), eq(matches.stage, "group")));
-  const completedGroupTopTwoTeams = [...getCompletedGroupTopTwoRanks(tournamentTeams, groupMatchRows).keys()];
+  const completedGroupQualifierTeams = [...getCompletedGroupQualifierRanks(tournamentTeams, groupMatchRows).keys()];
 
   const officialTeamByStage = [
     ...officialRows,
     ...roundOf32FixtureTeams.map((teamId) => ({ stage: "r32" as const, teamId })),
-    ...completedGroupTopTwoTeams.map((teamId) => ({ stage: "r32" as const, teamId })),
+    ...completedGroupQualifierTeams.map((teamId) => ({ stage: "r32" as const, teamId })),
   ].reduce<Map<string, Set<number>>>((acc, row) => {
     const teamsForStage = acc.get(row.stage) ?? new Set<number>();
     teamsForStage.add(row.teamId);

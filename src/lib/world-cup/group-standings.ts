@@ -28,6 +28,48 @@ export function getCompletedGroupTopTwoRanks<TId extends string | number>(
   matches: readonly StandingMatch<TId>[],
 ): Map<TId, 1 | 2> {
   const ranks = new Map<TId, 1 | 2>();
+  for (const table of getCompletedGroupTables(teams, matches)) {
+    if (table[0]) ranks.set(table[0].team.id, 1);
+    if (table[1]) ranks.set(table[1].team.id, 2);
+  }
+
+  return ranks;
+}
+
+export function getCompletedGroupQualifierRanks<TId extends string | number>(
+  teams: readonly StandingTeam<TId>[],
+  matches: readonly StandingMatch<TId>[],
+): Map<TId, 1 | 2 | 3> {
+  const groups = [...new Set(teams.flatMap((team) => (team.group ? [team.group] : [])))].sort();
+  const completedTables = getCompletedGroupTables(teams, matches);
+  const ranks = new Map<TId, 1 | 2 | 3>();
+
+  for (const table of completedTables) {
+    if (table[0]) ranks.set(table[0].team.id, 1);
+    if (table[1]) ranks.set(table[1].team.id, 2);
+  }
+
+  if (completedTables.length !== groups.length) {
+    return ranks;
+  }
+
+  const qualifiedThirds = completedTables
+    .flatMap((table) => (table[2] ? [table[2]] : []))
+    .sort(compareTeamStats)
+    .slice(0, 8);
+
+  for (const thirdPlaceTeam of qualifiedThirds) {
+    ranks.set(thirdPlaceTeam.team.id, 3);
+  }
+
+  return ranks;
+}
+
+function getCompletedGroupTables<TId extends string | number>(
+  teams: readonly StandingTeam<TId>[],
+  matches: readonly StandingMatch<TId>[],
+): TeamStats<TId>[][] {
+  const tables: TeamStats<TId>[][] = [];
   const groups = [...new Set(teams.flatMap((team) => (team.group ? [team.group] : [])))].sort();
 
   for (const group of groups) {
@@ -88,11 +130,10 @@ export function getCompletedGroupTopTwoRanks<TId extends string | number>(
     }
 
     table.sort(compareTeamStats);
-    if (table[0]) ranks.set(table[0].team.id, 1);
-    if (table[1]) ranks.set(table[1].team.id, 2);
+    tables.push(table);
   }
 
-  return ranks;
+  return tables;
 }
 
 function compareTeamStats<TId extends string | number>(

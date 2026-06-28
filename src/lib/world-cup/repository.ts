@@ -22,7 +22,7 @@ import {
   tournament as seedTournament,
   type Match,
 } from "@/lib/world-cup/data";
-import { getCompletedGroupTopTwoRanks } from "@/lib/world-cup/group-standings";
+import { getCompletedGroupQualifierRanks } from "@/lib/world-cup/group-standings";
 import { scoreMatchPrediction, STAGE_POINTS, STAGE_REASON } from "@/lib/world-cup/scoring";
 
 const TOURNAMENT_YEAR = 2026;
@@ -1154,11 +1154,11 @@ async function getCurrentStagePredictionLeaderboardEvents(leagueIds: number[]) {
   for (const tournamentId of tournamentIds) {
     const teamsForTournament = tournamentTeams.filter((team) => team.tournamentId === tournamentId);
     const matchesForTournament = groupMatchRows.filter((match) => match.tournamentId === tournamentId);
-    const topTwoRanks = getCompletedGroupTopTwoRanks(teamsForTournament, matchesForTournament);
-    if (topTwoRanks.size === 0) continue;
+    const qualifierRanks = getCompletedGroupQualifierRanks(teamsForTournament, matchesForTournament);
+    if (qualifierRanks.size === 0) continue;
     const key = `${tournamentId}:r32`;
     const teamsForStage = officialTeamByStage.get(key) ?? new Set<number>();
-    for (const teamId of topTwoRanks.keys()) {
+    for (const teamId of qualifierRanks.keys()) {
       teamsForStage.add(teamId);
     }
     officialTeamByStage.set(key, teamsForStage);
