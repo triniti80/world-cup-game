@@ -13,6 +13,7 @@ import {
   teams,
 } from "@/db/schema";
 import { getCompletedGroupQualifierRanks } from "./group-standings";
+import { getCompletedKnockoutQualifierTeams } from "./stage-results";
 import { getCorrectOutcomePoints, getExactScorePoints, type OutcomeSide } from "./static-odds";
 
 type FinalMatch = {
@@ -188,15 +189,20 @@ export async function recalculateStageScoreEvents(tournamentId: number): Promise
 
   const roundOf32FixtureRows = await db
     .select({
+      stage: matches.stage,
+      status: matches.status,
       homeTeamId: matches.homeTeamId,
       awayTeamId: matches.awayTeamId,
+      winnerTeamId: matches.winnerTeamId,
     })
     .from(matches)
-    .where(and(eq(matches.tournamentId, tournamentId), eq(matches.stage, "r32")));
+    .where(and(eq(matches.tournamentId, tournamentId), inArray(matches.stage, ["r32", "r16", "qf", "sf", "final"])));
 
-  const roundOf32FixtureTeams = roundOf32FixtureRows.flatMap((row) =>
+  const roundOf32FixtureTeams = roundOf32FixtureRows.filter((match) => match.stage === "r32").flatMap((row) =>
     [row.homeTeamId, row.awayTeamId].filter((teamId): teamId is number => teamId !== null),
   );
+  const completedKnockoutQualifierTeams = [...getCompletedKnockoutQualifierTeams(roundOf32FixtureRows).entries()]
+    .flatMap(([stage, teamIds]) => [...teamIds].map((teamId) => ({ stage, teamId })));
 
   const tournamentTeams = await db
     .select({ id: teams.id, group: teams.groupCode, name: teams.name })
@@ -220,6 +226,7 @@ export async function recalculateStageScoreEvents(tournamentId: number): Promise
     ...officialRows,
     ...roundOf32FixtureTeams.map((teamId) => ({ stage: "r32" as const, teamId })),
     ...completedGroupQualifierTeams.map((teamId) => ({ stage: "r32" as const, teamId })),
+    ...completedKnockoutQualifierTeams,
   ].reduce<Map<string, Set<number>>>((acc, row) => {
     const teamsForStage = acc.get(row.stage) ?? new Set<number>();
     teamsForStage.add(row.teamId);

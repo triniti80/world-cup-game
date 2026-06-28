@@ -8,7 +8,7 @@ import {
   resolvePredictedWinnerSide,
   type PredictedWinnerSide,
 } from "@/lib/world-cup/match-predictions";
-import { recalculateMatchById } from "@/lib/world-cup/scoring";
+import { recalculateMatchById, recalculateStageScoreEvents } from "@/lib/world-cup/scoring";
 
 const bodySchema = z.object({
   matchDbId: z.number().int().positive(),
@@ -42,6 +42,7 @@ export async function POST(req: Request) {
   const [existing] = await db
     .select({
       id: matches.id,
+      tournamentId: matches.tournamentId,
       stage: matches.stage,
       matchNumber: matches.matchNumber,
       homeTeamId: matches.homeTeamId,
@@ -118,6 +119,7 @@ export async function POST(req: Request) {
   });
 
   await recalculateMatchById(parsed.data.matchDbId);
+  await recalculateStageScoreEvents(existing.tournamentId);
 
   return NextResponse.json({ ok: true, match: updated ?? null });
 }

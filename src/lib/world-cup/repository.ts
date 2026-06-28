@@ -25,6 +25,7 @@ import {
 } from "@/lib/world-cup/data";
 import { buildRoundOf32Pairs, type GroupRank } from "@/lib/world-cup/bracket";
 import { getCompletedGroupQualifierRanks } from "@/lib/world-cup/group-standings";
+import { getCompletedKnockoutQualifierTeams } from "@/lib/world-cup/stage-results";
 import { scoreMatchPrediction, STAGE_POINTS, STAGE_REASON } from "@/lib/world-cup/scoring";
 
 const TOURNAMENT_YEAR = 2026;
@@ -1123,11 +1124,14 @@ async function getCurrentStagePredictionLeaderboardEvents(leagueIds: number[]) {
   const roundOf32FixtureRows = await db
     .select({
       tournamentId: dbMatches.tournamentId,
+      stage: dbMatches.stage,
+      status: dbMatches.status,
       homeTeamId: dbMatches.homeTeamId,
       awayTeamId: dbMatches.awayTeamId,
+      winnerTeamId: dbMatches.winnerTeamId,
     })
     .from(dbMatches)
-    .where(eq(dbMatches.stage, "r32"));
+    .where(inArray(dbMatches.stage, ["r32", "r16", "qf", "sf", "final"]));
 
   const tournamentIds = [
     ...new Set([
@@ -1172,7 +1176,7 @@ async function getCurrentStagePredictionLeaderboardEvents(leagueIds: number[]) {
     return acc;
   }, new Map());
 
-  for (const row of roundOf32FixtureRows) {
+  for (const row of roundOf32FixtureRows.filter((match) => match.stage === "r32")) {
     const key = `${row.tournamentId}:r32`;
     const teamsForStage = officialTeamByStage.get(key) ?? new Set<number>();
     if (row.homeTeamId !== null) teamsForStage.add(row.homeTeamId);
@@ -1181,6 +1185,16 @@ async function getCurrentStagePredictionLeaderboardEvents(leagueIds: number[]) {
   }
 
   for (const tournamentId of tournamentIds) {
+    const knockoutWinners = getCompletedKnockoutQualifierTeams(
+      roundOf32FixtureRows.filter((match) => match.tournamentId === tournamentId),
+    );
+    for (const [stage, teamIds] of knockoutWinners) {
+      const key = `${tournamentId}:${stage}`;
+      const teamsForStage = officialTeamByStage.get(key) ?? new Set<number>();
+      for (const teamId of teamIds) teamsForStage.add(teamId);
+      officialTeamByStage.set(key, teamsForStage);
+    }
+
     const teamsForTournament = tournamentTeams.filter((team) => team.tournamentId === tournamentId);
     const matchesForTournament = groupMatchRows.filter((match) => match.tournamentId === tournamentId);
     const qualifierRanks = getCompletedGroupQualifierRanks(teamsForTournament, matchesForTournament);
@@ -1455,13 +1469,16 @@ async function getOfficialStageTeamSets(tournamentId: number): Promise<Map<Stage
 
   const roundOf32FixtureRows = await db
     .select({
+      stage: dbMatches.stage,
+      status: dbMatches.status,
       homeTeamId: dbMatches.homeTeamId,
       awayTeamId: dbMatches.awayTeamId,
+      winnerTeamId: dbMatches.winnerTeamId,
     })
     .from(dbMatches)
-    .where(and(eq(dbMatches.tournamentId, tournamentId), eq(dbMatches.stage, "r32")));
+    .where(and(eq(dbMatches.tournamentId, tournamentId), inArray(dbMatches.stage, ["r32", "r16", "qf", "sf", "final"])));
   const roundOf32Teams = officialTeamByStage.get("r32") ?? new Set<number>();
-  for (const row of roundOf32FixtureRows) {
+  for (const row of roundOf32FixtureRows.filter((match) => match.stage === "r32")) {
     if (row.homeTeamId !== null) roundOf32Teams.add(row.homeTeamId);
     if (row.awayTeamId !== null) roundOf32Teams.add(row.awayTeamId);
   }
@@ -1489,6 +1506,12 @@ async function getOfficialStageTeamSets(tournamentId: number): Promise<Map<Stage
   }
   if (roundOf32Teams.size > 0) {
     officialTeamByStage.set("r32", roundOf32Teams);
+  }
+
+  for (const [stage, teamIds] of getCompletedKnockoutQualifierTeams(roundOf32FixtureRows)) {
+    const teams = officialTeamByStage.get(stage) ?? new Set<number>();
+    for (const teamId of teamIds) teams.add(teamId);
+    officialTeamByStage.set(stage, teams);
   }
 
   return officialTeamByStage;

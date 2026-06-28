@@ -3,7 +3,7 @@ import { db } from "../../db/client";
 import { auditLog, matches, teams } from "../../db/schema";
 import { resolvePredictedWinnerSide, type PredictedWinnerSide } from "./match-predictions";
 import { ensureSeedTournament } from "./repository";
-import { recalculateTournamentMatchScoreEvents } from "./scoring";
+import { recalculateStageScoreEvents, recalculateTournamentMatchScoreEvents } from "./scoring";
 
 export const FIFA_WORLD_CUP_2026_RESULTS_URL =
   "https://api.fifa.com/api/v3/calendar/matches?language=en&count=500&idCompetition=17&from=2026-06-01T00:00:00Z&to=2026-07-31T23:59:59Z";
@@ -210,6 +210,7 @@ export async function syncFifaResults(options: {
 
   if (!dryRun) {
     await recalculateTournamentMatchScoreEvents(tournament.id);
+    await recalculateStageScoreEvents(tournament.id);
   }
 
   return summary;
