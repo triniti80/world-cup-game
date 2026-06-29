@@ -3,9 +3,7 @@
 import { useMemo, useState } from "react";
 import { t, type Locale } from "@/lib/i18n";
 import {
-  formatKickoff,
   getTeam,
-  getTeamName,
   type Stage,
   type Team,
 } from "@/lib/world-cup/data";
@@ -134,30 +132,30 @@ export function BracketViewer({
         </div>
       ) : null}
 
-      <div className="hide-scrollbar -mx-4 overflow-x-auto px-4 pb-3 lg:mx-0 lg:px-0">
-        <div className="min-w-[1280px]">
+      <div className="-mx-4 px-2 pb-3 sm:px-4 lg:mx-0 lg:px-0">
+        <div className="w-full">
           <BracketHeader locale={locale} />
-          <div className="grid grid-cols-[180px_180px_180px_220px_180px_180px_180px] gap-3 bg-[#071015] px-3 pb-8 pt-10">
+          <div className="grid grid-cols-[repeat(7,minmax(0,1fr))] gap-1.5 bg-[#071015] px-1.5 pb-4 pt-4 md:gap-2 md:px-2">
             <BracketColumn
               matchNumbers={leftRoundOf32}
               matchByNumber={matchByNumber}
               locale={locale}
               userContext={userContext}
-              spacing="space-y-8"
+              spacing="space-y-2"
             />
             <BracketColumn
               matchNumbers={leftRoundOf16}
               matchByNumber={matchByNumber}
               locale={locale}
               userContext={userContext}
-              spacing="space-y-[86px] pt-[58px]"
+              spacing="space-y-[34px] pt-[24px]"
             />
             <BracketColumn
               matchNumbers={leftQuarterFinals}
               matchByNumber={matchByNumber}
               locale={locale}
               userContext={userContext}
-              spacing="space-y-[245px] pt-[174px]"
+              spacing="space-y-[112px] pt-[70px]"
             />
             <FinalColumn
               matchByNumber={matchByNumber}
@@ -169,21 +167,21 @@ export function BracketViewer({
               matchByNumber={matchByNumber}
               locale={locale}
               userContext={userContext}
-              spacing="space-y-[245px] pt-[174px]"
+              spacing="space-y-[112px] pt-[70px]"
             />
             <BracketColumn
               matchNumbers={rightRoundOf16}
               matchByNumber={matchByNumber}
               locale={locale}
               userContext={userContext}
-              spacing="space-y-[86px] pt-[58px]"
+              spacing="space-y-[34px] pt-[24px]"
             />
             <BracketColumn
               matchNumbers={rightRoundOf32}
               matchByNumber={matchByNumber}
               locale={locale}
               userContext={userContext}
-              spacing="space-y-8"
+              spacing="space-y-2"
             />
           </div>
         </div>
@@ -208,14 +206,14 @@ function BracketHeader({ locale }: { locale: Locale }) {
   ];
 
   return (
-    <div className="grid grid-cols-[180px_180px_180px_220px_180px_180px_180px] gap-3 bg-[#16191c] px-3">
+    <div className="grid grid-cols-[repeat(7,minmax(0,1fr))] gap-1.5 bg-[#16191c] px-1.5 md:gap-2 md:px-2">
       {columns.map((column, index) => (
-        <div key={`${column.title}-${index}`} className="py-2 text-center">
-          <div className="font-display text-sm font-bold leading-4 text-[var(--color-fg)]">
+        <div key={`${column.title}-${index}`} className="py-1.5 text-center">
+          <div className="truncate font-display text-[10px] font-bold leading-3 text-[var(--color-fg)] sm:text-xs">
             {column.title}
           </div>
-          <div className="text-xs text-[var(--color-fg-muted)]">{column.range}</div>
-          <div className="-mx-3 mt-2 bg-white/5 py-1 text-xs text-[var(--color-fg-muted)]">
+          <div className="truncate text-[9px] text-[var(--color-fg-muted)] sm:text-[10px]">{column.range}</div>
+          <div className="-mx-1.5 mt-1 bg-white/5 py-0.5 text-[9px] text-[var(--color-fg-muted)] sm:text-[10px] md:-mx-2">
             {column.points}
           </div>
         </div>
@@ -270,7 +268,7 @@ function FinalColumn({
   const semiRight = matchByNumber.get(102);
 
   return (
-    <div className="space-y-8 pt-[118px]">
+    <div className="space-y-4 pt-[48px]">
       {semiLeft ? (
         <BracketCard
           match={semiLeft}
@@ -279,8 +277,8 @@ function FinalColumn({
           userContext={userContext}
         />
       ) : null}
-      <div className="rounded-xl border border-white/10 bg-cover bg-center p-3 shadow-xl shadow-black/20 [background-image:linear-gradient(rgba(7,16,21,0.45),rgba(7,16,21,0.75)),url('/favicon.svg')]">
-        <div className="mb-2 text-center font-display text-sm font-bold text-[var(--color-fg)]">
+      <div className="rounded-lg border border-white/10 bg-cover bg-center p-1.5 shadow-xl shadow-black/20 [background-image:linear-gradient(rgba(7,16,21,0.45),rgba(7,16,21,0.75)),url('/favicon.svg')]">
+        <div className="mb-1 text-center font-display text-[10px] font-bold text-[var(--color-fg)] sm:text-xs">
           {locale === "he" ? "גמר" : "Final"}
         </div>
         {final ? (
@@ -329,32 +327,18 @@ function BracketCard({
   const entrants = userContext
     ? resolveUserEntrantsForMatch(match, matchByNumber, locale, userContext)
     : resolveLiveEntrantsForMatch(match, matchByNumber, locale);
-  const status = match.status === "final" ? "Final" : match.status === "live" ? "Live" : "Preview";
 
   return (
     <article
       className={[
-        "relative rounded-lg border border-white/5 bg-[#1b1d20] p-3 text-sm shadow-lg shadow-black/20",
-        compact ? "min-h-24" : "min-h-[86px]",
+        "relative rounded-md border border-white/5 bg-[#1b1d20] p-1.5 text-[10px] shadow-lg shadow-black/20 sm:text-xs",
+        compact ? "min-h-12" : "min-h-10",
       ].join(" ")}
     >
-      <div className="space-y-1.5">
+      <div className="space-y-0.5">
         {entrants.map((entrant) => (
           <EntrantLine key={`${match.number}-${entrant.key}`} entrant={entrant} />
         ))}
-      </div>
-      <div className="mt-3 flex items-center justify-between gap-3 text-xs">
-        <span
-          className={[
-            "font-medium",
-            match.status === "final" ? "text-[var(--color-accent)]" : "text-blue-400",
-          ].join(" ")}
-        >
-          {status}
-        </span>
-        <span className="truncate text-[var(--color-fg-muted)]">
-          {formatShortKickoff(match.kickoffAtUtc, locale)}
-        </span>
       </div>
     </article>
   );
@@ -364,15 +348,14 @@ function EntrantLine({ entrant }: { entrant: BracketEntrant }) {
   return (
     <div
       className={[
-        "flex min-h-5 items-center justify-between gap-2",
+        "flex min-h-4 items-center justify-between gap-1",
         entrantStateClass(entrant),
         entrant.picked ? "font-bold" : "",
       ].join(" ")}
     >
       <span className="min-w-0 truncate">
-        {entrant.flag ? <span className="me-1.5">{entrant.flag}</span> : null}
-        {entrant.code ? <span className="me-1 font-bold">{entrant.code}</span> : null}
-        <span>{entrant.label}</span>
+        {entrant.flag ? <span className="me-1">{entrant.flag}</span> : null}
+        <span className="font-bold">{entrant.code ?? entrant.label}</span>
       </span>
       {entrant.score !== undefined ? <span className="font-display font-extrabold">{entrant.score}</span> : null}
     </div>
@@ -433,21 +416,7 @@ function resolveUserEntrantsForMatch(
   const cached = context.cache.get(match.number);
   if (cached) return cached;
 
-  const entrants: [BracketEntrant, BracketEntrant] =
-    match.stage === "r32"
-      ? [
-          resolveLiveSide(match, "home", matchByNumber, locale),
-          resolveLiveSide(match, "away", matchByNumber, locale),
-        ]
-      : match.stage === "third"
-        ? [
-            resolveLiveSide(match, "home", matchByNumber, locale),
-            resolveLiveSide(match, "away", matchByNumber, locale),
-          ]
-        : [
-            resolveUserSlot(match.homePlaceholder, matchByNumber, locale, context),
-            resolveUserSlot(match.awayPlaceholder, matchByNumber, locale, context),
-          ];
+  const entrants = resolveUserBaseEntrantsForMatch(match, matchByNumber, locale, context);
 
   const nextStage = isBracketStage(match.stage)
     ? nextPredictionStageByMatchStage[match.stage]
@@ -462,6 +431,25 @@ function resolveUserEntrantsForMatch(
 
   context.cache.set(match.number, markedEntrants);
   return markedEntrants;
+}
+
+function resolveUserBaseEntrantsForMatch(
+  match: SeededMatchWithResult,
+  matchByNumber: Map<number, SeededMatchWithResult>,
+  locale: Locale,
+  context: UserBracketContext,
+): [BracketEntrant, BracketEntrant] {
+  if (match.stage === "r32" || match.stage === "third") {
+    return [
+      resolveLiveSide(match, "home", matchByNumber, locale),
+      resolveLiveSide(match, "away", matchByNumber, locale),
+    ];
+  }
+
+  return [
+    resolveUserSlot(match.homePlaceholder, matchByNumber, locale, context),
+    resolveUserSlot(match.awayPlaceholder, matchByNumber, locale, context),
+  ];
 }
 
 function resolveUserSlot(
@@ -499,7 +487,7 @@ function findPredictedWinnerForSource(
           resolveLiveSide(sourceMatch, "home", matchByNumber, locale),
           resolveLiveSide(sourceMatch, "away", matchByNumber, locale),
         ]
-      : resolveUserEntrantsForMatch(sourceMatch, matchByNumber, locale, context);
+      : resolveUserBaseEntrantsForMatch(sourceMatch, matchByNumber, locale, context);
   const pickedCandidate = candidates.find((candidate) => picks.has(candidate.key));
   if (!pickedCandidate) return null;
 
@@ -548,7 +536,7 @@ function pickEntrant(pick: BracketPick, locale: Locale): BracketEntrant {
 function teamEntrant(team: Team, locale: Locale): BracketEntrant {
   return {
     key: `team:${team.id}`,
-    label: getTeamName(team, locale) ?? team.name,
+    label: team.code,
     code: team.code,
     flag: team.flag,
     state: "neutral",
@@ -625,9 +613,4 @@ function entrantStateClass(entrant: BracketEntrant): string {
 
 function isBracketStage(stage: Stage): stage is BracketStage {
   return stage === "r32" || stage === "r16" || stage === "qf" || stage === "sf" || stage === "final";
-}
-
-function formatShortKickoff(iso: string, locale: Locale): string {
-  const formatted = formatKickoff(iso, locale);
-  return formatted.replace(", 2026", "").replace(" GMT+1", "");
 }
