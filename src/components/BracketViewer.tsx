@@ -42,12 +42,28 @@ type UserBracketContext = {
   cache: Map<number, [BracketEntrant, BracketEntrant]>;
 };
 
+type BracketPlacement = {
+  matchNumber: number;
+  rowStart: number;
+};
+
 const leftRoundOf32 = [74, 77, 73, 75, 83, 84, 81, 82];
 const leftRoundOf16 = [89, 90, 93, 94];
 const leftQuarterFinals = [97, 98];
 const rightQuarterFinals = [99, 100];
 const rightRoundOf16 = [91, 92, 95, 96];
 const rightRoundOf32 = [76, 78, 79, 80, 86, 88, 85, 87];
+const rowStartsByRoundSize = {
+  8: [1, 3, 5, 7, 9, 11, 13, 15],
+  4: [2, 6, 10, 14],
+  2: [4, 12],
+} as const;
+const leftRoundOf32Placements = toPlacements(leftRoundOf32, rowStartsByRoundSize[8]);
+const leftRoundOf16Placements = toPlacements(leftRoundOf16, rowStartsByRoundSize[4]);
+const leftQuarterFinalPlacements = toPlacements(leftQuarterFinals, rowStartsByRoundSize[2]);
+const rightQuarterFinalPlacements = toPlacements(rightQuarterFinals, rowStartsByRoundSize[2]);
+const rightRoundOf16Placements = toPlacements(rightRoundOf16, rowStartsByRoundSize[4]);
+const rightRoundOf32Placements = toPlacements(rightRoundOf32, rowStartsByRoundSize[8]);
 const officialPlaceholderByMatch: Partial<Record<number, Record<MatchSide, string>>> = {
   89: { home: "W74", away: "W77" },
   90: { home: "W73", away: "W75" },
@@ -163,25 +179,22 @@ export function BracketViewer({
           <BracketHeader locale={locale} />
           <div className="grid grid-cols-[repeat(7,minmax(0,1fr))] gap-1.5 bg-[#071015] px-1.5 pb-4 pt-4 md:gap-2 md:px-2">
             <BracketColumn
-              matchNumbers={leftRoundOf32}
+              placements={leftRoundOf32Placements}
               matchByNumber={matchByNumber}
               locale={locale}
               userContext={userContext}
-              spacing="space-y-2"
             />
             <BracketColumn
-              matchNumbers={leftRoundOf16}
+              placements={leftRoundOf16Placements}
               matchByNumber={matchByNumber}
               locale={locale}
               userContext={userContext}
-              spacing="space-y-[34px] pt-[24px]"
             />
             <BracketColumn
-              matchNumbers={leftQuarterFinals}
+              placements={leftQuarterFinalPlacements}
               matchByNumber={matchByNumber}
               locale={locale}
               userContext={userContext}
-              spacing="space-y-[112px] pt-[70px]"
             />
             <FinalColumn
               matchByNumber={matchByNumber}
@@ -189,25 +202,22 @@ export function BracketViewer({
               userContext={userContext}
             />
             <BracketColumn
-              matchNumbers={rightQuarterFinals}
+              placements={rightQuarterFinalPlacements}
               matchByNumber={matchByNumber}
               locale={locale}
               userContext={userContext}
-              spacing="space-y-[112px] pt-[70px]"
             />
             <BracketColumn
-              matchNumbers={rightRoundOf16}
+              placements={rightRoundOf16Placements}
               matchByNumber={matchByNumber}
               locale={locale}
               userContext={userContext}
-              spacing="space-y-[34px] pt-[24px]"
             />
             <BracketColumn
-              matchNumbers={rightRoundOf32}
+              placements={rightRoundOf32Placements}
               matchByNumber={matchByNumber}
               locale={locale}
               userContext={userContext}
-              spacing="space-y-2"
             />
           </div>
         </div>
@@ -249,32 +259,72 @@ function BracketHeader({ locale }: { locale: Locale }) {
 }
 
 function BracketColumn({
-  matchNumbers,
+  placements,
   matchByNumber,
   locale,
   userContext,
-  spacing,
 }: {
-  matchNumbers: number[];
+  placements: BracketPlacement[];
   matchByNumber: Map<number, SeededMatchWithResult>;
   locale: Locale;
   userContext: UserBracketContext | null;
-  spacing: string;
 }) {
   return (
-    <div className={spacing}>
-      {matchNumbers.map((matchNumber) => {
-        const match = matchByNumber.get(matchNumber);
+    <div className={bracketColumnClassName}>
+      {placements.map((placement) => {
+        const match = matchByNumber.get(placement.matchNumber);
         return match ? (
-          <BracketCard
-            key={match.number}
-            match={match}
-            matchByNumber={matchByNumber}
-            locale={locale}
-            userContext={userContext}
-          />
+          <div key={match.number} style={{ gridRowStart: placement.rowStart }}>
+            <BracketCard
+              match={match}
+              matchByNumber={matchByNumber}
+              locale={locale}
+              userContext={userContext}
+            />
+          </div>
         ) : null;
       })}
+    </div>
+  );
+}
+
+const bracketColumnClassName =
+  "grid grid-rows-[repeat(16,2.35rem)] gap-y-1 sm:grid-rows-[repeat(16,2.5rem)] md:grid-rows-[repeat(16,2.75rem)]";
+
+function toPlacements(
+  matchNumbers: readonly number[],
+  rowStarts: readonly number[],
+): BracketPlacement[] {
+  return matchNumbers.map((matchNumber, index) => ({
+    matchNumber,
+    rowStart: rowStarts[index] ?? 1,
+  }));
+}
+
+function PlacedBracketCard({
+  match,
+  rowStart,
+  matchByNumber,
+  locale,
+  userContext,
+  compact,
+}: {
+  match: SeededMatchWithResult;
+  rowStart: number;
+  matchByNumber: Map<number, SeededMatchWithResult>;
+  locale: Locale;
+  userContext: UserBracketContext | null;
+  compact?: boolean;
+}) {
+  return (
+    <div style={{ gridRowStart: rowStart }}>
+      <BracketCard
+        match={match}
+        matchByNumber={matchByNumber}
+        locale={locale}
+        userContext={userContext}
+        compact={compact}
+      />
     </div>
   );
 }
@@ -294,20 +344,24 @@ function FinalColumn({
   const semiRight = matchByNumber.get(102);
 
   return (
-    <div className="space-y-4 pt-[48px]">
+    <div className={bracketColumnClassName}>
       {semiLeft ? (
-        <BracketCard
+        <PlacedBracketCard
           match={semiLeft}
+          rowStart={5}
           matchByNumber={matchByNumber}
           locale={locale}
           userContext={userContext}
         />
       ) : null}
-      <div className="rounded-lg border border-white/10 bg-cover bg-center p-1.5 shadow-xl shadow-black/20 [background-image:linear-gradient(rgba(7,16,21,0.45),rgba(7,16,21,0.75)),url('/favicon.svg')]">
-        <div className="mb-1 text-center font-display text-[10px] font-bold text-[var(--color-fg)] sm:text-xs">
-          {locale === "he" ? "גמר" : "Final"}
-        </div>
-        {final ? (
+      {final ? (
+        <div
+          className="rounded-lg border border-white/10 bg-cover bg-center p-1 shadow-xl shadow-black/20 [background-image:linear-gradient(rgba(7,16,21,0.45),rgba(7,16,21,0.75)),url('/favicon.svg')]"
+          style={{ gridRowStart: 7, gridRowEnd: "span 2" }}
+        >
+          <div className="mb-0.5 text-center font-display text-[9px] font-bold leading-none text-[var(--color-fg)] sm:text-[10px]">
+            {locale === "he" ? "גמר" : "Final"}
+          </div>
           <BracketCard
             match={final}
             matchByNumber={matchByNumber}
@@ -315,19 +369,21 @@ function FinalColumn({
             userContext={userContext}
             compact
           />
-        ) : null}
-      </div>
+        </div>
+      ) : null}
       {third ? (
-        <BracketCard
+        <PlacedBracketCard
           match={third}
+          rowStart={10}
           matchByNumber={matchByNumber}
           locale={locale}
           userContext={userContext}
         />
       ) : null}
       {semiRight ? (
-        <BracketCard
+        <PlacedBracketCard
           match={semiRight}
+          rowStart={12}
           matchByNumber={matchByNumber}
           locale={locale}
           userContext={userContext}
@@ -357,8 +413,8 @@ function BracketCard({
   return (
     <article
       className={[
-        "relative rounded-md border border-white/5 bg-[#1b1d20] p-1.5 text-[10px] shadow-lg shadow-black/20 sm:text-xs",
-        compact ? "min-h-12" : "min-h-10",
+        "relative h-full rounded-md border border-white/5 bg-[#1b1d20] p-1 text-[10px] shadow-lg shadow-black/20 sm:p-1.5 sm:text-xs",
+        compact ? "min-h-0" : "min-h-0",
       ].join(" ")}
     >
       <div className="space-y-0.5">
@@ -379,9 +435,9 @@ function EntrantLine({ entrant }: { entrant: BracketEntrant }) {
         entrant.picked ? "font-bold" : "",
       ].join(" ")}
     >
-      <span className="min-w-0 truncate">
-        {entrant.flag ? <span className="me-1">{entrant.flag}</span> : null}
-        <span className="font-bold">{entrant.code ?? entrant.label}</span>
+      <span className="min-w-0 whitespace-nowrap">
+        {entrant.flag ? <span className="me-1 hidden sm:inline">{entrant.flag}</span> : null}
+        <span className="font-bold leading-none">{entrant.code ?? entrant.label}</span>
       </span>
       {entrant.score !== undefined ? <span className="font-display font-extrabold">{entrant.score}</span> : null}
     </div>
