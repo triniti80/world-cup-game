@@ -709,8 +709,12 @@ export async function getSeededMatchesWithResults(): Promise<SeededMatchWithResu
           group: dbMatch.groupCode ?? undefined,
           homeTeamId,
           awayTeamId,
-          homePlaceholder: homeTeamId ? undefined : dbMatch.homePlaceholder ?? undefined,
-          awayPlaceholder: awayTeamId ? undefined : dbMatch.awayPlaceholder ?? undefined,
+          homePlaceholder: homeTeamId
+            ? undefined
+            : dbMatch.homePlaceholder ?? seedMatch.homePlaceholder ?? undefined,
+          awayPlaceholder: awayTeamId
+            ? undefined
+            : dbMatch.awayPlaceholder ?? seedMatch.awayPlaceholder ?? undefined,
           kickoffAtUtc: dbMatch.kickoffAt.toISOString(),
           venue: formatVenue(dbMatch.venue),
           status: dbMatch.status,
