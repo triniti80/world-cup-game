@@ -38,6 +38,7 @@ type BracketPick = MobileLeagueStagePick & {
 type UserBracketContext = {
   userId: number;
   pickByStage: Map<StagePredictionStage, Map<string, BracketPick>>;
+  pickListByStage: Map<StagePredictionStage, BracketPick[]>;
   cache: Map<number, [BracketEntrant, BracketEntrant]>;
 };
 
@@ -47,6 +48,13 @@ const leftQuarterFinals = [97, 98];
 const rightQuarterFinals = [99, 100];
 const rightRoundOf16 = [91, 92, 95, 96];
 const rightRoundOf32 = [76, 78, 79, 80, 86, 88, 85, 87];
+const sourceMatchOrderByTargetStage = {
+  r16: [...leftRoundOf32, ...rightRoundOf32],
+  qf: [...leftRoundOf16, ...rightRoundOf16],
+  sf: [...leftQuarterFinals, ...rightQuarterFinals],
+  final: [101, 102],
+  champion: [104],
+} as const satisfies Partial<Record<StagePredictionStage, readonly number[]>>;
 
 const nextPredictionStageByMatchStage = {
   r32: "r16",
@@ -86,7 +94,7 @@ export function BracketViewer({
         ? null
         : {
             userId: selectedUserId,
-            pickByStage: buildPickByStage(stages, selectedUserId),
+            ...buildUserPickMaps(stages, selectedUserId),
             cache: new Map<number, [BracketEntrant, BracketEntrant]>(),
           },
     [selectedUserId, stages],
@@ -394,7 +402,7 @@ function resolveLiveSide(
   const teamId = side === "home" ? match.homeTeamId : match.awayTeamId;
   const placeholder = side === "home" ? match.homePlaceholder : match.awayPlaceholder;
   const team = getTeam(teamId);
-  if (team) return teamEntrant(team, locale);
+  if (team) return teamEntrant(team);
   if (!placeholder) return placeholderEntrant(t(locale, "common.tbd"));
 
   const sourceMatch = getSourceMatch(matchByNumber, placeholder);
@@ -489,30 +497,51 @@ function findPredictedWinnerForSource(
         ]
       : resolveUserBaseEntrantsForMatch(sourceMatch, matchByNumber, locale, context);
   const pickedCandidate = candidates.find((candidate) => picks.has(candidate.key));
-  if (!pickedCandidate) return null;
+  if (!pickedCandidate) {
+    return getOrderedFallbackPick(sourceMatch, targetStage, context);
+  }
 
   const pick = picks.get(pickedCandidate.key);
-  return pick ? pickEntrant(pick, locale) : pickedCandidate;
+  return pick ? pickEntrant(pick) : pickedCandidate;
 }
 
-function buildPickByStage(
+function getOrderedFallbackPick(
+  sourceMatch: SeededMatchWithResult,
+  targetStage: StagePredictionStage,
+  context: UserBracketContext,
+): BracketEntrant | null {
+  if (!isOrderedFallbackStage(targetStage)) return null;
+  const sourceOrder: readonly number[] = sourceMatchOrderByTargetStage[targetStage];
+  if (!sourceOrder) return null;
+  const sourceIndex = sourceOrder.indexOf(sourceMatch.number);
+  if (sourceIndex < 0) return null;
+  const pick = context.pickListByStage.get(targetStage)?.[sourceIndex];
+  return pick ? pickEntrant(pick) : null;
+}
+
+function buildUserPickMaps(
   stages: MobileLeaguePredictionStage[],
   userId: number,
-): Map<StagePredictionStage, Map<string, BracketPick>> {
+): Pick<UserBracketContext, "pickByStage" | "pickListByStage"> {
   const pickByStage = new Map<StagePredictionStage, Map<string, BracketPick>>();
+  const pickListByStage = new Map<StagePredictionStage, BracketPick[]>();
   for (const stage of stages) {
     const prediction = stage.predictions.find((candidate) => candidate.userId === userId);
     const picks = new Map<string, BracketPick>();
+    const pickList: BracketPick[] = [];
     for (const pick of prediction?.picks ?? []) {
       const key = pickKey(pick);
-      picks.set(key, { ...pick, key });
+      const bracketPick = { ...pick, key };
+      picks.set(key, bracketPick);
+      pickList.push(bracketPick);
     }
     pickByStage.set(stage.stage, picks);
+    pickListByStage.set(stage.stage, pickList);
   }
-  return pickByStage;
+  return { pickByStage, pickListByStage };
 }
 
-function pickEntrant(pick: BracketPick, locale: Locale): BracketEntrant {
+function pickEntrant(pick: BracketPick): BracketEntrant {
   if (isPlaceholderKey(pick.teamId)) {
     return {
       key: pick.teamId,
@@ -524,7 +553,7 @@ function pickEntrant(pick: BracketPick, locale: Locale): BracketEntrant {
   }
   const team = getTeam(pick.teamId);
   return team
-    ? { ...teamEntrant(team, locale), state: stateFromSuccessful(pick.successful) }
+    ? { ...teamEntrant(team), state: stateFromSuccessful(pick.successful) }
     : {
         key: pick.key,
         label: pick.teamName,
@@ -533,7 +562,7 @@ function pickEntrant(pick: BracketPick, locale: Locale): BracketEntrant {
       };
 }
 
-function teamEntrant(team: Team, locale: Locale): BracketEntrant {
+function teamEntrant(team: Team): BracketEntrant {
   return {
     key: `team:${team.id}`,
     label: team.code,
@@ -613,4 +642,10 @@ function entrantStateClass(entrant: BracketEntrant): string {
 
 function isBracketStage(stage: Stage): stage is BracketStage {
   return stage === "r32" || stage === "r16" || stage === "qf" || stage === "sf" || stage === "final";
+}
+
+function isOrderedFallbackStage(
+  stage: StagePredictionStage,
+): stage is keyof typeof sourceMatchOrderByTargetStage {
+  return stage in sourceMatchOrderByTargetStage;
 }
