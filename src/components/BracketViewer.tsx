@@ -48,6 +48,24 @@ const leftQuarterFinals = [97, 98];
 const rightQuarterFinals = [99, 100];
 const rightRoundOf16 = [91, 92, 95, 96];
 const rightRoundOf32 = [76, 78, 79, 80, 86, 88, 85, 87];
+const officialPlaceholderByMatch: Partial<Record<number, Record<MatchSide, string>>> = {
+  89: { home: "W74", away: "W77" },
+  90: { home: "W73", away: "W75" },
+  91: { home: "W76", away: "W78" },
+  92: { home: "W79", away: "W80" },
+  93: { home: "W83", away: "W84" },
+  94: { home: "W81", away: "W82" },
+  95: { home: "W86", away: "W88" },
+  96: { home: "W85", away: "W87" },
+  97: { home: "W89", away: "W90" },
+  98: { home: "W93", away: "W94" },
+  99: { home: "W91", away: "W92" },
+  100: { home: "W95", away: "W96" },
+  101: { home: "W97", away: "W98" },
+  102: { home: "W99", away: "W100" },
+  103: { home: "RU101", away: "RU102" },
+  104: { home: "W101", away: "W102" },
+};
 const sourceMatchOrderByTargetStage = {
   r16: [...leftRoundOf32, ...rightRoundOf32],
   qf: [...leftRoundOf16, ...rightRoundOf16],
@@ -400,7 +418,7 @@ function resolveLiveSide(
   seen = new Set<string>(),
 ): BracketEntrant {
   const teamId = side === "home" ? match.homeTeamId : match.awayTeamId;
-  const placeholder = side === "home" ? match.homePlaceholder : match.awayPlaceholder;
+  const placeholder = getMatchPlaceholder(match, side);
   const team = getTeam(teamId);
   if (team) return teamEntrant(team);
   if (!placeholder) return placeholderEntrant(t(locale, "common.tbd"));
@@ -455,8 +473,8 @@ function resolveUserBaseEntrantsForMatch(
   }
 
   return [
-    resolveUserSlot(match.homePlaceholder, matchByNumber, locale, context),
-    resolveUserSlot(match.awayPlaceholder, matchByNumber, locale, context),
+    resolveUserSlot(getMatchPlaceholder(match, "home"), matchByNumber, locale, context),
+    resolveUserSlot(getMatchPlaceholder(match, "away"), matchByNumber, locale, context),
   ];
 }
 
@@ -609,6 +627,13 @@ function getEffectiveWinnerSide(match: SeededMatchWithResult): MatchSide | null 
   if (match.homeScore > match.awayScore) return "home";
   if (match.awayScore > match.homeScore) return "away";
   return null;
+}
+
+function getMatchPlaceholder(match: SeededMatchWithResult, side: MatchSide): string | undefined {
+  return (
+    officialPlaceholderByMatch[match.number]?.[side] ??
+    (side === "home" ? match.homePlaceholder : match.awayPlaceholder)
+  );
 }
 
 function pickKey(pick: MobileLeagueStagePick): string {
