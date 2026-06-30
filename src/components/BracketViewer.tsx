@@ -524,9 +524,12 @@ function resolveUserEntrantsForMatch(
   const selectedWinner = nextStage
     ? findPredictedWinnerForSource(match, nextStage, matchByNumber, locale, context)
     : null;
+  const selectedWinnerState = selectedWinner
+    ? getSelectedWinnerStateForMatch(match, selectedWinner, matchByNumber, locale)
+    : "neutral";
   const markedEntrants = entrants.map((entrant) => {
     if (!selectedWinner || entrant.key !== selectedWinner.key) return entrant;
-    return { ...entrant, picked: true, state: selectedWinner.state };
+    return { ...entrant, picked: true, state: selectedWinnerState };
   }) as [BracketEntrant, BracketEntrant];
 
   context.cache.set(match.number, markedEntrants);
@@ -633,24 +636,24 @@ function buildUserPickMaps(
   return { pickByStage, pickListByStage };
 }
 
-function pickEntrant(pick: BracketPick): BracketEntrant {
+function pickEntrant(pick: BracketPick, state: PickState = "neutral"): BracketEntrant {
   if (isPlaceholderKey(pick.teamId)) {
     return {
       key: pick.teamId,
       label: pick.teamName,
       code: pick.teamCode,
-      state: stateFromSuccessful(pick.successful),
+      state,
       placeholder: true,
     };
   }
   const team = getTeam(pick.teamId);
   return team
-    ? { ...teamEntrant(team), state: stateFromSuccessful(pick.successful) }
+    ? { ...teamEntrant(team), state }
     : {
         key: pick.key,
         label: pick.teamName,
         code: pick.teamCode,
-        state: stateFromSuccessful(pick.successful),
+        state,
       };
 }
 
@@ -703,6 +706,19 @@ function getEffectiveWinnerSide(match: SeededMatchWithResult): MatchSide | null 
   return null;
 }
 
+function getSelectedWinnerStateForMatch(
+  match: SeededMatchWithResult,
+  selectedWinner: BracketEntrant,
+  matchByNumber: Map<number, SeededMatchWithResult>,
+  locale: Locale,
+): PickState {
+  if (match.status !== "final") return "neutral";
+  const winnerSide = getEffectiveWinnerSide(match);
+  if (!winnerSide) return "neutral";
+  const actualWinner = resolveLiveSide(match, winnerSide, matchByNumber, locale);
+  return selectedWinner.key === actualWinner.key ? "success" : "failure";
+}
+
 function getMatchPlaceholder(match: SeededMatchWithResult, side: MatchSide): string | undefined {
   return (
     officialPlaceholderByMatch[match.number]?.[side] ??
@@ -724,12 +740,6 @@ function normalizePlaceholderLabel(value: string): string {
 
 function isPlaceholderKey(value: string): boolean {
   return value.startsWith("placeholder:");
-}
-
-function stateFromSuccessful(successful: boolean | null): PickState {
-  if (successful === true) return "success";
-  if (successful === false) return "failure";
-  return "neutral";
 }
 
 function entrantStateClass(entrant: BracketEntrant): string {
