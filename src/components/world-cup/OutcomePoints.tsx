@@ -2,7 +2,7 @@ import { t, type Locale } from "@/lib/i18n";
 import {
   BASE_EXACT_SCORE_POINTS,
   getCorrectOutcomePoints,
-  isOddsScoredGroupMatch,
+  isOddsScoredMatch,
   ODDS_EXACT_SCORE_BONUS,
 } from "@/lib/world-cup/static-odds";
 
@@ -20,7 +20,7 @@ export function OutcomePoints({
   const homePoints = getCorrectOutcomePoints(matchNumber, "home");
   const drawPoints = getCorrectOutcomePoints(matchNumber, "draw");
   const awayPoints = getCorrectOutcomePoints(matchNumber, "away");
-  const exactHint = isOddsScoredGroupMatch(matchNumber)
+  const exactHint = isOddsScoredMatch(matchNumber)
     ? `+${formatPointValue(ODDS_EXACT_SCORE_BONUS)} ${locale === "he" ? "מדויק" : "exact"}`
     : `${formatPointValue(BASE_EXACT_SCORE_POINTS)} ${locale === "he" ? "מדויק" : "exact"}`;
 

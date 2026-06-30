@@ -14,7 +14,7 @@ export const ODDS_EXACT_SCORE_BONUS = 4;
 export const ODDS_SCORING_MIN_POINTS = 1.5;
 export const ODDS_SCORING_MAX_POINTS = 15;
 
-// Static decimal odds snapshot for group-stage score prediction scoring.
+// Static decimal odds snapshot for score prediction scoring.
 // Replace these values with the chosen bookmaker snapshot before recalculating.
 export const STATIC_GROUP_STAGE_ODDS: Record<number, MatchOutcomeOdds> = {
   1: { home: 1.64, draw: 5.30, away: 7.35 }, // MEX vs RSA
@@ -91,6 +91,30 @@ export const STATIC_GROUP_STAGE_ODDS: Record<number, MatchOutcomeOdds> = {
   72: { home: 1.69, draw: 5.19, away: 6.68 }, // CRO vs GHA
 };
 
+export const STATIC_KNOCKOUT_ODDS: Record<number, MatchOutcomeOdds> = {
+  73: { home: 4.31, draw: 4.73, away: 2.04 }, // RSA vs CAN
+  74: { home: 1.46, draw: 5.88, away: 12.26 }, // GER vs PAR
+  75: { home: 2.04, draw: 4.73, away: 4.31 }, // NED vs MAR
+  76: { home: 1.52, draw: 5.63, away: 9.93 }, // BRA vs JPN
+  77: { home: 1.64, draw: 5.30, away: 7.35 }, // FRA vs SWE
+  78: { home: 4.67, draw: 4.82, away: 1.95 }, // CIV vs NOR
+  79: { home: 2.51, draw: 4.42, away: 3.22 }, // MEX vs ECU
+  80: { home: 1.34, draw: 6.60, away: 26.92 }, // ENG vs COD
+  81: { home: 1.95, draw: 4.82, away: 4.67 }, // USA vs BIH
+  82: { home: 1.87, draw: 4.91, away: 5.09 }, // BEL vs SEN
+  83: { home: 1.87, draw: 4.91, away: 5.09 }, // POR vs CRO
+  84: { home: 1.52, draw: 5.63, away: 9.93 }, // ESP vs AUT
+  85: { home: 2.04, draw: 4.73, away: 4.31 }, // SUI vs ALG
+  86: { home: 1.33, draw: 6.60, away: 30.34 }, // ARG vs CPV
+  87: { home: 1.64, draw: 5.30, away: 7.35 }, // COL vs GHA
+  88: { home: 4.31, draw: 4.73, away: 2.04 }, // AUS vs EGY
+};
+
+export const STATIC_MATCH_ODDS: Record<number, MatchOutcomeOdds> = {
+  ...STATIC_GROUP_STAGE_ODDS,
+  ...STATIC_KNOCKOUT_ODDS,
+};
+
 const groupMatchdayByNumber = new Map<number, 1 | 2 | 3>(
   [...new Set(matches.flatMap((match) => (match.stage === "group" && match.group ? [match.group] : [])))]
     .flatMap((group) =>
@@ -106,7 +130,7 @@ export function getGroupMatchday(matchNumber: number | undefined | null): 1 | 2 
 }
 
 export function getStaticMatchOdds(matchNumber: number | undefined | null): MatchOutcomeOdds | null {
-  return matchNumber ? STATIC_GROUP_STAGE_ODDS[matchNumber] ?? null : null;
+  return matchNumber ? STATIC_MATCH_ODDS[matchNumber] ?? null : null;
 }
 
 export function isOddsScoredGroupMatch(matchNumber: number | undefined | null): boolean {
@@ -114,11 +138,16 @@ export function isOddsScoredGroupMatch(matchNumber: number | undefined | null): 
   return matchday === 2 || matchday === 3;
 }
 
+export function isOddsScoredMatch(matchNumber: number | undefined | null): boolean {
+  if (!matchNumber) return false;
+  return isOddsScoredGroupMatch(matchNumber) || STATIC_KNOCKOUT_ODDS[matchNumber] !== undefined;
+}
+
 export function getCorrectOutcomePoints(
   matchNumber: number | undefined | null,
   side: OutcomeSide,
 ): number {
-  if (!isOddsScoredGroupMatch(matchNumber)) return BASE_OUTCOME_POINTS;
+  if (!isOddsScoredMatch(matchNumber)) return BASE_OUTCOME_POINTS;
   const odds = getStaticMatchOdds(matchNumber)?.[side];
   if (!odds) return BASE_OUTCOME_POINTS;
   return Math.min(
@@ -131,7 +160,7 @@ export function getExactScorePoints(
   matchNumber: number | undefined | null,
   side: OutcomeSide,
 ): number {
-  if (!isOddsScoredGroupMatch(matchNumber)) return BASE_EXACT_SCORE_POINTS;
+  if (!isOddsScoredMatch(matchNumber)) return BASE_EXACT_SCORE_POINTS;
   return getCorrectOutcomePoints(matchNumber, side) + ODDS_EXACT_SCORE_BONUS;
 }
 

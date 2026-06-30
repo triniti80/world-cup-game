@@ -78,6 +78,43 @@ test("uses static odds from the second group matchday", () => {
   );
 });
 
+test("uses static odds for round of 32 knockout matches", () => {
+  assert.deepEqual(
+    scoreMatchPrediction({
+      matchNumber: 77,
+      realHomeScore: 0,
+      realAwayScore: 1,
+      predictedHomeScore: 0,
+      predictedAwayScore: 2,
+    }),
+    { points: 7.5, reason: "Correct outcome" },
+  );
+
+  assert.deepEqual(
+    scoreMatchPrediction({
+      matchNumber: 78,
+      realHomeScore: 0,
+      realAwayScore: 1,
+      predictedHomeScore: 0,
+      predictedAwayScore: 1,
+    }),
+    { points: 6, reason: "Exact score" },
+  );
+});
+
+test("keeps later knockout matches at base scoring until odds are added", () => {
+  assert.deepEqual(
+    scoreMatchPrediction({
+      matchNumber: 89,
+      realHomeScore: 2,
+      realAwayScore: 1,
+      predictedHomeScore: 1,
+      predictedAwayScore: 0,
+    }),
+    { points: 2, reason: "Correct outcome" },
+  );
+});
+
 test("adds a four point exact-score bonus to odds scoring", () => {
   assert.deepEqual(
     scoreMatchPrediction({
