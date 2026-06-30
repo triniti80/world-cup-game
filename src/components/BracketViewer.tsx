@@ -290,7 +290,7 @@ function BracketColumn({
 }
 
 const bracketColumnClassName =
-  "grid grid-rows-[repeat(16,2.35rem)] gap-y-1 sm:grid-rows-[repeat(16,2.5rem)] md:grid-rows-[repeat(16,2.75rem)]";
+  "grid grid-rows-[repeat(16,4.25rem)] gap-y-1 sm:grid-rows-[repeat(16,2.5rem)] md:grid-rows-[repeat(16,2.75rem)]";
 
 function toPlacements(
   matchNumbers: readonly number[],
@@ -414,7 +414,7 @@ function BracketCard({
   return (
     <article
       className={[
-        "relative h-full rounded-md border border-white/5 bg-[#1b1d20] p-1 text-[10px] shadow-lg shadow-black/20 sm:p-1.5 sm:text-xs",
+        "relative h-full rounded-md border border-white/5 bg-[#1b1d20] p-1.5 text-[10px] shadow-lg shadow-black/20 sm:p-1.5 sm:text-xs",
         compact ? "min-h-0" : "min-h-0",
       ].join(" ")}
     >
@@ -431,17 +431,23 @@ function EntrantLine({ entrant }: { entrant: BracketEntrant }) {
   return (
     <div
       className={[
-        "flex min-h-4 items-center justify-between gap-1",
+        "relative min-h-7 pr-4 sm:flex sm:min-h-4 sm:items-center sm:justify-between sm:gap-1 sm:pr-0",
         entrantStateClass(entrant),
         entrant.picked ? "font-bold" : "",
       ].join(" ")}
     >
-      <span className="min-w-0 whitespace-nowrap">
-        {entrant.flag ? <span className="me-1 hidden sm:inline">{entrant.flag}</span> : null}
-        <span className="font-bold leading-none">{entrant.code ?? entrant.label}</span>
+      <span className="min-w-0">
+        <span className="hidden whitespace-nowrap sm:inline">
+          {entrant.flag ? <span className="me-1">{entrant.flag}</span> : null}
+          <span className="font-bold leading-none">{entrant.code ?? entrant.label}</span>
+        </span>
+        <span className="flex flex-col items-start gap-0.5 sm:hidden">
+          <span className="font-bold leading-none">{entrant.code ?? entrant.label}</span>
+          {entrant.flag ? <span className="text-sm leading-none">{entrant.flag}</span> : null}
+        </span>
       </span>
       {entrant.score !== undefined ? (
-        <span className="font-display font-extrabold">
+        <span className="absolute right-0 top-0 font-display font-extrabold sm:static">
           {entrant.score}
           {entrant.penaltyScore !== undefined ? (
             <span className="ms-0.5 text-[0.72em] text-[var(--color-fg-muted)]">
