@@ -24,7 +24,39 @@ test("parses final FIFA calendar results by match number", () => {
     status: "final",
     homeScore: 2,
     awayScore: 1,
+    homePenaltyScore: null,
+    awayPenaltyScore: null,
     winnerSide: "home",
+  });
+});
+
+test("parses FIFA penalty shootout scores", () => {
+  const [match] = parseFifaCalendarMatches({
+    Results: [
+      {
+        MatchNumber: 73,
+        MatchStatus: 0,
+        HomeTeamScore: 1,
+        AwayTeamScore: 1,
+        HomeTeamPenaltyScore: 4,
+        AwayTeamPenaltyScore: 3,
+        Winner: "away-team",
+        Home: { IdTeam: "home-team", Abbreviation: "RSA" },
+        Away: { IdTeam: "away-team", Abbreviation: "CAN" },
+      },
+    ],
+  });
+
+  assert.deepEqual(match, {
+    matchNumber: 73,
+    homeTeamCode: "RSA",
+    awayTeamCode: "CAN",
+    status: "final",
+    homeScore: 1,
+    awayScore: 1,
+    homePenaltyScore: 4,
+    awayPenaltyScore: 3,
+    winnerSide: "away",
   });
 });
 
@@ -48,6 +80,8 @@ test("keeps scheduled FIFA fixtures scoreless", () => {
     status: "scheduled",
     homeScore: null,
     awayScore: null,
+    homePenaltyScore: null,
+    awayPenaltyScore: null,
     winnerSide: null,
   });
 });

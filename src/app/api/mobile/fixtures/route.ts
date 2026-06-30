@@ -26,6 +26,8 @@ export async function GET() {
       status: match.status,
       homeScore: match.homeScore ?? null,
       awayScore: match.awayScore ?? null,
+      homePenaltyScore: match.homePenaltyScore ?? null,
+      awayPenaltyScore: match.awayPenaltyScore ?? null,
     })),
   });
 }

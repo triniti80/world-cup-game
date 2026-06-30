@@ -14,6 +14,8 @@ const bodySchema = z.object({
   matchDbId: z.number().int().positive(),
   homeScore: z.number().int().min(0).max(99),
   awayScore: z.number().int().min(0).max(99),
+  homePenaltyScore: z.number().int().min(0).max(99).optional().nullable(),
+  awayPenaltyScore: z.number().int().min(0).max(99).optional().nullable(),
   winnerSide: z.enum(["home", "away"]).optional().nullable(),
   status: z.enum(["scheduled", "live", "final"]).default("final"),
 });
@@ -49,6 +51,8 @@ export async function POST(req: Request) {
       awayTeamId: matches.awayTeamId,
       homeScore: matches.homeScore,
       awayScore: matches.awayScore,
+      homePenaltyScore: matches.homePenaltyScore,
+      awayPenaltyScore: matches.awayPenaltyScore,
       status: matches.status,
       winnerTeamId: matches.winnerTeamId,
       winnerSide: matches.winnerSide,
@@ -74,6 +78,17 @@ export async function POST(req: Request) {
     );
   }
 
+  const hasHomePenaltyScore =
+    parsed.data.homePenaltyScore !== null && parsed.data.homePenaltyScore !== undefined;
+  const hasAwayPenaltyScore =
+    parsed.data.awayPenaltyScore !== null && parsed.data.awayPenaltyScore !== undefined;
+  if (hasHomePenaltyScore !== hasAwayPenaltyScore) {
+    return NextResponse.json(
+      { error: "Enter both penalty scores or leave both empty." },
+      { status: 400 },
+    );
+  }
+
   const winnerSide: PredictedWinnerSide | null = winnerSideResult.side;
   const winnerTeamId =
     winnerSide === "home"
@@ -85,6 +100,8 @@ export async function POST(req: Request) {
   const nextResult = {
     homeScore: parsed.data.homeScore,
     awayScore: parsed.data.awayScore,
+    homePenaltyScore: hasHomePenaltyScore ? parsed.data.homePenaltyScore! : null,
+    awayPenaltyScore: hasAwayPenaltyScore ? parsed.data.awayPenaltyScore! : null,
     status: parsed.data.status,
     winnerTeamId,
     winnerSide,
@@ -102,6 +119,8 @@ export async function POST(req: Request) {
         id: matches.id,
         homeScore: matches.homeScore,
         awayScore: matches.awayScore,
+        homePenaltyScore: matches.homePenaltyScore,
+        awayPenaltyScore: matches.awayPenaltyScore,
         winnerSide: matches.winnerSide,
         status: matches.status,
       });
@@ -128,6 +147,8 @@ function normalizeResultAudit(result: {
   matchNumber: number;
   homeScore: number | null;
   awayScore: number | null;
+  homePenaltyScore: number | null;
+  awayPenaltyScore: number | null;
   status: string;
   winnerTeamId: number | null;
   winnerSide: string | null;
@@ -136,6 +157,8 @@ function normalizeResultAudit(result: {
     matchNumber: result.matchNumber,
     homeScore: result.homeScore,
     awayScore: result.awayScore,
+    homePenaltyScore: result.homePenaltyScore,
+    awayPenaltyScore: result.awayPenaltyScore,
     status: result.status,
     winnerTeamId: result.winnerTeamId,
     winnerSide: result.winnerSide,

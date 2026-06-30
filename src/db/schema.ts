@@ -154,6 +154,8 @@ export const matches = pgTable(
     status: matchStatusEnum("status").notNull().default("scheduled"),
     homeScore: integer("home_score"),
     awayScore: integer("away_score"),
+    homePenaltyScore: integer("home_penalty_score"),
+    awayPenaltyScore: integer("away_penalty_score"),
     winnerTeamId: integer("winner_team_id").references(() => teams.id, { onDelete: "set null" }),
     winnerSide: text("winner_side"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),

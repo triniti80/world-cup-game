@@ -24,7 +24,36 @@ export type Match = {
   status: "scheduled" | "live" | "final";
   homeScore?: number;
   awayScore?: number;
+  homePenaltyScore?: number;
+  awayPenaltyScore?: number;
 };
+
+export type ScoreLike = Pick<
+  Match,
+  "homeScore" | "awayScore" | "homePenaltyScore" | "awayPenaltyScore"
+>;
+
+export function hasMatchScore(score: ScoreLike): score is ScoreLike & {
+  homeScore: number;
+  awayScore: number;
+} {
+  return score.homeScore !== undefined && score.awayScore !== undefined;
+}
+
+export function hasPenaltyScore(score: ScoreLike): score is ScoreLike & {
+  homePenaltyScore: number;
+  awayPenaltyScore: number;
+} {
+  return score.homePenaltyScore !== undefined && score.awayPenaltyScore !== undefined;
+}
+
+export function formatMatchScore(score: ScoreLike): string | null {
+  if (!hasMatchScore(score)) return null;
+  const base = `${score.homeScore}-${score.awayScore}`;
+  return hasPenaltyScore(score)
+    ? `${base} (${score.homePenaltyScore}-${score.awayPenaltyScore} pens)`
+    : base;
+}
 
 const venueCityByVenue: Record<string, string> = {
   "AT&T Stadium": "Dallas",

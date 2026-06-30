@@ -71,6 +71,13 @@
       "when": 1782864000000,
       "tag": "0009_stage_prediction_placeholders",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1782867600000,
+      "tag": "0010_match_penalty_scores",
+      "breakpoints": true
     }
   ]
 }

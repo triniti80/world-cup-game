@@ -17,6 +17,10 @@ type FifaMatchObject = {
   MatchStatus?: unknown;
   HomeTeamScore?: unknown;
   AwayTeamScore?: unknown;
+  HomeTeamPenaltyScore?: unknown;
+  AwayTeamPenaltyScore?: unknown;
+  HomePenaltyScore?: unknown;
+  AwayPenaltyScore?: unknown;
   Home?: FifaTeamObject | null;
   Away?: FifaTeamObject | null;
   Winner?: unknown;
@@ -27,6 +31,10 @@ type FifaTeamObject = {
   IdCountry?: unknown;
   IdAssociation?: unknown;
   Score?: unknown;
+  PenaltyScore?: unknown;
+  Penalties?: unknown;
+  PenaltyShootoutScore?: unknown;
+  ShootoutScore?: unknown;
   Abbreviation?: unknown;
 };
 
@@ -37,6 +45,8 @@ export type FifaMatchResult = {
   status: "scheduled" | "live" | "final";
   homeScore: number | null;
   awayScore: number | null;
+  homePenaltyScore: number | null;
+  awayPenaltyScore: number | null;
   winnerSide: PredictedWinnerSide | null;
 };
 
@@ -61,6 +71,22 @@ export function parseFifaCalendarMatches(payload: unknown): FifaMatchResult[] {
 
     const homeScore = toNullableInteger(match.HomeTeamScore ?? match.Home?.Score);
     const awayScore = toNullableInteger(match.AwayTeamScore ?? match.Away?.Score);
+    const homePenaltyScore = toNullableInteger(
+      match.HomeTeamPenaltyScore ??
+        match.HomePenaltyScore ??
+        match.Home?.PenaltyScore ??
+        match.Home?.Penalties ??
+        match.Home?.PenaltyShootoutScore ??
+        match.Home?.ShootoutScore,
+    );
+    const awayPenaltyScore = toNullableInteger(
+      match.AwayTeamPenaltyScore ??
+        match.AwayPenaltyScore ??
+        match.Away?.PenaltyScore ??
+        match.Away?.Penalties ??
+        match.Away?.PenaltyShootoutScore ??
+        match.Away?.ShootoutScore,
+    );
     const status = normalizeFifaStatus(match.MatchStatus, homeScore, awayScore);
     const winnerSide = resolveFifaWinnerSide(match);
 
@@ -72,6 +98,8 @@ export function parseFifaCalendarMatches(payload: unknown): FifaMatchResult[] {
         status,
         homeScore,
         awayScore,
+        homePenaltyScore,
+        awayPenaltyScore,
         winnerSide,
       },
     ];
@@ -176,6 +204,8 @@ export async function syncFifaResults(options: {
       awayTeamId,
       homeScore: hasScores ? result.homeScore : null,
       awayScore: hasScores ? result.awayScore : null,
+      homePenaltyScore: hasScores ? result.homePenaltyScore : null,
+      awayPenaltyScore: hasScores ? result.awayPenaltyScore : null,
       status: result.status,
       winnerTeamId,
       winnerSide,
@@ -226,6 +256,8 @@ async function getLocalMatchesForSync(tournamentId: number) {
       awayTeamId: matches.awayTeamId,
       homeScore: matches.homeScore,
       awayScore: matches.awayScore,
+      homePenaltyScore: matches.homePenaltyScore,
+      awayPenaltyScore: matches.awayPenaltyScore,
       status: matches.status,
       winnerTeamId: matches.winnerTeamId,
       winnerSide: matches.winnerSide,
@@ -314,6 +346,8 @@ function isSameResult(
     awayTeamId: number | null;
     homeScore: number | null;
     awayScore: number | null;
+    homePenaltyScore: number | null;
+    awayPenaltyScore: number | null;
     status: string;
     winnerTeamId: number | null;
     winnerSide: string | null;
@@ -323,6 +357,8 @@ function isSameResult(
     awayTeamId: number | null;
     homeScore: number | null;
     awayScore: number | null;
+    homePenaltyScore: number | null;
+    awayPenaltyScore: number | null;
     status: string;
     winnerTeamId: number | null;
     winnerSide: string | null;
@@ -333,6 +369,8 @@ function isSameResult(
     existing.awayTeamId === nextResult.awayTeamId &&
     existing.homeScore === nextResult.homeScore &&
     existing.awayScore === nextResult.awayScore &&
+    existing.homePenaltyScore === nextResult.homePenaltyScore &&
+    existing.awayPenaltyScore === nextResult.awayPenaltyScore &&
     existing.status === nextResult.status &&
     existing.winnerTeamId === nextResult.winnerTeamId &&
     existing.winnerSide === nextResult.winnerSide
@@ -345,6 +383,8 @@ function normalizeResultAudit(result: {
   awayTeamId?: number | null;
   homeScore: number | null;
   awayScore: number | null;
+  homePenaltyScore?: number | null;
+  awayPenaltyScore?: number | null;
   status: string;
   winnerTeamId: number | null;
   winnerSide: string | null;
@@ -355,6 +395,8 @@ function normalizeResultAudit(result: {
     awayTeamId: result.awayTeamId ?? null,
     homeScore: result.homeScore,
     awayScore: result.awayScore,
+    homePenaltyScore: result.homePenaltyScore ?? null,
+    awayPenaltyScore: result.awayPenaltyScore ?? null,
     status: result.status,
     winnerTeamId: result.winnerTeamId,
     winnerSide: result.winnerSide,

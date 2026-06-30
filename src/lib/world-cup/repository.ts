@@ -20,6 +20,7 @@ import {
   matches as seedMatches,
   teams as seedTeams,
   tournament as seedTournament,
+  formatMatchScore,
   formatVenue,
   type Match,
 } from "@/lib/world-cup/data";
@@ -720,6 +721,8 @@ export async function getSeededMatchesWithResults(): Promise<SeededMatchWithResu
           status: dbMatch.status,
           homeScore: dbMatch.homeScore ?? undefined,
           awayScore: dbMatch.awayScore ?? undefined,
+          homePenaltyScore: dbMatch.homePenaltyScore ?? undefined,
+          awayPenaltyScore: dbMatch.awayPenaltyScore ?? undefined,
           winnerSide,
         },
       ];
@@ -1337,6 +1340,8 @@ async function getLeaderboardDetailMap(
             awayScore: matchPredictions.awayScore,
             realHomeScore: dbMatches.homeScore,
             realAwayScore: dbMatches.awayScore,
+            realHomePenaltyScore: dbMatches.homePenaltyScore,
+            realAwayPenaltyScore: dbMatches.awayPenaltyScore,
             status: dbMatches.status,
             matchNumber: dbMatches.matchNumber,
             homeTeamId: dbMatches.homeTeamId,
@@ -1400,7 +1405,12 @@ async function getLeaderboardDetailMap(
     const away = row.awayTeamId ? teamById.get(row.awayTeamId)?.name : undefined;
     const actualScore =
       row.status === "final" && row.realHomeScore !== null && row.realAwayScore !== null
-        ? ` · Actual ${row.realHomeScore}-${row.realAwayScore}`
+        ? ` · Actual ${formatMatchScore({
+            homeScore: row.realHomeScore,
+            awayScore: row.realAwayScore,
+            homePenaltyScore: row.realHomePenaltyScore ?? undefined,
+            awayPenaltyScore: row.realAwayPenaltyScore ?? undefined,
+          })}`
         : "";
     detailBySource.set(`match_prediction:${row.id}`, {
       label: `Match ${row.matchNumber}: ${home ?? row.homePlaceholder ?? "TBD"} vs ${away ?? row.awayPlaceholder ?? "TBD"}`,
@@ -2073,6 +2083,8 @@ export async function getLeaguePredictionVisibility(userId: number, activeLeague
       status: dbMatches.status,
       homeScore: dbMatches.homeScore,
       awayScore: dbMatches.awayScore,
+      homePenaltyScore: dbMatches.homePenaltyScore,
+      awayPenaltyScore: dbMatches.awayPenaltyScore,
     })
     .from(dbMatches)
     .where(eq(dbMatches.tournamentId, tournamentRow.id));
@@ -2110,6 +2122,8 @@ export async function getLeaguePredictionVisibility(userId: number, activeLeague
           status: dbMatch.status,
           homeScore: dbMatch.homeScore ?? undefined,
           awayScore: dbMatch.awayScore ?? undefined,
+          homePenaltyScore: dbMatch.homePenaltyScore ?? undefined,
+          awayPenaltyScore: dbMatch.awayPenaltyScore ?? undefined,
           revealed,
           predictions: members.map((member) => {
             const prediction = predictionByUserAndMatch.get(`${member.userId}:${dbMatch.id}`);

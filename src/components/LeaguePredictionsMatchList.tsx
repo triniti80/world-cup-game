@@ -4,9 +4,11 @@ import { useMemo, useState } from "react";
 import { t, type Locale } from "@/lib/i18n";
 import {
   formatKickoff,
+  formatMatchScore,
   getMatchName,
   getTeam,
   getTeamName,
+  hasMatchScore,
   stageLabel,
 } from "@/lib/world-cup/data";
 import type {
@@ -83,9 +85,9 @@ export function LeaguePredictionsMatchList({
               <h3 className="mt-1 font-display text-lg font-bold">{getMatchName(match, locale)}</h3>
               <p className="mt-1 text-sm text-[var(--color-fg-muted)]">
                 {formatKickoff(match.kickoffAtUtc, locale)}
-                {match.homeScore !== undefined && match.awayScore !== undefined ? (
+                {hasMatchScore(match) ? (
                   <span className="ms-2 font-bold text-[var(--color-accent)]">
-                    · {t(locale, "match.actualResult")}: {match.homeScore}-{match.awayScore}
+                    · {t(locale, "match.actualResult")}: {formatMatchScore(match)}
                   </span>
                 ) : null}
               </p>

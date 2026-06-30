@@ -14,7 +14,17 @@ import type { SeededMatchWithResult } from "@/lib/world-cup/repository";
 type DraftResult = {
   homeScore: string;
   awayScore: string;
+  homePenaltyScore: string;
+  awayPenaltyScore: string;
   winnerSide: "" | PredictedWinnerSide;
+};
+
+const emptyDraft: DraftResult = {
+  homeScore: "",
+  awayScore: "",
+  homePenaltyScore: "",
+  awayPenaltyScore: "",
+  winnerSide: "",
 };
 
 export function AdminResultsForm({ matches }: { matches: SeededMatchWithResult[] }) {
@@ -26,6 +36,10 @@ export function AdminResultsForm({ matches }: { matches: SeededMatchWithResult[]
         {
           homeScore: match.homeScore === undefined ? "" : String(match.homeScore),
           awayScore: match.awayScore === undefined ? "" : String(match.awayScore),
+          homePenaltyScore:
+            match.homePenaltyScore === undefined ? "" : String(match.homePenaltyScore),
+          awayPenaltyScore:
+            match.awayPenaltyScore === undefined ? "" : String(match.awayPenaltyScore),
           winnerSide: match.winnerSide ?? "",
         },
       ]),
@@ -41,7 +55,7 @@ export function AdminResultsForm({ matches }: { matches: SeededMatchWithResult[]
   const visibleMatches = useMemo(
     () =>
       matches.filter((match) => {
-        const draft = drafts[match.dbId] ?? { homeScore: "", awayScore: "", winnerSide: "" };
+        const draft = drafts[match.dbId] ?? emptyDraft;
         const hasScore = draft.homeScore !== "" && draft.awayScore !== "";
         const search = query.trim().toLocaleLowerCase();
         const haystack = [
@@ -73,7 +87,7 @@ export function AdminResultsForm({ matches }: { matches: SeededMatchWithResult[]
     setDrafts((current) => ({
       ...current,
       [matchDbId]: {
-        ...(current[matchDbId] ?? { homeScore: "", awayScore: "", winnerSide: "" }),
+        ...(current[matchDbId] ?? emptyDraft),
         [key]: value,
       },
     }));
@@ -86,6 +100,29 @@ export function AdminResultsForm({ matches }: { matches: SeededMatchWithResult[]
     const awayScore = Number(draft.awayScore);
     if (!Number.isInteger(homeScore) || !Number.isInteger(awayScore) || homeScore < 0 || awayScore < 0) {
       setErrors((current) => ({ ...current, [match.dbId]: locale === "he" ? "צריך להזין תוצאות תקינות במספרים שלמים." : "Enter valid whole-number scores." }));
+      return;
+    }
+    const hasHomePenaltyScore = draft.homePenaltyScore !== "";
+    const hasAwayPenaltyScore = draft.awayPenaltyScore !== "";
+    if (hasHomePenaltyScore !== hasAwayPenaltyScore) {
+      setErrors((current) => ({
+        ...current,
+        [match.dbId]: locale === "he" ? "צריך להזין שתי תוצאות פנדלים או להשאיר ריק." : "Enter both penalty scores or leave both empty.",
+      }));
+      return;
+    }
+    const homePenaltyScore = hasHomePenaltyScore ? Number(draft.homePenaltyScore) : null;
+    const awayPenaltyScore = hasAwayPenaltyScore ? Number(draft.awayPenaltyScore) : null;
+    if (
+      (homePenaltyScore !== null &&
+        (!Number.isInteger(homePenaltyScore) || homePenaltyScore < 0)) ||
+      (awayPenaltyScore !== null &&
+        (!Number.isInteger(awayPenaltyScore) || awayPenaltyScore < 0))
+    ) {
+      setErrors((current) => ({
+        ...current,
+        [match.dbId]: locale === "he" ? "תוצאת הפנדלים צריכה להיות מספר שלם תקין." : "Penalty scores must be valid whole numbers.",
+      }));
       return;
     }
     const winnerSide =
@@ -109,6 +146,8 @@ export function AdminResultsForm({ matches }: { matches: SeededMatchWithResult[]
           matchDbId: match.dbId,
           homeScore,
           awayScore,
+          homePenaltyScore,
+          awayPenaltyScore,
           winnerSide,
           status: "final",
         }),
@@ -185,7 +224,7 @@ export function AdminResultsForm({ matches }: { matches: SeededMatchWithResult[]
 
       <div className="space-y-3">
         {visibleMatches.map((match) => {
-          const draft = drafts[match.dbId] ?? { homeScore: "", awayScore: "", winnerSide: "" };
+          const draft = drafts[match.dbId] ?? emptyDraft;
           const error = errors[match.dbId];
           const status = statuses[match.dbId];
           const homeName = getTeam(match.homeTeamId)?.name ?? match.homePlaceholder ?? "Home";
@@ -243,6 +282,33 @@ export function AdminResultsForm({ matches }: { matches: SeededMatchWithResult[]
                   {saving === match.dbId ? t("common.saving") : locale === "he" ? "שמירת תוצאה" : "Save Final"}
                 </button>
               </div>
+
+              {isKnockoutStage(match.stage) ? (
+                <div className="mt-3 flex flex-wrap items-center gap-3">
+                  <span className="text-xs font-bold uppercase text-[var(--color-fg-muted)]">
+                    {locale === "he" ? "פנדלים" : "Penalties"}
+                  </span>
+                  <input
+                    type="number"
+                    min="0"
+                    inputMode="numeric"
+                    value={draft.homePenaltyScore}
+                    onChange={(event) => update(match.dbId, "homePenaltyScore", event.target.value)}
+                    className="h-10 w-14 rounded-lg border border-white/10 bg-[var(--color-panel-highest)] text-center font-display text-base font-extrabold text-[var(--color-gold)] outline-none focus:border-[var(--color-accent)]"
+                    aria-label={`Home penalty score for match ${match.number}`}
+                  />
+                  <span className="font-display text-base font-bold text-[var(--color-fg-muted)]">-</span>
+                  <input
+                    type="number"
+                    min="0"
+                    inputMode="numeric"
+                    value={draft.awayPenaltyScore}
+                    onChange={(event) => update(match.dbId, "awayPenaltyScore", event.target.value)}
+                    className="h-10 w-14 rounded-lg border border-white/10 bg-[var(--color-panel-highest)] text-center font-display text-base font-extrabold text-[var(--color-gold)] outline-none focus:border-[var(--color-accent)]"
+                    aria-label={`Away penalty score for match ${match.number}`}
+                  />
+                </div>
+              ) : null}
 
               {needsWinnerSide ? (
                 <div className="mt-4 rounded-xl border border-white/10 bg-[var(--color-panel-high)] p-3">

@@ -26,6 +26,7 @@ type BracketEntrant = {
   code?: string;
   flag?: string;
   score?: number;
+  penaltyScore?: number;
   state: PickState;
   picked?: boolean;
   placeholder?: boolean;
@@ -439,7 +440,16 @@ function EntrantLine({ entrant }: { entrant: BracketEntrant }) {
         {entrant.flag ? <span className="me-1 hidden sm:inline">{entrant.flag}</span> : null}
         <span className="font-bold leading-none">{entrant.code ?? entrant.label}</span>
       </span>
-      {entrant.score !== undefined ? <span className="font-display font-extrabold">{entrant.score}</span> : null}
+      {entrant.score !== undefined ? (
+        <span className="font-display font-extrabold">
+          {entrant.score}
+          {entrant.penaltyScore !== undefined ? (
+            <span className="ms-0.5 text-[0.72em] text-[var(--color-fg-muted)]">
+              ({entrant.penaltyScore})
+            </span>
+          ) : null}
+        </span>
+      ) : null}
     </div>
   );
 }
@@ -454,12 +464,14 @@ function resolveLiveEntrantsForMatch(
     {
       ...resolveLiveSide(match, "home", matchByNumber, locale),
       score: match.homeScore,
+      penaltyScore: match.homePenaltyScore,
       state: winnerSide === "home" ? "success" : "neutral",
       picked: winnerSide === "home",
     },
     {
       ...resolveLiveSide(match, "away", matchByNumber, locale),
       score: match.awayScore,
+      penaltyScore: match.awayPenaltyScore,
       state: winnerSide === "away" ? "success" : "neutral",
       picked: winnerSide === "away",
     },
