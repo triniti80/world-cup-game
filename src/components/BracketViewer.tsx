@@ -34,12 +34,14 @@ type BracketEntrant = {
 
 type BracketPick = MobileLeagueStagePick & {
   key: string;
+  stage: StagePredictionStage;
 };
 
 type UserBracketContext = {
   userId: number;
   pickByStage: Map<StagePredictionStage, Map<string, BracketPick>>;
   pickListByStage: Map<StagePredictionStage, BracketPick[]>;
+  eliminatedStageByKey: Map<string, BracketStage>;
   cache: Map<number, [BracketEntrant, BracketEntrant]>;
 };
 
@@ -98,6 +100,7 @@ const nextPredictionStageByMatchStage = {
   sf: "final",
   final: "champion",
 } as const satisfies Record<BracketStage, StagePredictionStage>;
+const stagePredictionOrder = ["r32", "r16", "qf", "sf", "final", "champion"] as const;
 
 const stageDateRange = {
   r32: "June 28 - July 3",
@@ -123,6 +126,10 @@ export function BracketViewer({
     () => new Map(matches.map((match) => [match.number, match] as const)),
     [matches],
   );
+  const eliminatedStageByKey = useMemo(
+    () => buildEliminatedStageByKey(matches, matchByNumber, locale),
+    [locale, matchByNumber, matches],
+  );
   const userContext = useMemo(
     () =>
       selectedUserId === null
@@ -130,9 +137,10 @@ export function BracketViewer({
         : {
             userId: selectedUserId,
             ...buildUserPickMaps(stages, selectedUserId),
+            eliminatedStageByKey,
             cache: new Map<number, [BracketEntrant, BracketEntrant]>(),
           },
-    [selectedUserId, stages],
+    [eliminatedStageByKey, selectedUserId, stages],
   );
   const selectedMember = members.find((member) => member.userId === selectedUserId);
 
@@ -529,7 +537,11 @@ function resolveUserEntrantsForMatch(
     : "neutral";
   const markedEntrants = entrants.map((entrant) => {
     if (!selectedWinner || entrant.key !== selectedWinner.key) return entrant;
-    return { ...entrant, picked: true, state: selectedWinnerState };
+    const state =
+      entrant.state === "failure" || selectedWinner.state === "failure"
+        ? "failure"
+        : selectedWinnerState;
+    return { ...entrant, picked: true, state };
   }) as [BracketEntrant, BracketEntrant];
 
   context.cache.set(match.number, markedEntrants);
@@ -597,7 +609,7 @@ function findPredictedWinnerForSource(
   }
 
   const pick = picks.get(pickedCandidate.key);
-  return pick ? pickEntrant(pick) : pickedCandidate;
+  return pick ? pickEntrant(pick, context) : pickedCandidate;
 }
 
 function getOrderedFallbackPick(
@@ -611,7 +623,7 @@ function getOrderedFallbackPick(
   const sourceIndex = sourceOrder.indexOf(sourceMatch.number);
   if (sourceIndex < 0) return null;
   const pick = context.pickListByStage.get(targetStage)?.[sourceIndex];
-  return pick ? pickEntrant(pick) : null;
+  return pick ? pickEntrant(pick, context) : null;
 }
 
 function buildUserPickMaps(
@@ -626,7 +638,7 @@ function buildUserPickMaps(
     const pickList: BracketPick[] = [];
     for (const pick of prediction?.picks ?? []) {
       const key = pickKey(pick);
-      const bracketPick = { ...pick, key };
+      const bracketPick: BracketPick = { ...pick, key, stage: stage.stage };
       picks.set(key, bracketPick);
       pickList.push(bracketPick);
     }
@@ -636,7 +648,11 @@ function buildUserPickMaps(
   return { pickByStage, pickListByStage };
 }
 
-function pickEntrant(pick: BracketPick, state: PickState = "neutral"): BracketEntrant {
+function pickEntrant(
+  pick: BracketPick,
+  context: UserBracketContext,
+  state: PickState = pickStateFromElimination(pick, context),
+): BracketEntrant {
   if (isPlaceholderKey(pick.teamId)) {
     return {
       key: pick.teamId,
@@ -704,6 +720,45 @@ function getEffectiveWinnerSide(match: SeededMatchWithResult): MatchSide | null 
   if (match.homeScore > match.awayScore) return "home";
   if (match.awayScore > match.homeScore) return "away";
   return null;
+}
+
+function buildEliminatedStageByKey(
+  matches: SeededMatchWithResult[],
+  matchByNumber: Map<number, SeededMatchWithResult>,
+  locale: Locale,
+): Map<string, BracketStage> {
+  const eliminatedStageByKey = new Map<string, BracketStage>();
+
+  for (const match of matches) {
+    if (!isBracketStage(match.stage) || match.status !== "final") continue;
+    const winnerSide = getEffectiveWinnerSide(match);
+    if (!winnerSide) continue;
+    const loserSide = winnerSide === "home" ? "away" : "home";
+    const loser = resolveLiveSide(match, loserSide, matchByNumber, locale);
+    const previousStage = eliminatedStageByKey.get(loser.key);
+    if (
+      previousStage &&
+      stagePredictionOrder.indexOf(nextPredictionStageByMatchStage[previousStage]) <=
+        stagePredictionOrder.indexOf(nextPredictionStageByMatchStage[match.stage])
+    ) {
+      continue;
+    }
+    eliminatedStageByKey.set(loser.key, match.stage);
+  }
+
+  return eliminatedStageByKey;
+}
+
+function pickStateFromElimination(
+  pick: BracketPick,
+  context: UserBracketContext,
+): PickState {
+  const eliminatedStage = context.eliminatedStageByKey.get(pick.key);
+  if (!eliminatedStage) return "neutral";
+  const firstFailedStage = nextPredictionStageByMatchStage[eliminatedStage];
+  return stagePredictionOrder.indexOf(pick.stage) >= stagePredictionOrder.indexOf(firstFailedStage)
+    ? "failure"
+    : "neutral";
 }
 
 function getSelectedWinnerStateForMatch(
