@@ -860,7 +860,8 @@ export async function getSavedStagePredictions(
         eq(stagePredictions.leagueId, league.leagueId),
         eq(stagePredictions.tournamentId, tournamentRow.id),
       ),
-    );
+    )
+    .orderBy(stagePredictions.id);
 
   return rows.reduce<SavedStagePredictions>(
     (acc, row) => {

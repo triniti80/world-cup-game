@@ -3,7 +3,10 @@
 import { useMemo, useState } from "react";
 import { useI18n } from "@/components/I18nProvider";
 import type { Locale, TranslationKey } from "@/lib/i18n";
-import { buildRoundOf32Pairs as buildOfficialRoundOf32Pairs } from "@/lib/world-cup/bracket";
+import {
+  ROUND_OF_32_SLOTS,
+  buildRoundOf32Pairs as buildOfficialRoundOf32Pairs,
+} from "@/lib/world-cup/bracket";
 import { getTeamName, teams, type Match, type Team } from "@/lib/world-cup/data";
 import { getCompletedGroupQualifierRanks } from "@/lib/world-cup/group-standings";
 import type { SavedStagePredictions } from "@/lib/world-cup/repository";
@@ -40,6 +43,9 @@ const downstreamStagesByStage = {
   final: ["champion"],
   champion: [],
 } as const satisfies Record<StageId, readonly StageId[]>;
+const roundOf32BracketOrder = new Map(
+  ROUND_OF_32_SLOTS.map((slot, index) => [Number(slot.label.slice(1)), index] as const),
+);
 type Rank = 1 | 2 | 3;
 type Pair = {
   label: string;
@@ -643,7 +649,12 @@ function buildRoundOf32Pairs(ranks: Record<string, Rank>): Pair[] {
 function buildRoundOf32PairsFromMatches(matches: Match[]): Pair[] {
   const sortedMatches = matches
     .filter((match) => match.stage === "r32")
-    .sort((a, b) => a.number - b.number);
+    .sort(
+      (a, b) =>
+        (roundOf32BracketOrder.get(a.number) ?? Number.MAX_SAFE_INTEGER) -
+          (roundOf32BracketOrder.get(b.number) ?? Number.MAX_SAFE_INTEGER) ||
+        a.number - b.number,
+    );
   if (
     sortedMatches.length !== 16 ||
     sortedMatches.every((match) => !match.homeTeamId && !match.awayTeamId)
@@ -679,11 +690,10 @@ function buildBestRoundOf32Pairs(matches: Match[], fallbackRanks: Record<string,
 }
 
 function buildPairsFromTeamIds(teamIds: string[], prefix: string): Pair[] {
-  const filledTeamIds = teamIds.filter(Boolean);
   const pairs: Pair[] = [];
-  for (let index = 0; index < filledTeamIds.length; index += 2) {
-    const homeId = filledTeamIds[index];
-    const awayId = filledTeamIds[index + 1];
+  for (let index = 0; index < teamIds.length; index += 2) {
+    const homeId = teamIds[index] || undefined;
+    const awayId = teamIds[index + 1] || undefined;
     pairs.push({
       label: `${prefix} Match ${pairs.length + 1}`,
       home: getTeamById(homeId),
