@@ -439,9 +439,9 @@ function EntrantLine({ entrant }: { entrant: BracketEntrant }) {
   return (
     <div
       className={[
-        "relative min-h-7 pr-4 sm:flex sm:min-h-4 sm:items-center sm:justify-between sm:gap-1 sm:pr-0",
+        "relative -mx-0.5 min-h-7 rounded px-0.5 pr-4 sm:flex sm:min-h-4 sm:items-center sm:justify-between sm:gap-1 sm:pr-0",
         entrantStateClass(entrant),
-        entrant.picked ? "font-bold" : "",
+        entrant.picked ? pickedEntrantClass(entrant) : "",
       ].join(" ")}
     >
       <span className="min-w-0">
@@ -802,6 +802,16 @@ function entrantStateClass(entrant: BracketEntrant): string {
   if (entrant.state === "failure") return "text-[var(--color-danger)]";
   if (entrant.placeholder) return "text-[var(--color-fg-muted)]";
   return "text-[var(--color-fg)]";
+}
+
+function pickedEntrantClass(entrant: BracketEntrant): string {
+  if (entrant.state === "failure") {
+    return "bg-[var(--color-danger)]/10 ring-1 ring-[var(--color-danger)]/35";
+  }
+  if (entrant.state === "success") {
+    return "bg-[var(--color-accent)]/10 ring-1 ring-[var(--color-accent)]/35";
+  }
+  return "bg-[var(--color-gold)]/10 text-[var(--color-gold)] ring-1 ring-[var(--color-gold)]/35";
 }
 
 function isBracketStage(stage: Stage): stage is BracketStage {
